@@ -12,7 +12,6 @@ import {
   logApproveVersion,
   logCompleteDocument,
   logCreateVersion,
-  logOpenDocument,
   logRequestRecount,
 } from "@/services/audit-log.service";
 import {
@@ -108,8 +107,6 @@ export function getReviewDetail(
   const entries = doc.currentVersionId
     ? resolveEffectiveEntries(documentId, doc.currentVersionId)
     : [];
-
-  logOpenDocument(session.userId, session.userName, doc.branchId, documentId);
 
   const reviewLines: ReviewLineItem[] = lines.map((line) => {
     const entry = entries.find((e) => e.lineId === line.lineId);

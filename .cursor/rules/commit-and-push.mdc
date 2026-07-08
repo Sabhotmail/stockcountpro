@@ -1,0 +1,30 @@
+---
+description: Always commit and push after completing code changes
+alwaysApply: true
+---
+
+# Commit & Push After Every Change Set
+
+When you finish a task that modifies the repository (bugfix, feature, refactor, docs, rules):
+
+1. Run verification when relevant (e.g. `npm run build` for app changes).
+2. **Commit and push without waiting for the user to ask.**
+3. Use a concise commit message focused on *why* the change was made.
+4. Push to `origin` on the current branch after a successful commit.
+
+## Do not commit when
+
+- The user is only asking questions (no code changes).
+- There are no staged/unstaged changes to commit.
+- Files likely contain secrets (`.env`, credentials).
+
+## Git safety
+
+- Never update git config.
+- Never force-push to `main`/`master`.
+- Never skip hooks unless the user explicitly requests it.
+- Follow the repository's existing commit message style.
+
+## After push
+
+Briefly tell the user the commit hash, summary, and that the branch is synced with remote.

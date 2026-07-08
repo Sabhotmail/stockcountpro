@@ -9,7 +9,6 @@ import {
 import { filterLinesForRole } from "@/lib/product-line-filter";
 import { isEntryCounted } from "@/lib/unit-converter";
 import {
-  logOpenDocument,
   logStartCount,
   logSubmit,
 } from "@/services/audit-log.service";
@@ -99,8 +98,6 @@ export function getDocumentDetail(
 
   const lineIds = new Set(lines.map((l) => l.lineId));
   const entries = db.entries.filter((e) => lineIds.has(e.lineId));
-
-  logOpenDocument(session.userId, session.userName, doc.branchId, documentId);
 
   return {
     ...doc,

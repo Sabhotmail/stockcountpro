@@ -1,10 +1,22 @@
 import { getDocumentForSession } from "@/lib/document-access";
+import { getMockDb } from "@/mock/mock-db";
 import { AuditAction } from "@/types/audit";
 import type { AuditLog } from "@/types/audit";
-import { getMockDb } from "@/mock/mock-db";
 import type { MockSession } from "@/types/user";
 
-let auditCounter = 1;
+function nextAuditId(): string {
+  const db = getMockDb();
+  let max = 0;
+
+  for (const log of db.auditLogs) {
+    const match = /^audit_(\d+)$/.exec(log.id);
+    if (match) {
+      max = Math.max(max, Number.parseInt(match[1], 10));
+    }
+  }
+
+  return `audit_${String(max + 1).padStart(4, "0")}`;
+}
 
 export function createAuditLog(
   input: Omit<AuditLog, "id" | "createdAt">,
@@ -12,7 +24,7 @@ export function createAuditLog(
   const db = getMockDb();
   const log: AuditLog = {
     ...input,
-    id: `audit_${String(auditCounter++).padStart(4, "0")}`,
+    id: nextAuditId(),
     createdAt: new Date().toISOString(),
   };
   db.auditLogs.push(log);
@@ -20,7 +32,16 @@ export function createAuditLog(
 }
 
 export function getAuditLogsByDocument(documentId: string): AuditLog[] {
-  return getMockDb().auditLogs.filter((log) => log.documentId === documentId);
+  const seen = new Set<string>();
+
+  return getMockDb()
+    .auditLogs.filter((log) => {
+      if (log.documentId !== documentId) return false;
+      if (seen.has(log.id)) return false;
+      seen.add(log.id);
+      return true;
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function getAuditLogsForDocumentSession(
