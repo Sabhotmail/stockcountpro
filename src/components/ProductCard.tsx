@@ -17,18 +17,28 @@ interface ProductCardProps {
   ) => void;
 }
 
-function getConversionNotes(line: ProductLine): string[] {
+function normalizeUnitLabel(raw: string | undefined, fallback: string): string {
+  const value = raw?.trim();
+  if (!value) return fallback;
+
+  // Express sometimes sends unit codes (e.g. CT/EA/PCS) instead of Thai unit names.
+  // If it doesn't contain Thai characters, show a friendly Thai fallback.
+  if (!/[ก-๙]/.test(value)) return fallback;
+  return value;
+}
+
+function getConversionNotes(line: ProductLine, pieceUnitLabel: string): string[] {
   const notes: string[] = [];
 
   if (line.allowCase && line.caseRatio > 1) {
     notes.push(
-      `(${line.caseRatio} ${line.unitPieceName} = 1 ${line.unitCaseName ?? "ลัง"})`,
+      `(${line.caseRatio} ${pieceUnitLabel} = 1 ${line.unitCaseName ?? "ลัง"})`,
     );
   }
 
   if (line.allowPack && line.packRatio > 1) {
     notes.push(
-      `(${line.packRatio} ${line.unitPieceName} = 1 ${line.unitPackName ?? "แพ็ค"})`,
+      `(${line.packRatio} ${pieceUnitLabel} = 1 ${line.unitPackName ?? "แพ็ค"})`,
     );
   }
 
@@ -45,7 +55,8 @@ export function ProductCard({
   const counted = entry
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
     : false;
-  const conversionNotes = getConversionNotes(line);
+  const pieceUnitLabel = normalizeUnitLabel(line.unitPieceName, "ชิ้น");
+  const conversionNotes = getConversionNotes(line, pieceUnitLabel);
   const totalBaseQty = entry
     ? calculateTotalBaseQty(
         { caseRatio: line.caseRatio, packRatio: line.packRatio },
@@ -116,7 +127,7 @@ export function ProductCard({
             {line.allowPiece && (
               <QtyInput
                 compact
-                label={line.unitPieceName}
+                label={pieceUnitLabel}
                 value={entry?.qtyPiece ?? null}
                 disabled={disabled}
                 onChange={(value) => onQtyChange("qtyPiece", value)}
@@ -126,7 +137,7 @@ export function ProductCard({
 
           {counted && (
             <p className="mt-2 text-xs text-slate-500">
-              รวม ({line.unitPieceName}): {totalBaseQty ?? "—"}
+              รวม ({pieceUnitLabel}): {totalBaseQty ?? "—"}
             </p>
           )}
 
