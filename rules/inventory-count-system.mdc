@@ -1,0 +1,509 @@
+---
+description: Inventory Count System prototype rules for Cursor
+alwaysApply: true
+---
+
+# Inventory Count System - Cursor Project Rules
+
+This project is an Inventory Count System built with Next.js.
+
+## Current Mode
+
+The project is currently in Prototype / Mock-first Development.
+
+Main goal:
+
+- Build visible UI first
+- Build working mock flow first
+- Requirements may change
+- Real Express API is not ready yet
+- Do not over-engineer production-grade security, offline sync, or version delta yet
+- Keep code structure flexible so it can become production-ready later
+
+## Core Stack
+
+Use:
+
+- Next.js App Router
+- TypeScript
+- React Server Components where suitable
+- API Routes / Route Handlers
+- Service layer for business logic
+- Mock data first
+- Later: Prisma + database
+- Later: Auth.js / Microsoft Entra ID
+- Later: Express API integration
+- Later: Dexie.js / IndexedDB for offline draft
+
+## Development Style
+
+Write clean and flexible code.
+
+Rules:
+
+- Do not hardcode mock data inside React components
+- Put mock data under `src/mock`
+- Put business logic under `src/services`
+- Put shared helpers under `src/lib`
+- Put shared types under `src/types`
+- Frontend should call API routes as if they are real production APIs
+- Components should not directly mutate mock arrays
+- Keep UI simple, clear, and tablet-friendly
+- Add TODO comments where production hardening will be needed later
+
+## Mock-first Rules
+
+Use mock data and mock APIs first.
+
+Mock data location:
+
+```text
+src/mock/users.ts
+src/mock/branches.ts
+src/mock/count-documents.ts
+src/mock/products.ts
+src/mock/count-versions.ts
+src/mock/count-entries.ts
+src/mock/audit-logs.ts
+src/mock/mock-db.ts
+```
+
+Mock API routes should use the same path shape as future production APIs.
+
+Examples:
+
+```text
+GET    /api/count-documents
+GET    /api/count-documents/:documentId
+POST   /api/count-documents/:documentId/start
+PATCH  /api/count-documents/:documentId/versions/:versionId/entries/:lineId
+POST   /api/count-documents/:documentId/versions/:versionId/submit
+GET    /api/supervisor/count-documents
+GET    /api/supervisor/count-documents/:documentId/review
+POST   /api/supervisor/count-documents/:documentId/approve
+POST   /api/supervisor/count-documents/:documentId/request-recount
+GET    /api/audit-logs?documentId=xxx
+```
+
+## Mock Login
+
+For prototype only, create a mock login page.
+
+Path:
+
+```text
+/login
+```
+
+Mock users:
+
+- Admin
+- BKK1 Supervisor
+- BKK1 Staff
+- BKK2 Staff
+
+Prototype login may store selected user in localStorage or cookie.
+
+Important:
+
+- Mock login is development-only
+- Do not treat localStorage as secure auth
+- Add TODO to replace with Auth.js / Microsoft Entra ID later
+
+## Roles
+
+Support these roles:
+
+```text
+ADMIN
+HQ
+SUPERVISOR
+BRANCH_MANAGER
+STAFF
+COUNTER
+VIEWER
+```
+
+For prototype, minimum roles are:
+
+```text
+ADMIN
+SUPERVISOR
+STAFF
+VIEWER
+```
+
+Basic behavior:
+
+- ADMIN can see all branches
+- SUPERVISOR sees own branch
+- STAFF sees own branch
+- VIEWER is read-only
+
+## Branches
+
+Mock branches:
+
+```text
+BKK1 - กรุงเทพ 1
+BKK2 - กรุงเทพ 2
+CHM  - เชียงใหม่
+SRB  - สระบุรี
+```
+
+## Document Status
+
+Use these statuses:
+
+```text
+IMPORTED
+COUNTING
+SUBMITTED
+REVIEWING
+RECOUNT_REQUESTED
+APPROVED
+COMPLETED
+```
+
+For prototype, implement at least:
+
+```text
+IMPORTED
+COUNTING
+SUBMITTED
+RECOUNT_REQUESTED
+COMPLETED
+```
+
+## Version Status
+
+Use these statuses:
+
+```text
+DRAFT
+SUBMITTED
+RECOUNT
+APPROVED
+LOCKED
+```
+
+For prototype:
+
+- Version 1 is created when counting starts
+- Submit locks the version
+- Recount creates Version 2
+- It is acceptable in prototype to copy entries from prior version instead of using delta logic
+- Add TODO to implement delta + resolveEffectiveEntries later
+
+## Expected Quantity
+
+`expectedQty` is system stock quantity.
+
+Prototype behavior:
+
+- STAFF should not see expectedQty on UI
+- SUPERVISOR can see expectedQty
+- Prepare serializer/helper so API filtering can be enforced later
+
+Production rule later:
+
+- STAFF must not receive expectedQty from API response at all
+
+## Tablet UI
+
+Create these routes:
+
+```text
+/tablet/documents
+/tablet/count/[documentId]
+/tablet/count/[documentId]/summary
+```
+
+Tablet document list should show:
+
+- document number
+- document date
+- branch
+- status
+- current version
+- total line count
+- counted line count
+- button to open/start document
+
+Tablet count page should show one product card at a time.
+
+Product card shows:
+
+- product image or No Image fallback
+- product code
+- product name
+- barcode
+- qty case input if allowCase = true
+- qty pack input if allowPack = true
+- qty piece input if allowPiece = true
+- note input
+- sync/save status
+
+Buttons:
+
+- Previous
+- Next
+- Uncounted items
+- Save
+- Submit to supervisor
+
+## Unit Rules
+
+A product may not have all units.
+
+Examples:
+
+- Product A has case / pack / piece
+- Product B has pack / piece
+- Product C has only piece
+
+Only show inputs for allowed units.
+
+Quantity fields:
+
+```text
+qtyCase
+qtyPack
+qtyPiece
+totalBaseQty
+```
+
+Calculation:
+
+```text
+totalBaseQty =
+  qtyCase * caseRatio +
+  qtyPack * packRatio +
+  qtyPiece
+```
+
+Rules:
+
+- Quantity must not be negative
+- Quantity must be integer
+- Null means not counted yet
+- 0 means counted but not found
+- Do not default uncounted values to 0
+
+## Auto Save Prototype
+
+Implement basic Auto Save.
+
+Behavior:
+
+- When qty or note changes, call mock PATCH API
+- Debounce around 800-1500ms if practical
+- Show status:
+  - Saving...
+  - Saved
+  - Save failed
+  - Waiting sync
+- Save only changed line
+- Add `clientMutationId` to type/payload if practical, but full idempotency can be TODO for production
+
+## Submit Prototype
+
+Submit flow:
+
+- User clicks submit
+- Mock API changes version status to SUBMITTED
+- Mock API changes document status to SUBMITTED
+- Audit log is created through service
+- Supervisor can see the document
+
+Prototype does not need full offline pending sync block yet, but add TODO.
+
+## Supervisor UI
+
+Create routes:
+
+```text
+/supervisor/documents
+/supervisor/review/[documentId]
+/supervisor/review/[documentId]/versions
+```
+
+Supervisor document list should show submitted/recount documents for supervisor branch.
+
+Supervisor review page should show table:
+
+- product code
+- product name
+- expectedQty for supervisor
+- counted totalBaseQty
+- difference
+- note
+- version
+- checkbox for recount request
+
+Buttons:
+
+- Approve and complete
+- Request recount
+- View audit log
+- View version compare
+
+## Recount Prototype
+
+Request recount flow:
+
+- Supervisor selects lines
+- Supervisor enters reason
+- API creates new version
+- Document status becomes RECOUNT_REQUESTED
+- Add audit log
+- Staff can open the document again
+- Prototype can copy previous entries into new version for simplicity
+- Add TODO to later implement delta version and effective entry resolver
+
+## Audit Log Prototype
+
+Create an audit log service.
+
+Prototype action examples:
+
+```text
+LOGIN
+OPEN_DOCUMENT
+START_COUNT
+AUTO_SAVE_COUNT
+SUBMIT_TO_SUPERVISOR
+CREATE_VERSION
+REQUEST_RECOUNT
+APPROVE_VERSION
+COMPLETE_DOCUMENT
+```
+
+Rules:
+
+- Components should not write audit log directly
+- Service/API should write audit logs
+- Prototype may store audit log in mock state
+- Production later must make audit log append-only
+
+## Offline Draft Prototype
+
+Offline Draft is optional in early prototype.
+
+Preferred now:
+
+- Make UI and mock flow first
+- Add TODO points for offline draft
+
+If implemented early:
+
+- Use Dexie.js / IndexedDB
+- Do not use LocalStorage for offline draft
+- Keep draft scoped by userId, branchId, documentId, versionId, lineId
+
+## File Structure
+
+Use this structure:
+
+```text
+src/
+  app/
+    login/
+    tablet/
+      documents/
+      count/[documentId]/
+      count/[documentId]/summary/
+    supervisor/
+      documents/
+      review/[documentId]/
+      review/[documentId]/versions/
+    admin/
+      users/
+      branches/
+      audit-logs/
+    api/
+      count-documents/
+      supervisor/
+      audit-logs/
+      express/
+      offline-sync/
+
+  components/
+    ProductCard.tsx
+    QtyInput.tsx
+    ProductImage.tsx
+    DocumentStatusBadge.tsx
+    SyncStatusBadge.tsx
+    VersionCompareTable.tsx
+    RecountRequestModal.tsx
+
+  lib/
+    mock-session.ts
+    permissions.ts
+    unit-converter.ts
+    audit-log.ts
+    data-source.ts
+
+  mock/
+    users.ts
+    branches.ts
+    count-documents.ts
+    products.ts
+    count-versions.ts
+    count-entries.ts
+    audit-logs.ts
+    mock-db.ts
+
+  services/
+    count-document.service.ts
+    count-version.service.ts
+    count-entry.service.ts
+    review.service.ts
+    audit-log.service.ts
+    mock-session.service.ts
+
+  types/
+    count.ts
+    user.ts
+    express.ts
+    audit.ts
+```
+
+## Recommended Build Order
+
+Build in this order:
+
+1. Mock types and enums
+2. Mock users / branches / documents / product lines
+3. Mock login
+4. Tablet document list
+5. Tablet count page
+6. Mock API list/open document
+7. Mock API start count
+8. Mock API auto save
+9. Mock API submit
+10. Supervisor document list
+11. Supervisor review page
+12. Mock API approve
+13. Mock API request recount
+14. Audit log mock
+15. Version compare mock
+16. Optional offline draft
+
+## Keep These TODOs for Production
+
+Add TODO comments for these items but do not fully implement now unless requested:
+
+- Replace mock login with Auth.js / Microsoft Entra ID
+- Enforce server-side role and branch permission on every API
+- Prevent IDOR on all API routes
+- Ensure STAFF never receives expectedQty from API
+- Add clientMutationId idempotency
+- Add IndexedDB offline draft with sync queue
+- Block submit if pending sync exists
+- Implement delta version storage
+- Implement resolveEffectiveEntries
+- Create final snapshot on completed document
+- Prevent Express sync from overwriting started documents
+- Move mutable mock state to dev DB / Prisma
+- Make audit log append-only

@@ -1,0 +1,380 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ProductCard } from "@/components/ProductCard";
+import { isEntryCounted } from "@/lib/unit-converter";
+import {
+  DocumentStatus,
+  VersionStatus,
+  type CountDocumentDetail,
+  type CountEntry,
+  type ProductLine,
+  type SyncStatus,
+} from "@/types/count";
+
+const AUTO_SAVE_DELAY_MS = 1000;
+
+export default function TabletCountPage() {
+  const params = useParams<{ documentId: string }>();
+  const router = useRouter();
+  const documentId = params.documentId;
+
+  const [document, setDocument] = useState<CountDocumentDetail | null>(null);
+  const [entries, setEntries] = useState<Record<string, CountEntry>>({});
+  const [syncStatusByLine, setSyncStatusByLine] = useState<
+    Record<string, SyncStatus>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [codeFilter, setCodeFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
+  const [showUncountedOnly, setShowUncountedOnly] = useState(false);
+
+  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
+  const pendingSavesRef = useRef<
+    Record<string, Record<string, unknown>>
+  >({});
+
+  const loadDocument = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/count-documents/${documentId}`);
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) throw new Error("Failed to load document");
+      const data = await res.json();
+      const doc = data.document as CountDocumentDetail;
+      setDocument(doc);
+
+      const entryMap: Record<string, CountEntry> = {};
+      for (const entry of doc.entries) {
+        entryMap[entry.lineId] = entry;
+      }
+      setEntries(entryMap);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Load failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [documentId, router]);
+
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  const lines = document?.lines ?? [];
+  const versionId = document?.currentVersionId;
+  const isEditable =
+    document?.status === DocumentStatus.COUNTING &&
+    document?.version?.status === VersionStatus.DRAFT;
+
+  const filteredLines = useMemo(() => {
+    const codeQuery = codeFilter.trim().toLowerCase();
+    const nameQuery = nameFilter.trim().toLowerCase();
+
+    return lines.filter((line) => {
+      if (codeQuery && !line.productCode.toLowerCase().includes(codeQuery)) {
+        return false;
+      }
+      if (nameQuery && !line.productName.toLowerCase().includes(nameQuery)) {
+        return false;
+      }
+      if (showUncountedOnly) {
+        const entry = entries[line.lineId];
+        const counted = entry
+          ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
+          : false;
+        if (counted) return false;
+      }
+      return true;
+    });
+  }, [lines, entries, codeFilter, nameFilter, showUncountedOnly]);
+
+  const countedSummary = useMemo(() => {
+    const counted = lines.filter((line) => {
+      const entry = entries[line.lineId];
+      return entry
+        ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
+        : false;
+    }).length;
+    return { counted, total: lines.length };
+  }, [lines, entries]);
+
+  const saveEntry = useCallback(
+    async (lineId: string, payload: Record<string, unknown>) => {
+      if (!versionId) return;
+
+      setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
+      try {
+        const res = await fetch(
+          `/api/count-documents/${documentId}/versions/${versionId}/entries/${lineId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Save failed");
+        }
+
+        const data = await res.json();
+        setEntries((prev) => ({
+          ...prev,
+          [lineId]: data.entry,
+        }));
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saved" }));
+      } catch {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+      }
+    },
+    [documentId, versionId],
+  );
+
+  const scheduleSave = useCallback(
+    (lineId: string, payload: Record<string, unknown>) => {
+      pendingSavesRef.current[lineId] = payload;
+
+      if (saveTimersRef.current[lineId]) {
+        clearTimeout(saveTimersRef.current[lineId]);
+      }
+
+      saveTimersRef.current[lineId] = setTimeout(() => {
+        const pending = pendingSavesRef.current[lineId];
+        if (pending) {
+          saveEntry(lineId, pending);
+          delete pendingSavesRef.current[lineId];
+        }
+      }, AUTO_SAVE_DELAY_MS);
+    },
+    [saveEntry],
+  );
+
+  function buildPayload(
+    line: ProductLine,
+    field: "qtyCase" | "qtyPack" | "qtyPiece" | "note",
+    value: number | null | string,
+  ) {
+    const existing = entries[line.lineId];
+    return {
+      qtyCase:
+        field === "qtyCase" ? value : (existing?.qtyCase ?? null),
+      qtyPack:
+        field === "qtyPack" ? value : (existing?.qtyPack ?? null),
+      qtyPiece:
+        field === "qtyPiece" ? value : (existing?.qtyPiece ?? null),
+      note: field === "note" ? value || null : (existing?.note ?? null),
+      baseRevision: existing?.revision,
+    };
+  }
+
+  function updateEntry(
+    line: ProductLine,
+    field: "qtyCase" | "qtyPack" | "qtyPiece",
+    value: number | null,
+  ) {
+    if (!isEditable) return;
+
+    const existing = entries[line.lineId];
+    const payload = buildPayload(line, field, value);
+
+    setEntries((prev) => ({
+      ...prev,
+      [line.lineId]: {
+        lineId: line.lineId,
+        qtyCase: payload.qtyCase as number | null,
+        qtyPack: payload.qtyPack as number | null,
+        qtyPiece: payload.qtyPiece as number | null,
+        totalBaseQty: existing?.totalBaseQty ?? null,
+        note: (payload.note as string | null) ?? null,
+        revision: existing?.revision ?? 0,
+        updatedAt: new Date().toISOString(),
+        updatedBy: existing?.updatedBy ?? "",
+      },
+    }));
+
+    scheduleSave(line.lineId, payload);
+  }
+
+  function updateNote(line: ProductLine, note: string) {
+    if (!isEditable) return;
+
+    const existing = entries[line.lineId];
+    const payload = buildPayload(line, "note", note);
+
+    setEntries((prev) => ({
+      ...prev,
+      [line.lineId]: {
+        lineId: line.lineId,
+        qtyCase: existing?.qtyCase ?? null,
+        qtyPack: existing?.qtyPack ?? null,
+        qtyPiece: existing?.qtyPiece ?? null,
+        totalBaseQty: existing?.totalBaseQty ?? null,
+        note: note || null,
+        revision: existing?.revision ?? 0,
+        updatedAt: new Date().toISOString(),
+        updatedBy: existing?.updatedBy ?? "",
+      },
+    }));
+
+    scheduleSave(line.lineId, payload);
+  }
+
+  async function handleSubmit() {
+    if (!versionId || !isEditable) return;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `/api/count-documents/${documentId}/versions/${versionId}/submit`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Submit failed");
+      }
+      router.push("/tablet/documents");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Submit failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <p className="text-slate-500">กำลังโหลดเอกสาร...</p>
+      </div>
+    );
+  }
+
+  if (!document) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100">
+        <p className="text-slate-500">ไม่พบเอกสาร</p>
+        <Link href="/tablet/documents" className="text-blue-600">
+          กลับรายการเอกสาร
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 pb-24">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
+        <div className="mx-auto max-w-4xl">
+          <Link
+            href="/tablet/documents"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ← กลับ
+          </Link>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                {document.documentNo}
+              </h1>
+              <p className="text-sm text-slate-500">
+                {document.branchCode} · เวอร์ชัน {document.currentVersionNo} ·
+                นับแล้ว {countedSummary.counted}/{countedSummary.total} รายการ
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!isEditable || submitting}
+              className="rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+            >
+              {submitting ? "กำลังส่ง..." : "ส่งให้หัวหน้างาน"}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-4xl px-6 py-4">
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-slate-600">
+                ค้นหารหัสสินค้า
+              </span>
+              <input
+                type="text"
+                value={codeFilter}
+                onChange={(e) => setCodeFilter(e.target.value)}
+                placeholder="เช่น P001"
+                className="rounded-lg border border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-slate-600">
+                ค้นหาชื่อสินค้า
+              </span>
+              <input
+                type="text"
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder="เช่น น้ำดื่ม"
+                className="rounded-lg border border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              แสดง {filteredLines.length} จาก {lines.length} รายการ
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowUncountedOnly((v) => !v)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                showUncountedOnly
+                  ? "bg-orange-100 text-orange-700"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {filteredLines.map((line) => (
+            <ProductCard
+              key={line.lineId}
+              line={line}
+              entry={entries[line.lineId]}
+              syncStatus={syncStatusByLine[line.lineId] ?? "idle"}
+              disabled={!isEditable}
+              onQtyChange={(field, value) => updateEntry(line, field, value)}
+              onNoteChange={(note) => updateNote(line, note)}
+            />
+          ))}
+
+          {filteredLines.length === 0 && (
+            <p className="py-12 text-center text-slate-500">
+              ไม่พบสินค้าที่ตรงกับตัวกรอง
+            </p>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
