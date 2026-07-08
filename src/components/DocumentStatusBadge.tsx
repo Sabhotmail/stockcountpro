@@ -34,11 +34,19 @@ const statusConfig: Record<
   },
 };
 
-export function DocumentStatusBadge({ status }: { status: DocumentStatus }) {
+export function DocumentStatusBadge({
+  status,
+  compact,
+}: {
+  status: DocumentStatus;
+  compact?: boolean;
+}) {
   const config = statusConfig[status];
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${config.className}`}
+      className={`inline-flex shrink-0 whitespace-nowrap rounded-full font-medium ${config.className} ${
+        compact ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm"
+      }`}
     >
       {config.label}
     </span>
