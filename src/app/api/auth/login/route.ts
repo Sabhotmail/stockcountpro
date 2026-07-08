@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clearLegacySessionCookie } from "@/lib/auth/session";
 import { logLogin } from "@/services/audit-log.service";
 import { authenticateUser } from "@/services/auth.service";
 import {
@@ -41,9 +42,7 @@ export async function POST(request: Request) {
   });
 
   response.headers.append("Set-Cookie", buildSessionSetCookieHeader(token));
-  for (const cookie of buildSessionClearCookieHeaders()) {
-    response.headers.append("Set-Cookie", cookie);
-  }
+  response.headers.append("Set-Cookie", clearLegacySessionCookie());
 
   return response;
 }

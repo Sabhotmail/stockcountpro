@@ -21,6 +21,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ username, password }),
       });
 
@@ -29,7 +30,7 @@ export default function LoginPage() {
         throw new Error(data.error ?? "Login failed");
       }
 
-      router.push(getHomePathForRole(data.user.role as UserRole));
+      router.replace(getHomePathForRole(data.user.role as UserRole));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
