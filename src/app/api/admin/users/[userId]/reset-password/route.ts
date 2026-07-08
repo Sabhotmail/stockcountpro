@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listUsersForAdmin } from "@/services/admin.service";
-import { createUserForAdmin, type CreateAdminUserInput } from "@/services/admin-user.service";
+import {
+  resetPasswordForAdmin,
+  type ResetAdminUserPasswordInput,
+} from "@/services/admin-user.service";
 import { getServerSession } from "@/services/mock-session.service";
 
-export async function GET() {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
   const session = await getServerSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await listUsersForAdmin(session);
-  if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-
-  return NextResponse.json({ users: result });
-}
-
-export async function POST(req: NextRequest) {
-  const session = await getServerSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { userId } = await params;
 
   let body: unknown;
   try {
@@ -34,11 +27,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const result = await createUserForAdmin(session, body as CreateAdminUserInput);
+  const result = await resetPasswordForAdmin(
+    session,
+    userId,
+    body as ResetAdminUserPasswordInput,
+  );
   if ("error" in result) {
     const status = result.error === "Access denied" ? 403 : 400;
     return NextResponse.json({ error: result.error }, { status });
   }
 
-  return NextResponse.json(result, { status: 201 });
+  return NextResponse.json(result);
 }
