@@ -88,9 +88,21 @@ const globalForMockDb = globalThis as typeof globalThis & {
   __stockcountMockDb?: MockDatabase;
 };
 
+function migrateMockDb(db: MockDatabase): void {
+  // Hot reload may keep an older singleton missing Phase 3 fields.
+  if (!db.recountRequests) {
+    db.recountRequests = clone(initialRecountRequests);
+  }
+  if (!db.entrySnapshots) {
+    db.entrySnapshots = {};
+  }
+}
+
 export function getMockDb(): MockDatabase {
   if (!globalForMockDb.__stockcountMockDb) {
     globalForMockDb.__stockcountMockDb = createInitialDb();
+  } else {
+    migrateMockDb(globalForMockDb.__stockcountMockDb);
   }
   return globalForMockDb.__stockcountMockDb;
 }
