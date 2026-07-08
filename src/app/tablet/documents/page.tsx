@@ -271,6 +271,9 @@ export default function TabletDocumentsPage() {
                 <CardTitle>{doc.documentNo}</CardTitle>
                 <CardDescription>
                   {doc.documentDate} · {doc.branchCode} {doc.branchName}
+                  {doc.branchExpressLocationCode
+                    ? ` · Express ${doc.branchExpressLocationCode}`
+                    : ""}
                 </CardDescription>
               </div>
               <Button

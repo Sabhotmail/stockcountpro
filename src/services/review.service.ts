@@ -153,6 +153,7 @@ export async function getReviewDetail(
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
+    branchExpressLocationCode: branch?.expressLocationCode ?? null,
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries,

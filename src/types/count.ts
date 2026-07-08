@@ -78,6 +78,7 @@ export interface CountDocument {
 export interface CountDocumentDetail extends CountDocument {
   branchCode: string;
   branchName: string;
+  branchExpressLocationCode?: string | null;
   version: CountVersion | null;
   lines: ProductLine[];
   entries: CountEntry[];
@@ -86,6 +87,7 @@ export interface CountDocumentDetail extends CountDocument {
 export interface CountDocumentListItem extends CountDocument {
   branchCode: string;
   branchName: string;
+  branchExpressLocationCode?: string | null;
 }
 
 export interface SaveEntryPayload {

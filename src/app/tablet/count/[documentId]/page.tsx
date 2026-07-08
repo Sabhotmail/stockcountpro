@@ -284,8 +284,13 @@ export default function TabletCountPage() {
                 {document.documentNo}
               </h1>
               <p className="text-sm text-slate-500">
-                {document.branchCode} · เวอร์ชัน {document.currentVersionNo} ·
-                นับแล้ว {countedSummary.counted}/{countedSummary.total} รายการ
+                {document.branchCode}
+                {document.branchExpressLocationCode
+                  ? ` (Express ${document.branchExpressLocationCode})`
+                  : ""}{" "}
+                · วันที่ {document.documentDate} · เวอร์ชัน{" "}
+                {document.currentVersionNo} · นับแล้ว {countedSummary.counted}/
+                {countedSummary.total} รายการ
               </p>
             </div>
             <Link
