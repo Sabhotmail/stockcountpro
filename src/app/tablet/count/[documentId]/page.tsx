@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
+import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { isEntryCounted } from "@/lib/unit-converter";
 import {
   DocumentStatus,
@@ -22,10 +23,12 @@ export default function TabletCountPage() {
   const documentId = params.documentId;
 
   const [document, setDocument] = useState<CountDocumentDetail | null>(null);
+  const [documentNote, setDocumentNote] = useState("");
   const [entries, setEntries] = useState<Record<string, CountEntry>>({});
   const [syncStatusByLine, setSyncStatusByLine] = useState<
     Record<string, SyncStatus>
   >({});
+  const [noteSyncStatus, setNoteSyncStatus] = useState<SyncStatus>("idle");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +42,7 @@ export default function TabletCountPage() {
   const pendingSavesRef = useRef<
     Record<string, Record<string, unknown>>
   >({});
+  const noteSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadDocument = useCallback(async () => {
     setLoading(true);
@@ -53,6 +57,7 @@ export default function TabletCountPage() {
       const data = await res.json();
       const doc = data.document as CountDocumentDetail;
       setDocument(doc);
+      setDocumentNote(doc.note ?? "");
 
       const entryMap: Record<string, CountEntry> = {};
       for (const entry of doc.entries) {
@@ -141,6 +146,33 @@ export default function TabletCountPage() {
     [documentId, versionId],
   );
 
+  const saveDocumentNote = useCallback(
+    async (note: string) => {
+      setNoteSyncStatus("saving");
+      try {
+        const res = await fetch(`/api/count-documents/${documentId}/note`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: note || null }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Save note failed");
+        }
+
+        const data = await res.json();
+        setDocument((prev) =>
+          prev ? { ...prev, note: data.note ?? null } : prev,
+        );
+        setNoteSyncStatus("saved");
+      } catch {
+        setNoteSyncStatus("failed");
+      }
+    },
+    [documentId],
+  );
+
   const scheduleSave = useCallback(
     (lineId: string, payload: Record<string, unknown>) => {
       pendingSavesRef.current[lineId] = payload;
@@ -162,8 +194,8 @@ export default function TabletCountPage() {
 
   function buildPayload(
     line: ProductLine,
-    field: "qtyCase" | "qtyPack" | "qtyPiece" | "note",
-    value: number | null | string,
+    field: "qtyCase" | "qtyPack" | "qtyPiece",
+    value: number | null,
   ) {
     const existing = entries[line.lineId];
     return {
@@ -173,7 +205,6 @@ export default function TabletCountPage() {
         field === "qtyPack" ? value : (existing?.qtyPack ?? null),
       qtyPiece:
         field === "qtyPiece" ? value : (existing?.qtyPiece ?? null),
-      note: field === "note" ? value || null : (existing?.note ?? null),
       baseRevision: existing?.revision,
     };
   }
@@ -196,7 +227,7 @@ export default function TabletCountPage() {
         qtyPack: payload.qtyPack as number | null,
         qtyPiece: payload.qtyPiece as number | null,
         totalBaseQty: existing?.totalBaseQty ?? null,
-        note: (payload.note as string | null) ?? null,
+        note: null,
         revision: existing?.revision ?? 0,
         updatedAt: new Date().toISOString(),
         updatedBy: existing?.updatedBy ?? "",
@@ -206,28 +237,17 @@ export default function TabletCountPage() {
     scheduleSave(line.lineId, payload);
   }
 
-  function updateNote(line: ProductLine, note: string) {
+  function updateDocumentNote(note: string) {
     if (!isEditable) return;
 
-    const existing = entries[line.lineId];
-    const payload = buildPayload(line, "note", note);
+    setDocumentNote(note);
+    if (noteSaveTimerRef.current) {
+      clearTimeout(noteSaveTimerRef.current);
+    }
 
-    setEntries((prev) => ({
-      ...prev,
-      [line.lineId]: {
-        lineId: line.lineId,
-        qtyCase: existing?.qtyCase ?? null,
-        qtyPack: existing?.qtyPack ?? null,
-        qtyPiece: existing?.qtyPiece ?? null,
-        totalBaseQty: existing?.totalBaseQty ?? null,
-        note: note || null,
-        revision: existing?.revision ?? 0,
-        updatedAt: new Date().toISOString(),
-        updatedBy: existing?.updatedBy ?? "",
-      },
-    }));
-
-    scheduleSave(line.lineId, payload);
+    noteSaveTimerRef.current = setTimeout(() => {
+      saveDocumentNote(note);
+    }, AUTO_SAVE_DELAY_MS);
   }
 
   async function handleSubmit() {
@@ -300,6 +320,27 @@ export default function TabletCountPage() {
               {submitting ? "กำลังส่ง..." : "ส่งให้หัวหน้างาน"}
             </button>
           </div>
+
+          <div className="mt-4">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label
+                htmlFor="document-note"
+                className="text-sm font-medium text-slate-600"
+              >
+                หมายเหตุเอกสาร
+              </label>
+              <SyncStatusBadge status={noteSyncStatus} />
+            </div>
+            <textarea
+              id="document-note"
+              rows={2}
+              disabled={!isEditable}
+              value={documentNote}
+              onChange={(e) => updateDocumentNote(e.target.value)}
+              placeholder="เพิ่มหมายเหตุสำหรับเอกสารนี้ (ถ้ามี)"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+            />
+          </div>
         </div>
       </header>
 
@@ -364,7 +405,6 @@ export default function TabletCountPage() {
               syncStatus={syncStatusByLine[line.lineId] ?? "idle"}
               disabled={!isEditable}
               onQtyChange={(field, value) => updateEntry(line, field, value)}
-              onNoteChange={(note) => updateNote(line, note)}
             />
           ))}
 

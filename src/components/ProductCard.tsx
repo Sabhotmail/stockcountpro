@@ -15,7 +15,6 @@ interface ProductCardProps {
     field: "qtyCase" | "qtyPack" | "qtyPiece",
     value: number | null,
   ) => void;
-  onNoteChange: (note: string) => void;
 }
 
 function getConversionNotes(line: ProductLine): string[] {
@@ -42,7 +41,6 @@ export function ProductCard({
   syncStatus,
   disabled,
   onQtyChange,
-  onNoteChange,
 }: ProductCardProps) {
   const counted = entry
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
@@ -80,7 +78,7 @@ export function ProductCard({
                 </p>
               </div>
               <p className="mt-0.5 text-xs text-slate-400">
-                บาร์โค้ด: {line.barcode} · รายการที่ {line.lineNo}
+                รายการที่ {line.lineNo}
               </p>
             </div>
             <SyncStatusBadge status={syncStatus} />
@@ -122,18 +120,6 @@ export function ProductCard({
               {conversionNotes.join(" · ")}
             </p>
           )}
-
-          <label className="mt-3 flex flex-col gap-1">
-            <span className="text-xs font-medium text-slate-500">หมายเหตุ</span>
-            <input
-              type="text"
-              disabled={disabled}
-              value={entry?.note ?? ""}
-              onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="เพิ่มหมายเหตุ (ถ้ามี)"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-            />
-          </label>
         </div>
       </div>
     </div>

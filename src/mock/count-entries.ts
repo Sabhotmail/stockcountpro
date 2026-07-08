@@ -32,7 +32,7 @@ export const initialCountEntries: CountEntry[] = [
   makeEntry(bkk1002Lines[0].lineId, "user_bkk1_staff", 2, 1, 3, 2 * 24 + 1 * 6 + 3),
   makeEntry(bkk1002Lines[1].lineId, "user_bkk1_staff", 1, 0, 0, 24),
   makeEntry(bkk1002Lines[2].lineId, "user_bkk1_staff", null, 3, 5, 3 * 10 + 5),
-  makeEntry(bkk1002Lines[3].lineId, "user_bkk1_staff", null, null, 0, 0, "ไม่พบสินค้า"),
+  makeEntry(bkk1002Lines[3].lineId, "user_bkk1_staff", null, null, 0, 0),
   // doc_bkk1_003 - all counted
   ...bkk1003Lines.map((line, i) =>
     makeEntry(

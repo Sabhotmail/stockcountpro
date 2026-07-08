@@ -68,6 +68,7 @@ export interface CountDocument {
   currentVersionNo: number;
   totalLines: number;
   countedLines: number;
+  note: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,9 +90,12 @@ export interface SaveEntryPayload {
   qtyCase?: number | null;
   qtyPack?: number | null;
   qtyPiece?: number | null;
-  note?: string | null;
   baseRevision?: number;
   clientMutationId?: string;
+}
+
+export interface SaveDocumentNotePayload {
+  note: string | null;
 }
 
 export interface SaveEntryResponse {

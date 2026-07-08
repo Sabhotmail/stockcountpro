@@ -221,6 +221,29 @@ export function submitVersion(
   return { success: true };
 }
 
+export function saveDocumentNote(
+  session: MockSession,
+  documentId: string,
+  note: string | null,
+): { success: true; note: string | null } | { error: string } {
+  const db = getMockDb();
+  const doc = db.documents.find((d) => d.id === documentId);
+  if (!doc) return { error: "Document not found" };
+
+  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
+    return { error: "Access denied" };
+  }
+
+  if (doc.status === DocumentStatus.COMPLETED) {
+    return { error: "Document is completed" };
+  }
+
+  doc.note = note?.trim() ? note.trim() : null;
+  doc.updatedAt = new Date().toISOString();
+
+  return { success: true, note: doc.note };
+}
+
 export function getEntriesForDocument(
   documentId: string,
   versionId: string,

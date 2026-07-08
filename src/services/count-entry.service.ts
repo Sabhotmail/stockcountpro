@@ -78,8 +78,6 @@ export function saveEntry(
     payload.qtyPiece !== undefined
       ? payload.qtyPiece
       : (existing?.qtyPiece ?? null);
-  const note =
-    payload.note !== undefined ? payload.note : (existing?.note ?? null);
 
   const totalBaseQty = calculateTotalBaseQty(line, qtyCase, qtyPack, qtyPiece);
   const now = new Date().toISOString();
@@ -90,7 +88,7 @@ export function saveEntry(
     qtyPack,
     qtyPiece,
     totalBaseQty,
-    note,
+    note: null,
     revision: (existing?.revision ?? 0) + 1,
     updatedAt: now,
     updatedBy: session.userId,
