@@ -4,6 +4,7 @@ import { canMutateCount } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
   calculateTotalBaseQty,
+  convertPieceOverflowToCase,
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
@@ -62,14 +63,22 @@ async function applyEntrySave(
   if (validationError) return { error: validationError };
 
   const existing = await prisma.countEntry.findUnique({ where: { lineId } });
-  const qtyCase =
+  let qtyCase =
     payload.qtyCase !== undefined ? payload.qtyCase : (existing?.qtyCase ?? null);
   const qtyPack =
     payload.qtyPack !== undefined ? payload.qtyPack : (existing?.qtyPack ?? null);
-  const qtyPiece =
+  let qtyPiece =
     payload.qtyPiece !== undefined
       ? payload.qtyPiece
       : (existing?.qtyPiece ?? null);
+
+  const converted = convertPieceOverflowToCase(
+    { allowCase: line.allowCase, caseRatio: line.caseRatio },
+    qtyCase,
+    qtyPiece,
+  );
+  qtyCase = converted.qtyCase;
+  qtyPiece = converted.qtyPiece;
 
   const totalBaseQty = calculateTotalBaseQty(
     { caseRatio: line.caseRatio, packRatio: line.packRatio },

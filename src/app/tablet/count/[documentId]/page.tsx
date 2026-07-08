@@ -5,7 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
-import { isEntryCounted } from "@/lib/unit-converter";
+import {
+  convertPieceOverflowToCase,
+  isEntryCounted,
+} from "@/lib/unit-converter";
 import {
   DocumentStatus,
   VersionStatus,
@@ -197,13 +200,24 @@ export default function TabletCountPage() {
     value: number | null,
   ) {
     const existing = entries[line.lineId];
+    let qtyCase =
+      field === "qtyCase" ? value : (existing?.qtyCase ?? null);
+    const qtyPack =
+      field === "qtyPack" ? value : (existing?.qtyPack ?? null);
+    let qtyPiece =
+      field === "qtyPiece" ? value : (existing?.qtyPiece ?? null);
+
+    // When user enters pieces, auto-convert full cases (e.g. 72 pieces → 1 case).
+    if (field === "qtyPiece" || field === "qtyCase") {
+      const converted = convertPieceOverflowToCase(line, qtyCase, qtyPiece);
+      qtyCase = converted.qtyCase;
+      qtyPiece = converted.qtyPiece;
+    }
+
     return {
-      qtyCase:
-        field === "qtyCase" ? value : (existing?.qtyCase ?? null),
-      qtyPack:
-        field === "qtyPack" ? value : (existing?.qtyPack ?? null),
-      qtyPiece:
-        field === "qtyPiece" ? value : (existing?.qtyPiece ?? null),
+      qtyCase,
+      qtyPack,
+      qtyPiece,
       baseRevision: existing?.revision,
     };
   }

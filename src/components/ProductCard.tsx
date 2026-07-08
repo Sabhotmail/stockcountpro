@@ -143,7 +143,7 @@ export function ProductCard({
 
           {conversionNotes.length > 0 && (
             <p className="mt-2 text-xs text-slate-500">
-              {conversionNotes.join(" · ")}
+              {conversionNotes.join(" · ")} · กรอกชิ้นครบลังแล้วระบบจะแปลงให้เอง
             </p>
           )}
         </div>

@@ -17,6 +17,33 @@ export function calculateTotalBaseQty(
   return c * line.caseRatio + p * line.packRatio + pc;
 }
 
+/**
+ * Convert excess pieces into cases when piece qty reaches caseRatio.
+ * Example: caseRatio=72, case=1, piece=80 → case=2, piece=8
+ */
+export function convertPieceOverflowToCase(
+  line: Pick<ProductLine, "allowCase" | "caseRatio">,
+  qtyCase: number | null,
+  qtyPiece: number | null,
+): { qtyCase: number | null; qtyPiece: number | null } {
+  if (!line.allowCase || line.caseRatio <= 1) {
+    return { qtyCase, qtyPiece };
+  }
+
+  if (qtyCase === null && qtyPiece === null) {
+    return { qtyCase, qtyPiece };
+  }
+
+  const totalPieces = (qtyCase ?? 0) * line.caseRatio + (qtyPiece ?? 0);
+  const nextCase = Math.floor(totalPieces / line.caseRatio);
+  const nextPiece = totalPieces % line.caseRatio;
+
+  return {
+    qtyCase: nextCase,
+    qtyPiece: nextPiece,
+  };
+}
+
 export function isEntryCounted(
   qtyCase: number | null,
   qtyPack: number | null,
