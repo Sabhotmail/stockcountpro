@@ -54,6 +54,9 @@ function mapExpressLineToProductLine(
   lineNo: number,
 ) {
   const caseRatio = Math.max(1, Math.round(line.CaseUnitFactor || 1));
+  const rawPieceUnit = line.CaseUnitCode?.trim() || "";
+  const unitPieceName =
+    rawPieceUnit && /[ก-๙]/.test(rawPieceUnit) ? rawPieceUnit : "ชิ้น";
 
   return {
     lineId: `${documentId}_line_${String(lineNo).padStart(4, "0")}`,
@@ -64,7 +67,7 @@ function mapExpressLineToProductLine(
     barcode: line.ProductCode,
     unitCaseName: line.CaseUnitName || "ลัง",
     unitPackName: null,
-    unitPieceName: line.CaseUnitCode || "ชิ้น",
+    unitPieceName,
     caseRatio,
     packRatio: 1,
     allowCase: caseRatio > 1 || line.CaseQty > 0,

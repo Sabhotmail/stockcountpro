@@ -4,7 +4,7 @@ import type { CountEntry, ProductLine, SyncStatus } from "@/types/count";
 import { ProductImage } from "@/components/ProductImage";
 import { QtyInput } from "@/components/QtyInput";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
-import { isEntryCounted } from "@/lib/unit-converter";
+import { calculateTotalBaseQty, isEntryCounted } from "@/lib/unit-converter";
 
 interface ProductCardProps {
   line: ProductLine;
@@ -46,6 +46,14 @@ export function ProductCard({
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
     : false;
   const conversionNotes = getConversionNotes(line);
+  const totalBaseQty = entry
+    ? calculateTotalBaseQty(
+        { caseRatio: line.caseRatio, packRatio: line.packRatio },
+        entry.qtyCase,
+        entry.qtyPack,
+        entry.qtyPiece,
+      )
+    : null;
 
   return (
     <div
@@ -114,6 +122,12 @@ export function ProductCard({
               />
             )}
           </div>
+
+          {counted && (
+            <p className="mt-2 text-xs text-slate-500">
+              รวม ({line.unitPieceName}): {totalBaseQty ?? "—"}
+            </p>
+          )}
 
           {conversionNotes.length > 0 && (
             <p className="mt-2 text-xs text-slate-500">
