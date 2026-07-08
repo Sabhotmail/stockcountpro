@@ -16,9 +16,6 @@ export function QtyInput({
   if (compact) {
     return (
       <label className="flex items-center gap-2">
-        <span className="w-10 shrink-0 text-sm font-medium text-slate-600">
-          {label}
-        </span>
         <input
           type="number"
           min={0}
@@ -40,6 +37,9 @@ export function QtyInput({
           }}
           className="h-10 w-20 rounded-lg border border-slate-200 bg-white px-2 text-center text-base font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
         />
+        <span className="min-w-10 shrink-0 text-sm font-medium text-slate-600">
+          {label}
+        </span>
       </label>
     );
   }
