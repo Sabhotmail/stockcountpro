@@ -1,3 +1,5 @@
+import type { AuditLog } from "@/types/audit";
+
 export enum DocumentStatus {
   IMPORTED = "IMPORTED",
   COUNTING = "COUNTING",
@@ -101,6 +103,53 @@ export interface SaveDocumentNotePayload {
 export interface SaveEntryResponse {
   status: "SAVED";
   entry: CountEntry;
+}
+
+export interface RecountRequestItem {
+  lineId: string;
+  reason: string;
+}
+
+export interface RecountRequestPayload {
+  baseVersionId: string;
+  items: RecountRequestItem[];
+}
+
+export interface RecountRequestRecord {
+  id: string;
+  documentId: string;
+  baseVersionId: string;
+  newVersionId: string;
+  items: RecountRequestItem[];
+  requestedBy: string;
+  requestedAt: string;
+}
+
+export interface SupervisorDocumentListItem extends CountDocumentListItem {
+  submittedBy: string | null;
+  submittedByName: string | null;
+  submittedAt: string | null;
+  hasDocumentNote: boolean;
+}
+
+export interface ReviewLineItem {
+  lineId: string;
+  lineNo: number;
+  productCode: string;
+  productName: string;
+  expectedQty: number;
+  totalBaseQty: number | null;
+  difference: number | null;
+  versionNo: number;
+  isCounted: boolean;
+}
+
+export interface ReviewDetail {
+  document: CountDocumentDetail;
+  reviewLines: ReviewLineItem[];
+  versions: CountVersion[];
+  auditLogs: AuditLog[];
+  recountRequests: RecountRequestRecord[];
 }
 
 export type SyncStatus = "idle" | "saving" | "saved" | "failed" | "waiting";

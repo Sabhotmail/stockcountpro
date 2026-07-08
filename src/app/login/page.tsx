@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { mockUsers } from "@/mock/users";
 import { MOCK_SESSION_STORAGE_KEY } from "@/lib/mock-session";
+import { getHomePathForRole } from "@/lib/permissions";
+import { UserRole } from "@/types/user";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,7 +33,7 @@ export default function LoginPage() {
         MOCK_SESSION_STORAGE_KEY,
         JSON.stringify(data.session),
       );
-      router.push("/tablet/documents");
+      router.push(getHomePathForRole(data.session.role as UserRole));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

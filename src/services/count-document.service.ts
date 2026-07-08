@@ -145,6 +145,11 @@ export function startCount(
     return { error: "Document cannot be started" };
   }
 
+  if (doc.status === DocumentStatus.RECOUNT_REQUESTED && doc.currentVersionId) {
+    const detail = getDocumentDetail(session, documentId);
+    return detail ?? { error: "Document not found" };
+  }
+
   if (doc.currentVersionId) {
     const detail = getDocumentDetail(session, documentId);
     return detail ?? { error: "Document not found" };

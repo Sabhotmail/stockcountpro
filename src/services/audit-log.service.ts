@@ -97,3 +97,73 @@ export function logSubmit(
     versionId,
   });
 }
+
+export function logCreateVersion(
+  userId: string,
+  userName: string,
+  branchId: string,
+  documentId: string,
+  versionId: string,
+  detail?: string,
+): AuditLog {
+  return createAuditLog({
+    action: AuditAction.CREATE_VERSION,
+    userId,
+    userName,
+    branchId,
+    documentId,
+    versionId,
+    detail,
+  });
+}
+
+export function logRequestRecount(
+  userId: string,
+  userName: string,
+  branchId: string,
+  documentId: string,
+  versionId: string,
+  detail?: string,
+): AuditLog {
+  return createAuditLog({
+    action: AuditAction.REQUEST_RECOUNT,
+    userId,
+    userName,
+    branchId,
+    documentId,
+    versionId,
+    detail,
+  });
+}
+
+export function logApproveVersion(
+  userId: string,
+  userName: string,
+  branchId: string,
+  documentId: string,
+  versionId: string,
+): AuditLog {
+  return createAuditLog({
+    action: AuditAction.APPROVE_VERSION,
+    userId,
+    userName,
+    branchId,
+    documentId,
+    versionId,
+  });
+}
+
+export function logCompleteDocument(
+  userId: string,
+  userName: string,
+  branchId: string,
+  documentId: string,
+): AuditLog {
+  return createAuditLog({
+    action: AuditAction.COMPLETE_DOCUMENT,
+    userId,
+    userName,
+    branchId,
+    documentId,
+  });
+}

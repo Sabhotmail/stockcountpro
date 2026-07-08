@@ -3,6 +3,7 @@ import { initialCountDocuments } from "@/mock/count-documents";
 import { documentProductLines, initialCountEntries } from "@/mock/count-entries";
 import { initialCountVersions } from "@/mock/count-versions";
 import type { AuditLog } from "@/types/audit";
+import type { RecountRequestRecord } from "@/types/count";
 import type {
   CountDocument,
   CountEntry,
@@ -17,6 +18,7 @@ interface MockDatabase {
   entries: CountEntry[];
   productLines: Record<string, ProductLine[]>;
   auditLogs: AuditLog[];
+  recountRequests: RecountRequestRecord[];
 }
 
 function clone<T>(value: T): T {
@@ -30,6 +32,7 @@ function createInitialDb(): MockDatabase {
     entries: clone(initialCountEntries),
     productLines: clone(documentProductLines),
     auditLogs: clone(initialAuditLogs),
+    recountRequests: [],
   };
 }
 

@@ -34,3 +34,17 @@ export function filterDocumentsForSupervisor(status: DocumentStatus): boolean {
     status === DocumentStatus.REVIEWING
   );
 }
+
+export function canSupervise(role: UserRole): boolean {
+  return (
+    role === UserRole.ADMIN ||
+    role === UserRole.HQ ||
+    role === UserRole.SUPERVISOR ||
+    role === UserRole.BRANCH_MANAGER
+  );
+}
+
+export function getHomePathForRole(role: UserRole): string {
+  if (canSupervise(role)) return "/supervisor/documents";
+  return "/tablet/documents";
+}
