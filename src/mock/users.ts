@@ -9,6 +9,7 @@ export const mockUsers: Array<User & { username: string }> = [
     username: "admin",
     name: "Admin",
     role: UserRole.ADMIN,
+    isActive: true,
     branchIds: ["branch_bkk1", "branch_bkk2", "branch_chm", "branch_srb"],
   },
   {
@@ -16,6 +17,7 @@ export const mockUsers: Array<User & { username: string }> = [
     username: "bkk1.supervisor",
     name: "BKK1 Supervisor",
     role: UserRole.SUPERVISOR,
+    isActive: true,
     branchIds: ["branch_bkk1"],
   },
   {
@@ -23,6 +25,7 @@ export const mockUsers: Array<User & { username: string }> = [
     username: "bkk1.staff",
     name: "BKK1 Staff",
     role: UserRole.STAFF,
+    isActive: true,
     branchIds: ["branch_bkk1"],
   },
   {
@@ -30,6 +33,7 @@ export const mockUsers: Array<User & { username: string }> = [
     username: "bkk2.staff",
     name: "BKK2 Staff",
     role: UserRole.STAFF,
+    isActive: true,
     branchIds: ["branch_bkk2"],
   },
 ];
