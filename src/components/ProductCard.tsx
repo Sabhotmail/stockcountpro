@@ -64,6 +64,7 @@ export function ProductCard({
       <div className="flex gap-4">
         <ProductImage
           src={line.productImageUrl}
+          productCode={line.productCode}
           alt={line.productName}
           compact
         />

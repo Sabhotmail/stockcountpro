@@ -1,3 +1,4 @@
+import { getDefaultProductImageUrl } from "@/lib/product-image";
 import { prisma } from "@/lib/prisma";
 import { canAccessBranch, canSyncExpress } from "@/lib/permissions";
 import { logExpressSync } from "@/services/audit-log.service";
@@ -64,6 +65,7 @@ function mapExpressLineToProductLine(
     lineNo,
     productCode: line.ProductCode,
     productName: line.ProductName,
+    productImageUrl: getDefaultProductImageUrl(line.ProductCode),
     barcode: line.ProductCode,
     unitCaseName: line.CaseUnitName || "ลัง",
     unitPackName: null,
