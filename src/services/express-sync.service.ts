@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { canAccessAdmin } from "@/lib/permissions";
+import { canAccessBranch, canSyncExpress } from "@/lib/permissions";
 import { logExpressSync } from "@/services/audit-log.service";
 import { fetchExpressCountDate } from "@/services/express-api.service";
 import { DocumentStatus } from "@/types/count";
@@ -171,7 +171,7 @@ export async function syncExpressCountDate(
   session: MockSession,
   countDate: string,
 ): Promise<ExpressSyncResult | { error: string }> {
-  if (!canAccessAdmin(session.role)) {
+  if (!canSyncExpress(session.role)) {
     return { error: "Access denied" };
   }
 
@@ -210,6 +210,12 @@ export async function syncExpressCountDate(
       continue;
     }
 
+    if (
+      !canAccessBranch(session.role, session.branchIds, branch.id)
+    ) {
+      continue;
+    }
+
     const result = await upsertImportedDocument(
       branch.id,
       branch.code,
@@ -222,6 +228,10 @@ export async function syncExpressCountDate(
       ...result,
       branchName: branch.name,
     });
+  }
+
+  if (results.length === 0) {
+    return { error: "ไม่พบข้อมูลใบตรวจนับสำหรับสาขาของคุณในวันที่นี้" };
   }
 
   const created = results.filter((item) => item.status === "created").length;
@@ -246,7 +256,7 @@ export async function previewExpressCountDate(
   session: MockSession,
   countDate: string,
 ) {
-  if (!canAccessAdmin(session.role)) {
+  if (!canSyncExpress(session.role)) {
     return { error: "Access denied" } as const;
   }
 
@@ -267,16 +277,31 @@ export async function previewExpressCountDate(
 
   const lines = expressResult.stockCountData ?? [];
   const groups = groupExpressLinesByLocation(lines);
+  const branches = await prisma.branch.findMany();
+  const branchByCode = new Map(
+    branches.map((branch) => [branch.code.toUpperCase(), branch]),
+  );
+
+  const locations = Array.from(groups.entries())
+    .filter(([branchCode]) => {
+      const branch = branchByCode.get(branchCode);
+      if (!branch) return false;
+      return canAccessBranch(session.role, session.branchIds, branch.id);
+    })
+    .map(([branchCode, branchLines]) => ({
+      branchCode,
+      lineCount: branchLines.length,
+    }))
+    .sort((a, b) => a.branchCode.localeCompare(b.branchCode));
+
+  if (locations.length === 0) {
+    return { error: "ไม่พบข้อมูลใบตรวจนับสำหรับสาขาของคุณในวันที่นี้" } as const;
+  }
 
   return {
     date: countDate,
-    expressLineCount: lines.length,
-    locationCount: groups.size,
-    locations: Array.from(groups.entries())
-      .map(([branchCode, branchLines]) => ({
-        branchCode,
-        lineCount: branchLines.length,
-      }))
-      .sort((a, b) => a.branchCode.localeCompare(b.branchCode)),
+    expressLineCount: locations.reduce((sum, item) => sum + item.lineCount, 0),
+    locationCount: locations.length,
+    locations,
   };
 }

@@ -63,3 +63,14 @@ export function canMutateCount(role: UserRole): boolean {
     role === UserRole.HQ
   );
 }
+
+export function canSyncExpress(role: UserRole): boolean {
+  if (isReadOnlyRole(role)) return false;
+  return (
+    role === UserRole.STAFF ||
+    role === UserRole.COUNTER ||
+    role === UserRole.BRANCH_MANAGER ||
+    role === UserRole.ADMIN ||
+    role === UserRole.HQ
+  );
+}

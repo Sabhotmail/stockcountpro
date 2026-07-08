@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import type { ExpressSyncBranchResult } from "@/services/express-sync.service";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
@@ -14,12 +15,19 @@ const filters: { key: FilterKey; label: string }[] = [
   { key: "recount", label: "ขอนับใหม่" },
 ];
 
+function todayKey(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 export default function TabletDocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<CountDocumentListItem[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [countDate, setCountDate] = useState(todayKey());
+  const [syncing, setSyncing] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
 
   const loadDocuments = useCallback(async () => {
@@ -55,6 +63,48 @@ export default function TabletDocumentsPage() {
       return true;
     });
   }, [documents, filter]);
+
+  async function handleSync() {
+    setSyncing(true);
+    setError(null);
+    setSyncMessage(null);
+
+    try {
+      const res = await fetch("/api/express/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ date: countDate }),
+      });
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
+
+      const created = data.results.filter(
+        (item: ExpressSyncBranchResult) => item.status === "created",
+      ).length;
+      const updated = data.results.filter(
+        (item: ExpressSyncBranchResult) => item.status === "updated",
+      ).length;
+      const skipped = data.results.filter(
+        (item: ExpressSyncBranchResult) => item.status === "skipped",
+      ).length;
+
+      setSyncMessage(
+        `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
+      );
+      await loadDocuments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function handleOpen(doc: CountDocumentListItem) {
     if (
@@ -104,6 +154,40 @@ export default function TabletDocumentsPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-6">
+        <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Sync ใบตรวจนับจาก Express
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            ดึงใบตรวจนับของสาขาที่คุณมีสิทธิ์เข้าถึง — เอกสารที่เริ่มนับแล้วจะไม่ถูกทับ
+          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              วันที่ตรวจนับ
+              <input
+                type="date"
+                value={countDate}
+                onChange={(event) => setCountDate(event.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal text-slate-900"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncing || loading}
+              className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {syncing ? "กำลัง Sync..." : "Sync จาก Express"}
+            </button>
+          </div>
+        </div>
+
+        {syncMessage && (
+          <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-green-700">
+            {syncMessage}
+          </div>
+        )}
+
         <div className="mb-6 flex flex-wrap gap-2">
           {filters.map((f) => (
             <button

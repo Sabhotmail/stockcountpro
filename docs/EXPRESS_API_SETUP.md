@@ -37,16 +37,19 @@ GET /api/express/countdate/2026-03-11?summary=1
 
 ## Sync into PostgreSQL
 
-Admin only — page: `/admin/sync`
+Staff / Tablet — page: `/tablet/documents`
 
 ```text
-GET  /api/admin/express/sync?date=yyyy-MM-dd   # preview summary
-POST /api/admin/express/sync                   # body: { "date": "yyyy-MM-dd" }
+GET  /api/express/sync?date=yyyy-MM-dd   # preview (staff branches only)
+POST /api/express/sync                   # body: { "date": "yyyy-MM-dd" }
 ```
+
+Allowed roles: `STAFF`, `COUNTER`, `BRANCH_MANAGER`, `ADMIN`, `HQ`
 
 Rules:
 
 - Groups Express lines by `LocationCode` (branch code)
+- Syncs only branches the user can access
 - Creates/updates documents with status `IMPORTED` only
 - Skips documents that already started counting (`COUNTING` or later)
 - Writes audit log action `IMPORT_FROM_EXPRESS`
