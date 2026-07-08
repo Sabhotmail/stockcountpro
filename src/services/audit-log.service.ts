@@ -1,6 +1,8 @@
+import { getDocumentForSession } from "@/lib/document-access";
 import { AuditAction } from "@/types/audit";
 import type { AuditLog } from "@/types/audit";
 import { getMockDb } from "@/mock/mock-db";
+import type { MockSession } from "@/types/user";
 
 let auditCounter = 1;
 
@@ -19,6 +21,15 @@ export function createAuditLog(
 
 export function getAuditLogsByDocument(documentId: string): AuditLog[] {
   return getMockDb().auditLogs.filter((log) => log.documentId === documentId);
+}
+
+export function getAuditLogsForDocumentSession(
+  session: MockSession,
+  documentId: string,
+): AuditLog[] | { error: string } {
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
+  return getAuditLogsByDocument(documentId);
 }
 
 export function logLogin(userId: string, userName: string): AuditLog {

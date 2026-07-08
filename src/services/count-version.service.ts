@@ -1,11 +1,13 @@
 import { getMockDb } from "@/mock/mock-db";
-import { canAccessBranch, canSupervise } from "@/lib/permissions";
+import { getDocumentForSession } from "@/lib/document-access";
 import { getEntriesForVersion } from "@/lib/entry-snapshot";
+import { filterLinesForRole } from "@/lib/product-line-filter";
 import { getDocumentDetail } from "@/services/count-document.service";
 import type {
   CountVersion,
   VersionCompareLine,
   VersionCompareResult,
+  VersionDetail,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
@@ -23,23 +25,40 @@ export function listDocumentVersions(
     .sort((a, b) => a.versionNo - b.versionNo);
 }
 
+export function getVersionDetail(
+  session: MockSession,
+  documentId: string,
+  versionId: string,
+): VersionDetail | { error: string } {
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
+
+  const db = getMockDb();
+  const version = db.versions.find(
+    (item) => item.id === versionId && item.documentId === documentId,
+  );
+  if (!version) return { error: "Version not found" };
+
+  const lines = filterLinesForRole(
+    db.productLines[documentId] ?? [],
+    session.role,
+  );
+
+  return {
+    version,
+    entries: getEntriesForVersion(documentId, versionId),
+    lines,
+  };
+}
+
 export function compareDocumentVersions(
   session: MockSession,
   documentId: string,
   fromVersionNo: number,
   toVersionNo: number,
 ): VersionCompareResult | { error: string } {
-  const canReview = canSupervise(session.role);
-  const detail = getDocumentDetail(session, documentId);
-  if (!detail) return { error: "Document not found" };
-
-  if (canReview && !canAccessBranch(session.role, session.branchIds, detail.branchId)) {
-    return { error: "Access denied" };
-  }
-
-  if (!canReview && !canAccessBranch(session.role, session.branchIds, detail.branchId)) {
-    return { error: "Access denied" };
-  }
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
 
   const db = getMockDb();
   const versions = db.versions.filter((version) => version.documentId === documentId);

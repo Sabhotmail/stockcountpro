@@ -54,9 +54,6 @@ export function VersionCompareTable({ versions }: { versions: CountVersion[] }) 
           ))}
         </tbody>
       </table>
-      <p className="mt-3 text-xs text-amber-600">
-        TODO: Implement delta version compare and resolveEffectiveEntries
-      </p>
     </div>
   );
 }

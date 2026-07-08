@@ -53,3 +53,13 @@ export function getHomePathForRole(role: UserRole): string {
 export function canAccessAdmin(role: UserRole): boolean {
   return role === UserRole.ADMIN || role === UserRole.HQ;
 }
+
+export function canMutateCount(role: UserRole): boolean {
+  if (isReadOnlyRole(role)) return false;
+  return (
+    role === UserRole.STAFF ||
+    role === UserRole.COUNTER ||
+    role === UserRole.ADMIN ||
+    role === UserRole.HQ
+  );
+}

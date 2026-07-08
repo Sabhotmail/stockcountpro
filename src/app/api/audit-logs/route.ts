@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuditLogsByDocument } from "@/services/audit-log.service";
+import { getAuditLogsForDocumentSession } from "@/services/audit-log.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function GET(request: Request) {
@@ -18,6 +18,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const logs = getAuditLogsByDocument(documentId);
-  return NextResponse.json({ logs });
+  const result = getAuditLogsForDocumentSession(session, documentId);
+  if ("error" in result) {
+    const status = result.error === "Access denied" ? 403 : 404;
+    return NextResponse.json({ error: result.error }, { status });
+  }
+
+  return NextResponse.json({ logs: result });
 }

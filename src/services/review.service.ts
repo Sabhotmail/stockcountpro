@@ -15,7 +15,11 @@ import {
   logOpenDocument,
   logRequestRecount,
 } from "@/services/audit-log.service";
-import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
+import {
+  resolveEffectiveEntries,
+  snapshotDocumentEntries,
+  snapshotFinalCountEntries,
+} from "@/lib/entry-snapshot";
 import { countCountedLines } from "@/services/count-document.service";
 import {
   DocumentStatus,
@@ -101,8 +105,9 @@ export function getReviewDetail(
     ? db.versions.find((v) => v.id === doc.currentVersionId) ?? null
     : null;
   const lines = db.productLines[documentId] ?? [];
-  const lineIds = new Set(lines.map((l) => l.lineId));
-  const entries = db.entries.filter((e) => lineIds.has(e.lineId));
+  const entries = doc.currentVersionId
+    ? resolveEffectiveEntries(documentId, doc.currentVersionId)
+    : [];
 
   logOpenDocument(session.userId, session.userName, doc.branchId, documentId);
 
@@ -176,9 +181,8 @@ export function approveDocument(
     : undefined;
   if (!version) return { error: "Version not found" };
 
-  snapshotDocumentEntries(documentId, version.id);
+  snapshotFinalCountEntries(documentId, version.id);
 
-  // TODO: Create final snapshot on completion
   const now = new Date().toISOString();
   version.status = VersionStatus.APPROVED;
   doc.status = DocumentStatus.COMPLETED;
@@ -261,10 +265,11 @@ export function requestRecount(
     createdBy: session.userId,
   });
 
-  // TODO: Implement delta version and resolveEffectiveEntries later
-  // Prototype copies prior entries into new version scope
-  const baseLineIds = new Set(lines.map((l) => l.lineId));
-  const baseEntries = db.entries.filter((e) => baseLineIds.has(e.lineId));
+  // Copy effective entries from base version into the new draft scope.
+  const baseLineIds = new Set(lines.map((line) => line.lineId));
+  const baseEntries = resolveEffectiveEntries(documentId, baseVersion.id).filter(
+    (entry) => baseLineIds.has(entry.lineId),
+  );
   for (const entry of baseEntries) {
     const existing = db.entries.find((e) => e.lineId === entry.lineId);
     if (existing) {

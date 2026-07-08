@@ -1,36 +1,38 @@
 import { getMockDb } from "@/mock/mock-db";
-import { canAccessBranch } from "@/lib/permissions";
+import { getDocumentForSession } from "@/lib/document-access";
+import { canMutateCount } from "@/lib/permissions";
 import {
   calculateTotalBaseQty,
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
 import { logAutoSave } from "@/services/audit-log.service";
-import { countCountedLines } from "@/services/count-document.service";
 import {
   DocumentStatus,
   VersionStatus,
+  type BatchSaveEntryItem,
+  type BatchSaveEntryResponse,
   type CountEntry,
   type SaveEntryPayload,
   type SaveEntryResponse,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
-function countLinesForDocument(documentId: string, versionId: string): number {
+function countLinesForDocument(documentId: string): number {
   const db = getMockDb();
   const lines = db.productLines[documentId] ?? [];
-  const entries = db.entries.filter((e) =>
-    lines.some((l) => l.lineId === e.lineId),
+  const entries = db.entries.filter((entry) =>
+    lines.some((line) => line.lineId === entry.lineId),
   );
 
   return lines.filter((line) => {
-    const entry = entries.find((e) => e.lineId === line.lineId);
+    const entry = entries.find((item) => item.lineId === line.lineId);
     if (!entry) return false;
     return isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece);
   }).length;
 }
 
-export function saveEntry(
+function applyEntrySave(
   session: MockSession,
   documentId: string,
   versionId: string,
@@ -38,18 +40,15 @@ export function saveEntry(
   payload: SaveEntryPayload,
 ): SaveEntryResponse | { error: string } {
   const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
 
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
-    return { error: "Access denied" };
-  }
-
+  const doc = access.document;
   if (doc.status === DocumentStatus.COMPLETED) {
     return { error: "Document is completed" };
   }
 
-  const version = db.versions.find((v) => v.id === versionId);
+  const version = db.versions.find((item) => item.id === versionId);
   if (!version || version.documentId !== documentId) {
     return { error: "Version not found" };
   }
@@ -58,7 +57,7 @@ export function saveEntry(
     return { error: "Version is not editable" };
   }
 
-  const line = db.productLines[documentId]?.find((l) => l.lineId === lineId);
+  const line = db.productLines[documentId]?.find((item) => item.lineId === lineId);
   if (!line) return { error: "Line not found" };
 
   const validationError = validateQuantities(
@@ -69,7 +68,7 @@ export function saveEntry(
   );
   if (validationError) return { error: validationError };
 
-  const existing = db.entries.find((e) => e.lineId === lineId);
+  const existing = db.entries.find((entry) => entry.lineId === lineId);
   const qtyCase =
     payload.qtyCase !== undefined ? payload.qtyCase : (existing?.qtyCase ?? null);
   const qtyPack =
@@ -100,7 +99,7 @@ export function saveEntry(
     db.entries.push(entry);
   }
 
-  doc.countedLines = countLinesForDocument(documentId, versionId);
+  doc.countedLines = countLinesForDocument(documentId);
   doc.updatedAt = now;
 
   logAutoSave(
@@ -112,6 +111,51 @@ export function saveEntry(
     lineId,
   );
 
-  // TODO: Add clientMutationId idempotency for production
   return { status: "SAVED", entry };
+}
+
+export function saveEntry(
+  session: MockSession,
+  documentId: string,
+  versionId: string,
+  lineId: string,
+  payload: SaveEntryPayload,
+): SaveEntryResponse | { error: string } {
+  if (!canMutateCount(session.role)) {
+    return { error: "Access denied" };
+  }
+
+  return applyEntrySave(session, documentId, versionId, lineId, payload);
+}
+
+export function saveEntriesBatch(
+  session: MockSession,
+  documentId: string,
+  versionId: string,
+  items: BatchSaveEntryItem[],
+): BatchSaveEntryResponse | { error: string } {
+  if (!canMutateCount(session.role)) {
+    return { error: "Access denied" };
+  }
+
+  if (!items.length) {
+    return { error: "At least one entry is required" };
+  }
+
+  const savedEntries: CountEntry[] = [];
+
+  for (const item of items) {
+    const { lineId, ...payload } = item;
+    const result = applyEntrySave(
+      session,
+      documentId,
+      versionId,
+      lineId,
+      payload,
+    );
+    if ("error" in result) return result;
+    savedEntries.push(result.entry);
+  }
+
+  return { status: "SAVED", entries: savedEntries };
 }

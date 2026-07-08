@@ -105,6 +105,21 @@ export interface SaveEntryResponse {
   entry: CountEntry;
 }
 
+export interface BatchSaveEntryItem extends SaveEntryPayload {
+  lineId: string;
+}
+
+export interface BatchSaveEntryResponse {
+  status: "SAVED";
+  entries: CountEntry[];
+}
+
+export interface VersionDetail {
+  version: CountVersion;
+  entries: CountEntry[];
+  lines: ProductLine[];
+}
+
 export interface RecountRequestItem {
   lineId: string;
   reason: string;

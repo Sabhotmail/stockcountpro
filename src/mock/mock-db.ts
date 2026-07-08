@@ -21,6 +21,7 @@ interface MockDatabase {
   auditLogs: AuditLog[];
   recountRequests: RecountRequestRecord[];
   entrySnapshots: Record<string, CountEntry[]>;
+  finalCountEntries: Record<string, CountEntry[]>;
 }
 
 function clone<T>(value: T): T {
@@ -69,6 +70,13 @@ function seedEntrySnapshots(db: MockDatabase): void {
   );
 }
 
+function seedFinalCountEntries(db: MockDatabase): void {
+  const completedSnapshot = db.entrySnapshots.ver_chm_001_v1;
+  if (completedSnapshot) {
+    db.finalCountEntries.doc_chm_001 = clone(completedSnapshot);
+  }
+}
+
 function createInitialDb(): MockDatabase {
   const db = {
     documents: clone(initialCountDocuments),
@@ -78,9 +86,11 @@ function createInitialDb(): MockDatabase {
     auditLogs: clone(initialAuditLogs),
     recountRequests: clone(initialRecountRequests),
     entrySnapshots: {},
+    finalCountEntries: {},
   };
 
   seedEntrySnapshots(db);
+  seedFinalCountEntries(db);
   return db;
 }
 
@@ -95,6 +105,9 @@ function migrateMockDb(db: MockDatabase): void {
   }
   if (!db.entrySnapshots) {
     db.entrySnapshots = {};
+  }
+  if (!db.finalCountEntries) {
+    db.finalCountEntries = {};
   }
 }
 

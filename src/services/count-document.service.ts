@@ -1,10 +1,12 @@
 import { getBranchById } from "@/mock/branches";
 import { getMockDb } from "@/mock/mock-db";
+import { getDocumentForSession } from "@/lib/document-access";
 import {
   canAccessBranch,
-  canViewExpectedQty,
+  canMutateCount,
   filterDocumentsForStaff,
 } from "@/lib/permissions";
+import { filterLinesForRole } from "@/lib/product-line-filter";
 import { isEntryCounted } from "@/lib/unit-converter";
 import {
   logOpenDocument,
@@ -20,7 +22,6 @@ import {
   type CountEntry,
   type CountSummary,
   type CountSummaryLine,
-  type ProductLine,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
@@ -47,20 +48,6 @@ export function countCountedLines(documentId: string, versionId: string | null):
     if (!entry) return false;
     return isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece);
   }).length;
-}
-
-function stripExpectedQty(lines: ProductLine[]): ProductLine[] {
-  return lines.map(({ expectedQty: _expectedQty, ...rest }) => rest);
-}
-
-function filterLinesForRole(
-  lines: ProductLine[],
-  role: MockSession["role"],
-): ProductLine[] {
-  if (canViewExpectedQty(role)) return lines;
-  // STAFF should not see expectedQty - set to 0 as placeholder
-  // TODO: Ensure STAFF never receives expectedQty from API at all in production
-  return stripExpectedQty(lines);
 }
 
 export function listDocumentsForUser(session: MockSession): CountDocumentListItem[] {
@@ -95,14 +82,11 @@ export function getDocumentDetail(
   session: MockSession,
   documentId: string,
 ): CountDocumentDetail | null {
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return null;
+
+  const doc = access.document;
   const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return null;
-
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
-    return null;
-  }
-
   const branch = getBranchById(doc.branchId)!;
   const version = doc.currentVersionId
     ? db.versions.find((v) => v.id === doc.currentVersionId) ?? null
@@ -133,14 +117,15 @@ export function startCount(
   session: MockSession,
   documentId: string,
 ): CountDocumentDetail | { error: string } {
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
-
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
+  if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
+
+  const doc = access.document;
+  const db = getMockDb();
   if (
     doc.status === DocumentStatus.COMPLETED ||
     doc.status === DocumentStatus.SUBMITTED
@@ -192,14 +177,15 @@ export function submitVersion(
   documentId: string,
   versionId: string,
 ): { success: true } | { error: string } {
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
-
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
+  if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
+
+  const doc = access.document;
+  const db = getMockDb();
   const version = db.versions.find((v) => v.id === versionId);
   if (!version || version.documentId !== documentId) {
     return { error: "Version not found" };
@@ -236,14 +222,14 @@ export function saveDocumentNote(
   documentId: string,
   note: string | null,
 ): { success: true; note: string | null } | { error: string } {
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
-
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
+  if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
+  const access = getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
+
+  const doc = access.document;
   if (doc.status === DocumentStatus.COMPLETED) {
     return { error: "Document is completed" };
   }
