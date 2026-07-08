@@ -31,7 +31,6 @@ export default function TabletCountPage() {
   const [noteSyncStatus, setNoteSyncStatus] = useState<SyncStatus>("idle");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [codeFilter, setCodeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
   const [showUncountedOnly, setShowUncountedOnly] = useState(false);
@@ -250,28 +249,6 @@ export default function TabletCountPage() {
     }, AUTO_SAVE_DELAY_MS);
   }
 
-  async function handleSubmit() {
-    if (!versionId || !isEditable) return;
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const res = await fetch(
-        `/api/count-documents/${documentId}/versions/${versionId}/submit`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Submit failed");
-      }
-      router.push("/tablet/documents");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Submit failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -311,14 +288,14 @@ export default function TabletCountPage() {
                 นับแล้ว {countedSummary.counted}/{countedSummary.total} รายการ
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!isEditable || submitting}
-              className="rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+            <Link
+              href={`/tablet/count/${documentId}/summary`}
+              className={`rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 ${
+                !isEditable ? "pointer-events-none opacity-40" : ""
+              }`}
             >
-              {submitting ? "กำลังส่ง..." : "ส่งให้หัวหน้างาน"}
-            </button>
+              สรุปและส่งให้หัวหน้างาน
+            </Link>
           </div>
 
           <div className="mt-4">

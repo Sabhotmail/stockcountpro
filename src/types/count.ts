@@ -153,3 +153,39 @@ export interface ReviewDetail {
 }
 
 export type SyncStatus = "idle" | "saving" | "saved" | "failed" | "waiting";
+
+export interface CountSummaryLine {
+  lineId: string;
+  lineNo: number;
+  productCode: string;
+  productName: string;
+  totalBaseQty: number | null;
+  isCounted: boolean;
+  isZeroCount: boolean;
+}
+
+export interface CountSummary {
+  document: CountDocumentDetail;
+  totalLines: number;
+  countedLines: number;
+  uncountedLines: number;
+  zeroCountLines: number;
+  lines: CountSummaryLine[];
+}
+
+export interface VersionCompareLine {
+  lineId: string;
+  lineNo: number;
+  productCode: string;
+  productName: string;
+  fromQty: number | null;
+  toQty: number | null;
+  difference: number | null;
+}
+
+export interface VersionCompareResult {
+  documentId: string;
+  fromVersion: CountVersion;
+  toVersion: CountVersion;
+  lines: VersionCompareLine[];
+}

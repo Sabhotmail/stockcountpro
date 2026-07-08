@@ -15,6 +15,7 @@ import {
   logOpenDocument,
   logRequestRecount,
 } from "@/services/audit-log.service";
+import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
 import { countCountedLines } from "@/services/count-document.service";
 import {
   DocumentStatus,
@@ -175,6 +176,8 @@ export function approveDocument(
     : undefined;
   if (!version) return { error: "Version not found" };
 
+  snapshotDocumentEntries(documentId, version.id);
+
   // TODO: Create final snapshot on completion
   const now = new Date().toISOString();
   version.status = VersionStatus.APPROVED;
@@ -245,6 +248,7 @@ export function requestRecount(
   const newVersionNo = baseVersion.versionNo + 1;
   const newVersionId = `ver_${documentId}_v${newVersionNo}`;
 
+  snapshotDocumentEntries(documentId, baseVersion.id);
   baseVersion.status = VersionStatus.LOCKED;
 
   db.versions.push({

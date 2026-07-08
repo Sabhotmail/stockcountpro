@@ -45,6 +45,11 @@ export function canSupervise(role: UserRole): boolean {
 }
 
 export function getHomePathForRole(role: UserRole): string {
+  if (role === UserRole.ADMIN || role === UserRole.HQ) return "/admin/users";
   if (canSupervise(role)) return "/supervisor/documents";
   return "/tablet/documents";
+}
+
+export function canAccessAdmin(role: UserRole): boolean {
+  return role === UserRole.ADMIN || role === UserRole.HQ;
 }

@@ -10,7 +10,6 @@ import {
   ReviewLineCard,
   ReviewLineTable,
 } from "@/components/ReviewLineList";
-import { VersionCompareTable } from "@/components/VersionCompareTable";
 import { DocumentStatus, type ReviewDetail } from "@/types/count";
 
 export default function SupervisorReviewPage() {
@@ -24,7 +23,6 @@ export default function SupervisorReviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showRecountModal, setShowRecountModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
-  const [showVersions, setShowVersions] = useState(false);
 
   const loadReview = useCallback(async () => {
     setLoading(true);
@@ -123,7 +121,7 @@ export default function SupervisorReviewPage() {
     );
   }
 
-  const { document, reviewLines, versions, auditLogs } = review;
+  const { document, reviewLines, auditLogs } = review;
   const canApprove = document.status === DocumentStatus.SUBMITTED;
   const canRecount =
     document.status === DocumentStatus.SUBMITTED ||
@@ -170,13 +168,12 @@ export default function SupervisorReviewPage() {
               >
                 {showAuditLog ? "ซ่อน Log" : "Audit Log"}
               </button>
-              <button
-                type="button"
-                onClick={() => setShowVersions((v) => !v)}
-                className={`${actionButtonClass} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
+              <Link
+                href={`/supervisor/review/${documentId}/versions`}
+                className={`${actionButtonClass} border border-slate-200 bg-white text-center text-slate-700 hover:bg-slate-50`}
               >
-                {showVersions ? "ซ่อนเวอร์ชัน" : "เวอร์ชัน"}
-              </button>
+                เปรียบเทียบเวอร์ชัน
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowRecountModal(true)}
@@ -211,15 +208,6 @@ export default function SupervisorReviewPage() {
               Audit Log
             </h2>
             <AuditLogPanel logs={auditLogs} />
-          </section>
-        )}
-
-        {showVersions && (
-          <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:mb-6">
-            <h2 className="mb-3 text-base font-semibold text-slate-900 sm:text-lg">
-              เปรียบเทียบเวอร์ชัน
-            </h2>
-            <VersionCompareTable versions={versions} />
           </section>
         )}
 

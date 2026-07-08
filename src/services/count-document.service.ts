@@ -11,12 +11,15 @@ import {
   logStartCount,
   logSubmit,
 } from "@/services/audit-log.service";
+import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
 import {
   DocumentStatus,
   VersionStatus,
   type CountDocumentDetail,
   type CountDocumentListItem,
   type CountEntry,
+  type CountSummary,
+  type CountSummaryLine,
   type ProductLine,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
@@ -215,6 +218,8 @@ export function submitVersion(
   doc.updatedAt = now;
   doc.countedLines = countCountedLines(documentId, versionId);
 
+  snapshotDocumentEntries(documentId, versionId);
+
   logSubmit(
     session.userId,
     session.userName,
@@ -247,6 +252,44 @@ export function saveDocumentNote(
   doc.updatedAt = new Date().toISOString();
 
   return { success: true, note: doc.note };
+}
+
+export function getDocumentSummary(
+  session: MockSession,
+  documentId: string,
+): CountSummary | { error: string } {
+  const detail = getDocumentDetail(session, documentId);
+  if (!detail) return { error: "Document not found" };
+
+  const summaryLines: CountSummaryLine[] = detail.lines.map((line) => {
+    const entry = detail.entries.find((item) => item.lineId === line.lineId);
+    const isCounted = entry
+      ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
+      : false;
+    const totalBaseQty = entry?.totalBaseQty ?? null;
+
+    return {
+      lineId: line.lineId,
+      lineNo: line.lineNo,
+      productCode: line.productCode,
+      productName: line.productName,
+      totalBaseQty,
+      isCounted,
+      isZeroCount: isCounted && totalBaseQty === 0,
+    };
+  });
+
+  const countedLines = summaryLines.filter((line) => line.isCounted).length;
+  const zeroCountLines = summaryLines.filter((line) => line.isZeroCount).length;
+
+  return {
+    document: detail,
+    totalLines: summaryLines.length,
+    countedLines,
+    uncountedLines: summaryLines.length - countedLines,
+    zeroCountLines,
+    lines: summaryLines,
+  };
 }
 
 export function getEntriesForDocument(

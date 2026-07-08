@@ -25,6 +25,7 @@ function makeEntry(
 
 const bkk1002Lines = createProductLinesForDocument("doc_bkk1_002", 12);
 const bkk1003Lines = createProductLinesForDocument("doc_bkk1_003", 12);
+const bkk1004Lines = createProductLinesForDocument("doc_bkk1_004", 12);
 const chm001Lines = createProductLinesForDocument("doc_chm_001", 12);
 
 export const initialCountEntries: CountEntry[] = [
@@ -46,6 +47,19 @@ export const initialCountEntries: CountEntry[] = [
         (i % 3 === 2 ? 5 : 3),
     ),
   ),
+  // doc_bkk1_004 - v1 submitted (snapshot), v2 draft continues in seed
+  ...bkk1004Lines.map((line, i) =>
+    makeEntry(
+      line.lineId,
+      "user_bkk1_staff",
+      i < 4 ? 1 : null,
+      i >= 4 && i < 8 ? 2 : null,
+      i >= 8 ? 4 : 2,
+      (i < 4 ? 1 * line.caseRatio : 0) +
+        (i >= 4 && i < 8 ? 2 * line.packRatio : 0) +
+        (i >= 8 ? 4 : 2),
+    ),
+  ),
   // doc_chm_001 - completed
   ...chm001Lines.map((line, i) =>
     makeEntry(line.lineId, "user_admin", null, null, 10 + i, 10 + i),
@@ -56,6 +70,7 @@ export const documentProductLines: Record<string, ReturnType<typeof createProduc
   doc_bkk1_001: createProductLinesForDocument("doc_bkk1_001", 12),
   doc_bkk1_002: bkk1002Lines,
   doc_bkk1_003: bkk1003Lines,
+  doc_bkk1_004: bkk1004Lines,
   doc_bkk2_001: createProductLinesForDocument("doc_bkk2_001", 12),
   doc_chm_001: chm001Lines,
 };
