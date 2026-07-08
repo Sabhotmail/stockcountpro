@@ -55,6 +55,7 @@ async function main() {
       id: branch.id,
       code: branch.code,
       name: branch.name,
+      expressLocationCode: branch.expressLocationCode ?? null,
     })),
   });
 

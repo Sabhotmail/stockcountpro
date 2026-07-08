@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { ExpressSyncBranchResult } from "@/services/express-sync.service";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
@@ -33,6 +40,9 @@ export default function TabletDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<ExpressSyncBranchResult[] | null>(
+    null,
+  );
   const [countDate, setCountDate] = useState(todayKey());
   const [syncing, setSyncing] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
@@ -75,6 +85,7 @@ export default function TabletDocumentsPage() {
     setSyncing(true);
     setError(null);
     setSyncMessage(null);
+    setSyncResults(null);
 
     try {
       const res = await fetch("/api/express/sync", {
@@ -102,6 +113,7 @@ export default function TabletDocumentsPage() {
         (item: ExpressSyncBranchResult) => item.status === "skipped",
       ).length;
 
+      setSyncResults(data.results);
       setSyncMessage(
         `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
       );
@@ -180,6 +192,51 @@ export default function TabletDocumentsPage() {
         <Alert className="mb-4 border-green-200 bg-green-50 text-green-800">
           <AlertDescription>{syncMessage}</AlertDescription>
         </Alert>
+      )}
+
+      {syncResults && syncResults.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">ผลลัพธ์ Sync รายสาขา</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>สาขา</TableHead>
+                  <TableHead>สถานะ</TableHead>
+                  <TableHead className="text-right">รายการ</TableHead>
+                  <TableHead>หมายเหตุ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {syncResults.map((item) => (
+                  <TableRow key={`${item.branchCode}-${item.status}-${item.reason ?? ""}`}>
+                    <TableCell>
+                      {item.branchName
+                        ? `${item.branchCode} · ${item.branchName}`
+                        : item.branchCode}
+                    </TableCell>
+                    <TableCell>
+                      {item.status === "created"
+                        ? "สร้างใหม่"
+                        : item.status === "updated"
+                          ? "อัปเดต"
+                          : "ข้าม"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.lineCount ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.reason ??
+                        (item.documentNo ? `เอกสาร ${item.documentNo}` : "—")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <Tabs

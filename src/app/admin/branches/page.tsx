@@ -84,6 +84,12 @@ export default function AdminBranchesPage() {
               >
                 <p className="text-lg font-bold text-slate-900">{branch.code}</p>
                 <p className="mt-1 text-slate-600">{branch.name}</p>
+                {branch.expressLocationCode && (
+                  <p className="mt-2 text-sm text-slate-500">
+                    Express:{" "}
+                    <span className="font-mono">{branch.expressLocationCode}</span>
+                  </p>
+                )}
                 <p className="mt-3 font-mono text-xs text-slate-400">
                   {branch.id}
                 </p>

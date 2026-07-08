@@ -12,6 +12,7 @@ export interface Branch {
   id: string;
   code: string;
   name: string;
+  expressLocationCode?: string | null;
 }
 
 export interface User {
