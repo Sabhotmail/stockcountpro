@@ -10,7 +10,6 @@ import type {
   VersionDetail,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
-import { UserRole } from "@/types/user";
 
 export function listDocumentVersions(
   session: MockSession,
@@ -97,14 +96,4 @@ export function compareDocumentVersions(
     toVersion,
     lines: compareLines,
   };
-}
-
-export function listAllAuditLogs(session: MockSession) {
-  if (session.role !== UserRole.ADMIN && session.role !== UserRole.HQ) {
-    return { error: "Access denied" as const };
-  }
-
-  return getMockDb().auditLogs.sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
 }

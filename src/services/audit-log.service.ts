@@ -3,6 +3,31 @@ import { getMockDb } from "@/mock/mock-db";
 import { AuditAction } from "@/types/audit";
 import type { AuditLog } from "@/types/audit";
 import type { MockSession } from "@/types/user";
+import { UserRole } from "@/types/user";
+
+function normalizeAuditLogIdsInDb(): void {
+  const db = getMockDb();
+  const seen = new Set<string>();
+  let max = 0;
+
+  for (const log of db.auditLogs) {
+    const match = /^audit_(\d+)$/.exec(log.id);
+    if (match) {
+      max = Math.max(max, Number.parseInt(match[1], 10));
+    }
+  }
+
+  for (const log of db.auditLogs) {
+    if (!seen.has(log.id)) {
+      seen.add(log.id);
+      continue;
+    }
+
+    max += 1;
+    log.id = `audit_${String(max).padStart(4, "0")}`;
+    seen.add(log.id);
+  }
+}
 
 function nextAuditId(): string {
   const db = getMockDb();
@@ -21,6 +46,7 @@ function nextAuditId(): string {
 export function createAuditLog(
   input: Omit<AuditLog, "id" | "createdAt">,
 ): AuditLog {
+  normalizeAuditLogIdsInDb();
   const db = getMockDb();
   const log: AuditLog = {
     ...input,
@@ -32,6 +58,7 @@ export function createAuditLog(
 }
 
 export function getAuditLogsByDocument(documentId: string): AuditLog[] {
+  normalizeAuditLogIdsInDb();
   const seen = new Set<string>();
 
   return getMockDb()
@@ -42,6 +69,19 @@ export function getAuditLogsByDocument(documentId: string): AuditLog[] {
       return true;
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function listAllAuditLogs(
+  session: MockSession,
+): AuditLog[] | { error: string } {
+  if (session.role !== UserRole.ADMIN && session.role !== UserRole.HQ) {
+    return { error: "Access denied" };
+  }
+
+  normalizeAuditLogIdsInDb();
+  return [...getMockDb().auditLogs].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
 }
 
 export function getAuditLogsForDocumentSession(

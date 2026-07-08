@@ -32,8 +32,11 @@ export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
           </tr>
         </thead>
         <tbody>
-          {logs.map((log) => (
-            <tr key={log.id} className="border-t border-slate-100">
+          {logs.map((log, index) => (
+            <tr
+              key={`${log.id}-${log.createdAt}-${index}`}
+              className="border-t border-slate-100"
+            >
               <td className="px-3 py-2 whitespace-nowrap text-slate-500">
                 {new Date(log.createdAt).toLocaleString("th-TH")}
               </td>
