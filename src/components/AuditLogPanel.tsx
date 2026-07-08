@@ -11,6 +11,7 @@ const actionLabels: Record<AuditAction, string> = {
   [AuditAction.REQUEST_RECOUNT]: "ขอนับใหม่",
   [AuditAction.APPROVE_VERSION]: "อนุมัติเวอร์ชัน",
   [AuditAction.COMPLETE_DOCUMENT]: "ปิดเอกสาร",
+  [AuditAction.IMPORT_FROM_EXPRESS]: "Sync จาก Express",
 };
 
 export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {

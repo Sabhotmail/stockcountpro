@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/admin/users", label: "ผู้ใช้" },
   { href: "/admin/branches", label: "สาขา" },
+  { href: "/admin/sync", label: "Sync Express" },
   { href: "/admin/audit-logs", label: "Audit Log" },
   { href: "/supervisor/documents", label: "Supervisor" },
 ];

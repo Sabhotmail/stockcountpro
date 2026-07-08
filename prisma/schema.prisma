@@ -45,6 +45,7 @@ enum AuditAction {
   REQUEST_RECOUNT
   APPROVE_VERSION
   COMPLETE_DOCUMENT
+  IMPORT_FROM_EXPRESS
 }
 
 model Branch {

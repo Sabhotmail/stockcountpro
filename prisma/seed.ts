@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type AuditAction as PrismaAuditAction } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
 import { initialAuditLogs } from "../src/mock/audit-logs";
 import { mockBranches } from "../src/mock/branches";
@@ -231,7 +231,7 @@ async function main() {
     await prisma.auditLog.createMany({
       data: initialAuditLogs.map((log) => ({
         id: log.id,
-        action: log.action,
+        action: log.action as PrismaAuditAction,
         userId: log.userId,
         userName: log.userName,
         branchId: log.branchId ?? null,

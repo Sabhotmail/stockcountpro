@@ -211,3 +211,22 @@ export async function logCompleteDocument(
     documentId,
   });
 }
+
+export async function logExpressSync(
+  userId: string,
+  userName: string,
+  countDate: string,
+  summary: {
+    expressLineCount: number;
+    created: number;
+    updated: number;
+    skipped: number;
+  },
+): Promise<AuditLog> {
+  return createAuditLog({
+    action: AuditAction.IMPORT_FROM_EXPRESS,
+    userId,
+    userName,
+    detail: `date=${countDate}; lines=${summary.expressLineCount}; created=${summary.created}; updated=${summary.updated}; skipped=${summary.skipped}`,
+  });
+}

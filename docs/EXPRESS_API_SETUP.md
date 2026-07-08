@@ -35,7 +35,23 @@ GET /api/express/countdate/2026-03-11?summary=1
 
 `summary=1` returns location counts only (no full product list).
 
-## Field mapping (for future sync)
+## Sync into PostgreSQL
+
+Admin only — page: `/admin/sync`
+
+```text
+GET  /api/admin/express/sync?date=yyyy-MM-dd   # preview summary
+POST /api/admin/express/sync                   # body: { "date": "yyyy-MM-dd" }
+```
+
+Rules:
+
+- Groups Express lines by `LocationCode` (branch code)
+- Creates/updates documents with status `IMPORTED` only
+- Skips documents that already started counting (`COUNTING` or later)
+- Writes audit log action `IMPORT_FROM_EXPRESS`
+
+## Field mapping (sync)
 
 | Express | App |
 |---------|-----|
