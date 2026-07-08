@@ -144,13 +144,13 @@ export default function SupervisorDocumentsPage() {
           <p className="py-12 text-center text-slate-500">ไม่มีเอกสารรอตรวจ</p>
         )}
 
-        <div className="flex flex-col gap-3 lg:hidden">
+        <div className="flex flex-col gap-3 md:hidden">
           {documents.map((doc) => (
             <DocumentCard key={doc.id} doc={doc} />
           ))}
         </div>
 
-        <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
+        <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
