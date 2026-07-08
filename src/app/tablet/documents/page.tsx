@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ExpressSyncBranchResult } from "@/services/express-sync.service";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
