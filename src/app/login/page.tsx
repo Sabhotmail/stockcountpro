@@ -2,54 +2,47 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { mockUsers } from "@/mock/users";
-import { MOCK_SESSION_STORAGE_KEY } from "@/lib/mock-session";
 import { getHomePathForRole } from "@/lib/permissions";
 import { UserRole } from "@/types/user";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleLogin(userId: string) {
-    setLoading(userId);
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
     setError(null);
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ username, password }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error ?? "Login failed");
       }
 
-      const data = await res.json();
-      localStorage.setItem(
-        MOCK_SESSION_STORAGE_KEY,
-        JSON.stringify(data.session),
-      );
-      router.push(getHomePathForRole(data.session.role as UserRole));
+      router.push(getHomePathForRole(data.user.role as UserRole));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-lg">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-slate-900">StockCount Pro</h1>
-          <p className="mt-2 text-slate-600">Mock Login — Prototype Only</p>
-          <p className="mt-1 text-xs text-amber-600">
-            TODO: Replace with Auth.js / Microsoft Entra ID
-          </p>
+          <p className="mt-2 text-slate-600">เข้าสู่ระบบด้วย Username และ Password</p>
         </div>
 
         {error && (
@@ -58,25 +51,42 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
-          {mockUsers.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              disabled={loading !== null}
-              onClick={() => handleLogin(user.id)}
-              className="flex items-center justify-between rounded-xl border border-slate-200 px-5 py-4 text-left transition hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50"
-            >
-              <div>
-                <p className="font-semibold text-slate-900">{user.name}</p>
-                <p className="text-sm text-slate-500">{user.role}</p>
-              </div>
-              <span className="text-sm text-blue-600">
-                {loading === user.id ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ →"}
-              </span>
-            </button>
-          ))}
-        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            Username
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              className="rounded-xl border border-slate-200 px-4 py-3 font-normal text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              placeholder="admin"
+              required
+            />
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            Password
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-xl border border-slate-200 px-4 py-3 font-normal text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              required
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+          </button>
+        </form>
       </div>
     </div>
   );

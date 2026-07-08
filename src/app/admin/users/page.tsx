@@ -93,6 +93,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="px-4 py-3 font-medium">ชื่อ</th>
+                    <th className="px-4 py-3 font-medium">Username</th>
                     <th className="px-4 py-3 font-medium">บทบาท</th>
                     <th className="px-4 py-3 font-medium">สาขา</th>
                     <th className="px-4 py-3 font-medium">ID</th>
@@ -103,6 +104,9 @@ export default function AdminUsersPage() {
                     <tr key={user.id} className="border-t border-slate-100">
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {user.name}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-sm text-slate-700">
+                        {user.username}
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         {roleLabels[user.role]}

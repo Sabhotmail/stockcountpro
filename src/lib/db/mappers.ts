@@ -43,6 +43,7 @@ export function mapBranch(branch: PrismaBranch): Branch {
 export function mapUser(user: PrismaUser & { branches: { branchId: string }[] }): User {
   return {
     id: user.id,
+    username: user.username,
     name: user.name,
     role: user.role as UserRole,
     branchIds: user.branches.map((item) => item.branchId),

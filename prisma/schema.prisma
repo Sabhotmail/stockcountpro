@@ -57,10 +57,13 @@ model Branch {
 }
 
 model User {
-  id       String       @id
-  name     String
-  role     UserRole
-  branches UserBranch[]
+  id           String       @id
+  username     String       @unique
+  name         String
+  passwordHash String
+  role         UserRole
+  isActive     Boolean      @default(true)
+  branches     UserBranch[]
 }
 
 model UserBranch {

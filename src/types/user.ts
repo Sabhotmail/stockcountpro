@@ -16,6 +16,7 @@ export interface Branch {
 
 export interface User {
   id: string;
+  username: string;
   name: string;
   role: UserRole;
   branchIds: string[];

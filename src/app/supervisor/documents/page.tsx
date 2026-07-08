@@ -104,7 +104,7 @@ export default function SupervisorDocumentsPage() {
   }, [loadDocuments]);
 
   async function handleLogout() {
-    await fetch("/api/auth/login", { method: "DELETE" });
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
 

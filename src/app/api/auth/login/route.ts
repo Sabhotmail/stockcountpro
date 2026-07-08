@@ -1,31 +1,57 @@
 import { NextResponse } from "next/server";
-import { serializeSessionCookie } from "@/lib/mock-session";
 import { logLogin } from "@/services/audit-log.service";
-import { buildSessionFromUserId } from "@/services/mock-session.service";
+import { authenticateUser } from "@/services/auth.service";
+import {
+  buildSessionClearCookieHeaders,
+  buildSessionSetCookieHeader,
+  setSessionCookie,
+} from "@/services/mock-session.service";
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { userId?: string };
-  if (!body.userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  const body = (await request.json()) as {
+    username?: string;
+    password?: string;
+  };
+
+  if (!body.username?.trim() || !body.password) {
+    return NextResponse.json(
+      { error: "Username and password are required" },
+      { status: 400 },
+    );
   }
 
-  const session = await buildSessionFromUserId(body.userId);
+  const session = await authenticateUser(body.username, body.password);
   if (!session) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Invalid username or password" },
+      { status: 401 },
+    );
   }
 
   await logLogin(session.userId, session.userName);
 
-  const response = NextResponse.json({ session });
-  response.headers.set("Set-Cookie", serializeSessionCookie(session));
+  const token = await setSessionCookie(session);
+  const response = NextResponse.json({
+    user: {
+      userId: session.userId,
+      userName: session.userName,
+      role: session.role,
+      branchIds: session.branchIds,
+    },
+  });
+
+  response.headers.append("Set-Cookie", buildSessionSetCookieHeader(token));
+  for (const cookie of buildSessionClearCookieHeaders()) {
+    response.headers.append("Set-Cookie", cookie);
+  }
+
   return response;
 }
 
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
-  response.headers.set(
-    "Set-Cookie",
-    "stockcount_mock_session=; Path=/; Max-Age=0; SameSite=Lax",
-  );
+  for (const cookie of buildSessionClearCookieHeaders()) {
+    response.headers.append("Set-Cookie", cookie);
+  }
   return response;
 }

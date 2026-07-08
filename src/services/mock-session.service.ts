@@ -1,18 +1,21 @@
-import { MOCK_SESSION_COOKIE } from "@/lib/mock-session";
+import {
+  SESSION_COOKIE,
+  clearLegacySessionCookie,
+  clearSessionCookie,
+  createSessionToken,
+  serializeSessionCookie,
+  verifySessionToken,
+} from "@/lib/auth/session";
 import type { MockSession } from "@/types/user";
 import { getUserById } from "@/services/user.service";
 import { cookies } from "next/headers";
 
 export async function getServerSession(): Promise<MockSession | null> {
   const cookieStore = await cookies();
-  const raw = cookieStore.get(MOCK_SESSION_COOKIE)?.value;
-  if (!raw) return null;
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
 
-  try {
-    return JSON.parse(decodeURIComponent(raw)) as MockSession;
-  } catch {
-    return null;
-  }
+  return verifySessionToken(token);
 }
 
 export async function buildSessionFromUserId(
@@ -27,4 +30,16 @@ export async function buildSessionFromUserId(
     role: user.role,
     branchIds: user.branchIds,
   };
+}
+
+export async function setSessionCookie(session: MockSession): Promise<string> {
+  return createSessionToken(session);
+}
+
+export function buildSessionSetCookieHeader(token: string): string {
+  return serializeSessionCookie(token);
+}
+
+export function buildSessionClearCookieHeaders(): string[] {
+  return [clearSessionCookie(), clearLegacySessionCookie()];
 }

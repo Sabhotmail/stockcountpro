@@ -1,11 +1,12 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/lib/auth/password";
 import { initialAuditLogs } from "../src/mock/audit-logs";
 import { mockBranches } from "../src/mock/branches";
 import { initialCountDocuments } from "../src/mock/count-documents";
 import { documentProductLines, initialCountEntries } from "../src/mock/count-entries";
 import { initialCountVersions } from "../src/mock/count-versions";
 import { initialRecountRequests } from "../src/mock/recount-requests";
-import { mockUsers } from "../src/mock/users";
+import { DEFAULT_SEED_PASSWORD, mockUsers } from "../src/mock/users";
 import type { CountEntry } from "../src/types/count";
 
 const prisma = new PrismaClient();
@@ -57,12 +58,17 @@ async function main() {
     })),
   });
 
+  const defaultPasswordHash = await hashPassword(DEFAULT_SEED_PASSWORD);
+
   for (const user of mockUsers) {
     await prisma.user.create({
       data: {
         id: user.id,
+        username: user.username,
         name: user.name,
+        passwordHash: defaultPasswordHash,
         role: user.role,
+        isActive: true,
         branches: {
           create: user.branchIds.map((branchId) => ({ branchId })),
         },
