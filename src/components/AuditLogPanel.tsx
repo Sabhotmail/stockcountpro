@@ -1,5 +1,13 @@
 import type { AuditLog } from "@/types/audit";
 import { AuditAction } from "@/types/audit";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const actionLabels: Record<AuditAction, string> = {
   [AuditAction.LOGIN]: "เข้าสู่ระบบ",
@@ -17,39 +25,40 @@ const actionLabels: Record<AuditAction, string> = {
 export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
   if (logs.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">ยังไม่มี audit log</p>
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        ยังไม่มี audit log
+      </p>
     );
   }
 
   return (
     <div className="max-h-96 overflow-y-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="sticky top-0 bg-slate-50 text-slate-600">
-          <tr>
-            <th className="px-3 py-2 font-medium">เวลา</th>
-            <th className="px-3 py-2 font-medium">การกระทำ</th>
-            <th className="px-3 py-2 font-medium">ผู้ใช้</th>
-            <th className="px-3 py-2 font-medium">รายละเอียด</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>เวลา</TableHead>
+            <TableHead>การกระทำ</TableHead>
+            <TableHead>ผู้ใช้</TableHead>
+            <TableHead>รายละเอียด</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {logs.map((log, index) => (
-            <tr
-              key={`${log.id}-${log.createdAt}-${index}`}
-              className="border-t border-slate-100"
-            >
-              <td className="px-3 py-2 whitespace-nowrap text-slate-500">
+            <TableRow key={`${log.id}-${log.createdAt}-${index}`}>
+              <TableCell className="whitespace-nowrap text-muted-foreground">
                 {new Date(log.createdAt).toLocaleString("th-TH")}
-              </td>
-              <td className="px-3 py-2 font-medium text-slate-800">
+              </TableCell>
+              <TableCell className="font-medium">
                 {actionLabels[log.action]}
-              </td>
-              <td className="px-3 py-2 text-slate-600">{log.userName}</td>
-              <td className="px-3 py-2 text-slate-500">{log.detail ?? "—"}</td>
-            </tr>
+              </TableCell>
+              <TableCell>{log.userName}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {log.detail ?? "—"}
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin/users", label: "ผู้ใช้" },
@@ -20,11 +22,12 @@ export function AdminNav() {
         <Link
           key={link.href}
           href={link.href}
-          className={`rounded-lg px-3 py-2 text-sm font-medium ${
-            pathname === link.href
-              ? "bg-blue-600 text-white"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-          }`}
+          className={cn(
+            buttonVariants({
+              variant: pathname === link.href ? "default" : "secondary",
+              size: "sm",
+            }),
+          )}
         >
           {link.label}
         </Link>

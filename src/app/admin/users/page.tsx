@@ -4,6 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { LogoutButton, PageShell } from "@/components/PageShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { User } from "@/types/user";
 import { UserRole } from "@/types/user";
 
@@ -56,82 +67,56 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-8">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-lg font-bold text-slate-900 sm:text-2xl">
-              จัดการผู้ใช้
-            </h1>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-sm text-slate-500 hover:text-slate-700"
-            >
-              ออกจากระบบ
-            </button>
-          </div>
-          <div className="mt-4">
-            <AdminNav />
-          </div>
-        </div>
-      </header>
+    <PageShell
+      title="จัดการผู้ใช้"
+      nav={<AdminNav />}
+      actions={<LogoutButton onClick={handleLogout} />}
+    >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
-        )}
+      {loading ? (
+        <p className="text-muted-foreground">กำลังโหลด...</p>
+      ) : (
+        <Card>
+          <CardContent className="overflow-x-auto p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ชื่อ</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>บทบาท</TableHead>
+                  <TableHead>สาขา</TableHead>
+                  <TableHead>ID</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-mono">{user.username}</TableCell>
+                    <TableCell>{roleLabels[user.role]}</TableCell>
+                    <TableCell>{user.branchIds.length} สาขา</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {user.id}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
-        {loading ? (
-          <p className="text-slate-500">กำลังโหลด...</p>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">ชื่อ</th>
-                    <th className="px-4 py-3 font-medium">Username</th>
-                    <th className="px-4 py-3 font-medium">บทบาท</th>
-                    <th className="px-4 py-3 font-medium">สาขา</th>
-                    <th className="px-4 py-3 font-medium">ID</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-t border-slate-100">
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        {user.name}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-sm text-slate-700">
-                        {user.username}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {roleLabels[user.role]}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {user.branchIds.length} สาขา
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                        {user.id}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <p className="mt-4 text-sm text-slate-500">
-          Prototype — ยังไม่รองรับการแก้ไขผู้ใช้{" "}
-          <Link href="/supervisor/documents" className="text-blue-600">
-            ไปหน้า Supervisor
-          </Link>
-        </p>
-      </main>
-    </div>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Prototype — ยังไม่รองรับการแก้ไขผู้ใช้{" "}
+        <Link href="/supervisor/documents" className="text-primary underline">
+          ไปหน้า Supervisor
+        </Link>
+      </p>
+    </PageShell>
   );
 }
