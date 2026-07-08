@@ -1,11 +1,23 @@
-import { getBranchById } from "@/mock/branches";
-import { getMockDb } from "@/mock/mock-db";
-import { getUserById } from "@/mock/users";
+import {
+  mapBranch,
+  mapCountDocument,
+  mapCountEntry,
+  mapCountVersion,
+  mapProductLine,
+  mapRecountRequest,
+} from "@/lib/db/mappers";
+import { getDocumentForSession } from "@/lib/document-access";
+import {
+  resolveEffectiveEntries,
+  snapshotDocumentEntries,
+  snapshotFinalCountEntries,
+} from "@/lib/entry-snapshot";
 import {
   canAccessBranch,
   canSupervise,
   filterDocumentsForSupervisor,
 } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
 import {
   getAuditLogsByDocument,
@@ -14,15 +26,12 @@ import {
   logCreateVersion,
   logRequestRecount,
 } from "@/services/audit-log.service";
-import {
-  resolveEffectiveEntries,
-  snapshotDocumentEntries,
-  snapshotFinalCountEntries,
-} from "@/lib/entry-snapshot";
 import { countCountedLines } from "@/services/count-document.service";
+import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
   VersionStatus,
+  type CountDocument,
   type CountDocumentDetail,
   type RecountRequestPayload,
   type ReviewDetail,
@@ -31,85 +40,95 @@ import {
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
-let recountCounter = 1;
+async function getBranch(branchId: string) {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  return branch ? mapBranch(branch) : null;
+}
 
-function enrichSupervisorDocument(
-  doc: ReturnType<typeof getMockDb>["documents"][0],
-): SupervisorDocumentListItem {
-  const db = getMockDb();
-  const branch = getBranchById(doc.branchId)!;
+async function enrichSupervisorDocument(
+  doc: CountDocument,
+): Promise<SupervisorDocumentListItem> {
+  const branch = await getBranch(doc.branchId);
   const version = doc.currentVersionId
-    ? db.versions.find((v) => v.id === doc.currentVersionId)
-    : undefined;
+    ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
+    : null;
   const submitter = version?.submittedBy
-    ? getUserById(version.submittedBy)
+    ? await getUserById(version.submittedBy)
     : undefined;
 
   return {
     ...doc,
-    branchCode: branch.code,
-    branchName: branch.name,
-    countedLines: countCountedLines(doc.id, doc.currentVersionId),
+    branchCode: branch?.code ?? "",
+    branchName: branch?.name ?? "",
+    countedLines: await countCountedLines(doc.id, doc.currentVersionId),
     submittedBy: version?.submittedBy ?? null,
     submittedByName: submitter?.name ?? null,
-    submittedAt: version?.submittedAt ?? null,
+    submittedAt: version?.submittedAt?.toISOString() ?? null,
     hasDocumentNote: Boolean(doc.note?.trim()),
   };
 }
 
-export function listSupervisorDocuments(
+export async function listSupervisorDocuments(
   session: MockSession,
-): SupervisorDocumentListItem[] | { error: string } {
+): Promise<SupervisorDocumentListItem[] | { error: string }> {
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
 
-  const db = getMockDb();
-
-  return db.documents
+  const documents = await prisma.countDocument.findMany();
+  const filtered = documents
+    .map(mapCountDocument)
     .filter((doc) => {
       if (!filterDocumentsForSupervisor(doc.status)) return false;
       return canAccessBranch(session.role, session.branchIds, doc.branchId);
-    })
-    .map(enrichSupervisorDocument)
-    .sort((a, b) => {
-      const aTime = a.submittedAt ?? a.updatedAt;
-      const bTime = b.submittedAt ?? b.updatedAt;
-      return bTime.localeCompare(aTime);
     });
+
+  const result: SupervisorDocumentListItem[] = [];
+  for (const doc of filtered) {
+    result.push(await enrichSupervisorDocument(doc));
+  }
+
+  return result.sort((a, b) => {
+    const aTime = a.submittedAt ?? a.updatedAt;
+    const bTime = b.submittedAt ?? b.updatedAt;
+    return bTime.localeCompare(aTime);
+  });
 }
 
-export function getReviewDetail(
+export async function getReviewDetail(
   session: MockSession,
   documentId: string,
-): ReviewDetail | { error: string } {
+): Promise<ReviewDetail | { error: string }> {
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
 
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
 
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
-    return { error: "Access denied" };
-  }
-
+  const doc = access.document;
   if (!filterDocumentsForSupervisor(doc.status)) {
     return { error: "Document is not available for review" };
   }
 
-  const branch = getBranchById(doc.branchId)!;
-  const version = doc.currentVersionId
-    ? db.versions.find((v) => v.id === doc.currentVersionId) ?? null
+  const branch = await getBranch(doc.branchId);
+  const versionRow = doc.currentVersionId
+    ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
     : null;
-  const lines = db.productLines[documentId] ?? [];
+
+  const lines = (
+    await prisma.productLine.findMany({
+      where: { documentId },
+      orderBy: { lineNo: "asc" },
+    })
+  ).map(mapProductLine);
+
   const entries = doc.currentVersionId
-    ? resolveEffectiveEntries(documentId, doc.currentVersionId)
+    ? await resolveEffectiveEntries(documentId, doc.currentVersionId)
     : [];
 
   const reviewLines: ReviewLineItem[] = lines.map((line) => {
-    const entry = entries.find((e) => e.lineId === line.lineId);
+    const entry = entries.find((item) => item.lineId === line.lineId);
     const totalBaseQty = entry?.totalBaseQty ?? null;
     const expectedQty = line.expectedQty ?? 0;
     const isCounted = entry
@@ -125,74 +144,90 @@ export function getReviewDetail(
       totalBaseQty,
       difference:
         totalBaseQty !== null ? totalBaseQty - expectedQty : null,
-      versionNo: version?.versionNo ?? doc.currentVersionNo,
+      versionNo: versionRow?.versionNo ?? doc.currentVersionNo,
       isCounted,
     };
   });
 
   const document: CountDocumentDetail = {
     ...doc,
-    branchCode: branch.code,
-    branchName: branch.name,
-    version,
+    branchCode: branch?.code ?? "",
+    branchName: branch?.name ?? "",
+    version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries,
-    countedLines: countCountedLines(documentId, doc.currentVersionId),
+    countedLines: await countCountedLines(documentId, doc.currentVersionId),
   };
+
+  const versions = (
+    await prisma.countVersion.findMany({
+      where: { documentId },
+      orderBy: { versionNo: "asc" },
+    })
+  ).map(mapCountVersion);
+
+  const recountRequests = (
+    await prisma.recountRequest.findMany({
+      where: { documentId },
+      include: { items: true },
+    })
+  ).map(mapRecountRequest);
 
   return {
     document,
     reviewLines,
-    versions: db.versions
-      .filter((v) => v.documentId === documentId)
-      .sort((a, b) => a.versionNo - b.versionNo),
-    auditLogs: getAuditLogsByDocument(documentId),
-    recountRequests: db.recountRequests.filter(
-      (r) => r.documentId === documentId,
-    ),
+    versions,
+    auditLogs: await getAuditLogsByDocument(documentId),
+    recountRequests,
   };
 }
 
-export function approveDocument(
+export async function approveDocument(
   session: MockSession,
   documentId: string,
-): { success: true } | { error: string } {
+): Promise<{ success: true } | { error: string }> {
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
 
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
 
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
-    return { error: "Access denied" };
-  }
-
+  const doc = access.document;
   if (doc.status !== DocumentStatus.SUBMITTED) {
     return { error: "Only submitted documents can be approved" };
   }
 
   const version = doc.currentVersionId
-    ? db.versions.find((v) => v.id === doc.currentVersionId)
-    : undefined;
+    ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
+    : null;
   if (!version) return { error: "Version not found" };
 
-  snapshotFinalCountEntries(documentId, version.id);
+  await snapshotFinalCountEntries(documentId, version.id);
 
-  const now = new Date().toISOString();
-  version.status = VersionStatus.APPROVED;
-  doc.status = DocumentStatus.COMPLETED;
-  doc.updatedAt = now;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.countVersion.update({
+      where: { id: version.id },
+      data: { status: VersionStatus.APPROVED },
+    }),
+    prisma.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.COMPLETED,
+        updatedAt: now,
+      },
+    }),
+  ]);
 
-  logApproveVersion(
+  await logApproveVersion(
     session.userId,
     session.userName,
     doc.branchId,
     documentId,
     version.id,
   );
-  logCompleteDocument(
+  await logCompleteDocument(
     session.userId,
     session.userName,
     doc.branchId,
@@ -202,23 +237,19 @@ export function approveDocument(
   return { success: true };
 }
 
-export function requestRecount(
+export async function requestRecount(
   session: MockSession,
   documentId: string,
   payload: RecountRequestPayload,
-): { success: true; versionId: string; versionNo: number } | { error: string } {
+): Promise<{ success: true; versionId: string; versionNo: number } | { error: string }> {
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
 
-  const db = getMockDb();
-  const doc = db.documents.find((d) => d.id === documentId);
-  if (!doc) return { error: "Document not found" };
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) return { error: access.error };
 
-  if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
-    return { error: "Access denied" };
-  }
-
+  const doc = access.document;
   if (
     doc.status !== DocumentStatus.SUBMITTED &&
     doc.status !== DocumentStatus.REVIEWING
@@ -230,14 +261,16 @@ export function requestRecount(
     return { error: "Select at least one line for recount" };
   }
 
-  const baseVersion = db.versions.find((v) => v.id === payload.baseVersionId);
+  const baseVersion = await prisma.countVersion.findUnique({
+    where: { id: payload.baseVersionId },
+  });
   if (!baseVersion || baseVersion.documentId !== documentId) {
     return { error: "Base version not found" };
   }
 
-  const lines = db.productLines[documentId] ?? [];
+  const lines = await prisma.productLine.findMany({ where: { documentId } });
   for (const item of payload.items) {
-    if (!lines.some((l) => l.lineId === item.lineId)) {
+    if (!lines.some((line) => line.lineId === item.lineId)) {
       return { error: `Line not found: ${item.lineId}` };
     }
     if (!item.reason.trim()) {
@@ -245,57 +278,90 @@ export function requestRecount(
     }
   }
 
-  const now = new Date().toISOString();
+  const now = new Date();
   const newVersionNo = baseVersion.versionNo + 1;
   const newVersionId = `ver_${documentId}_v${newVersionNo}`;
+  const recountId = `recount_${String(newVersionNo).padStart(3, "0")}`;
 
-  snapshotDocumentEntries(documentId, baseVersion.id);
-  baseVersion.status = VersionStatus.LOCKED;
+  await snapshotDocumentEntries(documentId, baseVersion.id);
 
-  db.versions.push({
-    id: newVersionId,
-    documentId,
-    versionNo: newVersionNo,
-    status: VersionStatus.DRAFT,
-    baseVersionId: baseVersion.id,
-    createdAt: now,
-    createdBy: session.userId,
-  });
-
-  // Copy effective entries from base version into the new draft scope.
+  const baseEntries = await resolveEffectiveEntries(documentId, baseVersion.id);
   const baseLineIds = new Set(lines.map((line) => line.lineId));
-  const baseEntries = resolveEffectiveEntries(documentId, baseVersion.id).filter(
-    (entry) => baseLineIds.has(entry.lineId),
-  );
-  for (const entry of baseEntries) {
-    const existing = db.entries.find((e) => e.lineId === entry.lineId);
-    if (existing) {
-      Object.assign(existing, {
-        ...entry,
-        revision: 0,
-        updatedAt: now,
-        updatedBy: session.userId,
+
+  await prisma.$transaction(async (tx) => {
+    await tx.countVersion.update({
+      where: { id: baseVersion.id },
+      data: { status: VersionStatus.LOCKED },
+    });
+
+    await tx.countVersion.create({
+      data: {
+        id: newVersionId,
+        documentId,
+        versionNo: newVersionNo,
+        status: VersionStatus.DRAFT,
+        baseVersionId: baseVersion.id,
+        createdAt: now,
+        createdBy: session.userId,
+      },
+    });
+
+    for (const entry of baseEntries.filter((item) => baseLineIds.has(item.lineId))) {
+      await tx.countEntry.upsert({
+        where: { lineId: entry.lineId },
+        create: {
+          lineId: entry.lineId,
+          qtyCase: entry.qtyCase,
+          qtyPack: entry.qtyPack,
+          qtyPiece: entry.qtyPiece,
+          totalBaseQty: entry.totalBaseQty,
+          note: entry.note,
+          revision: 0,
+          updatedAt: now,
+          updatedBy: session.userId,
+        },
+        update: {
+          qtyCase: entry.qtyCase,
+          qtyPack: entry.qtyPack,
+          qtyPiece: entry.qtyPiece,
+          totalBaseQty: entry.totalBaseQty,
+          note: entry.note,
+          revision: 0,
+          updatedAt: now,
+          updatedBy: session.userId,
+        },
       });
     }
-  }
 
-  doc.status = DocumentStatus.RECOUNT_REQUESTED;
-  doc.currentVersionId = newVersionId;
-  doc.currentVersionNo = newVersionNo;
-  doc.updatedAt = now;
+    await tx.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.RECOUNT_REQUESTED,
+        currentVersionId: newVersionId,
+        currentVersionNo: newVersionNo,
+        updatedAt: now,
+      },
+    });
 
-  const recountRecord = {
-    id: `recount_${String(recountCounter++).padStart(3, "0")}`,
-    documentId,
-    baseVersionId: baseVersion.id,
-    newVersionId,
-    items: payload.items,
-    requestedBy: session.userId,
-    requestedAt: now,
-  };
-  db.recountRequests.push(recountRecord);
+    await tx.recountRequest.create({
+      data: {
+        id: recountId,
+        documentId,
+        baseVersionId: baseVersion.id,
+        newVersionId,
+        requestedBy: session.userId,
+        requestedAt: now,
+        items: {
+          create: payload.items.map((item) => ({
+            lineId: item.lineId,
+            reason: item.reason,
+          })),
+        },
+      },
+    });
+  });
 
-  logRequestRecount(
+  await logRequestRecount(
     session.userId,
     session.userName,
     doc.branchId,
@@ -303,7 +369,7 @@ export function requestRecount(
     newVersionId,
     `Recount ${payload.items.length} line(s)`,
   );
-  logCreateVersion(
+  await logCreateVersion(
     session.userId,
     session.userName,
     doc.branchId,

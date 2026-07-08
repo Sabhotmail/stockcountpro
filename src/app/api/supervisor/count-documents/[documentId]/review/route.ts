@@ -12,7 +12,7 @@ export async function GET(
   }
 
   const { documentId } = await params;
-  const result = getReviewDetail(session, documentId);
+  const result = await getReviewDetail(session, documentId);
 
   if ("error" in result) {
     const status = result.error === "Access denied" ? 403 : 404;

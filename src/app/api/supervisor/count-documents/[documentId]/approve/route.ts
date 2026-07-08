@@ -12,7 +12,7 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  const result = approveDocument(session, documentId);
+  const result = await approveDocument(session, documentId);
 
   if ("error" in result) {
     const status =

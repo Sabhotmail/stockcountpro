@@ -8,6 +8,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const documents = listDocumentsForUser(session);
+  const documents = await listDocumentsForUser(session);
   return NextResponse.json({ documents });
 }

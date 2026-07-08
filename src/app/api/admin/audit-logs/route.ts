@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const documentId = searchParams.get("documentId");
-  const result = listAuditLogsForAdmin(session, documentId);
+  const result = await listAuditLogsForAdmin(session, documentId);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 403 });

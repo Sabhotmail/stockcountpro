@@ -14,7 +14,7 @@ export async function POST(
   }
 
   const { documentId, versionId } = await params;
-  const result = submitVersion(session, documentId, versionId);
+  const result = await submitVersion(session, documentId, versionId);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

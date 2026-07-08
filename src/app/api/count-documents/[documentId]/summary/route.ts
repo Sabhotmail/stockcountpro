@@ -12,7 +12,7 @@ export async function GET(
   }
 
   const { documentId } = await params;
-  const result = getDocumentSummary(session, documentId);
+  const result = await getDocumentSummary(session, documentId);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 404 });

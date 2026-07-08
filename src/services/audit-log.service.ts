@@ -1,39 +1,18 @@
 import { getDocumentForSession } from "@/lib/document-access";
-import { getMockDb } from "@/mock/mock-db";
+import { mapAuditLog } from "@/lib/db/mappers";
+import { prisma } from "@/lib/prisma";
 import { AuditAction } from "@/types/audit";
 import type { AuditLog } from "@/types/audit";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 
-function normalizeAuditLogIdsInDb(): void {
-  const db = getMockDb();
-  const seen = new Set<string>();
+async function nextAuditId(): Promise<string> {
+  const logs = await prisma.auditLog.findMany({
+    select: { id: true },
+  });
+
   let max = 0;
-
-  for (const log of db.auditLogs) {
-    const match = /^audit_(\d+)$/.exec(log.id);
-    if (match) {
-      max = Math.max(max, Number.parseInt(match[1], 10));
-    }
-  }
-
-  for (const log of db.auditLogs) {
-    if (!seen.has(log.id)) {
-      seen.add(log.id);
-      continue;
-    }
-
-    max += 1;
-    log.id = `audit_${String(max).padStart(4, "0")}`;
-    seen.add(log.id);
-  }
-}
-
-function nextAuditId(): string {
-  const db = getMockDb();
-  let max = 0;
-
-  for (const log of db.auditLogs) {
+  for (const log of logs) {
     const match = /^audit_(\d+)$/.exec(log.id);
     if (match) {
       max = Math.max(max, Number.parseInt(match[1], 10));
@@ -43,57 +22,65 @@ function nextAuditId(): string {
   return `audit_${String(max + 1).padStart(4, "0")}`;
 }
 
-export function createAuditLog(
+export async function createAuditLog(
   input: Omit<AuditLog, "id" | "createdAt">,
-): AuditLog {
-  normalizeAuditLogIdsInDb();
-  const db = getMockDb();
-  const log: AuditLog = {
-    ...input,
-    id: nextAuditId(),
-    createdAt: new Date().toISOString(),
-  };
-  db.auditLogs.push(log);
-  return log;
+): Promise<AuditLog> {
+  const log = await prisma.auditLog.create({
+    data: {
+      id: await nextAuditId(),
+      action: input.action,
+      userId: input.userId,
+      userName: input.userName,
+      branchId: input.branchId ?? null,
+      documentId: input.documentId ?? null,
+      versionId: input.versionId ?? null,
+      lineId: input.lineId ?? null,
+      detail: input.detail ?? null,
+      createdAt: new Date(),
+    },
+  });
+
+  return mapAuditLog(log);
 }
 
-export function getAuditLogsByDocument(documentId: string): AuditLog[] {
-  normalizeAuditLogIdsInDb();
-  const seen = new Set<string>();
+export async function getAuditLogsByDocument(
+  documentId: string,
+): Promise<AuditLog[]> {
+  const logs = await prisma.auditLog.findMany({
+    where: { documentId },
+    orderBy: { createdAt: "desc" },
+  });
 
-  return getMockDb()
-    .auditLogs.filter((log) => {
-      if (log.documentId !== documentId) return false;
-      if (seen.has(log.id)) return false;
-      seen.add(log.id);
-      return true;
-    })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return logs.map(mapAuditLog);
 }
 
-export function listAllAuditLogs(
-  session: MockSession,
-): AuditLog[] | { error: string } {
-  if (session.role !== UserRole.ADMIN && session.role !== UserRole.HQ) {
-    return { error: "Access denied" };
-  }
-
-  normalizeAuditLogIdsInDb();
-  return [...getMockDb().auditLogs].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
-}
-
-export function getAuditLogsForDocumentSession(
+export async function getAuditLogsForDocumentSession(
   session: MockSession,
   documentId: string,
-): AuditLog[] | { error: string } {
-  const access = getDocumentForSession(session, documentId);
+): Promise<AuditLog[] | { error: string }> {
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
   return getAuditLogsByDocument(documentId);
 }
 
-export function logLogin(userId: string, userName: string): AuditLog {
+export async function listAllAuditLogs(
+  session: MockSession,
+): Promise<AuditLog[] | { error: string }> {
+  if (session.role !== UserRole.ADMIN && session.role !== UserRole.HQ) {
+    return { error: "Access denied" };
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
+  return logs.map(mapAuditLog);
+}
+
+export async function logLogin(
+  userId: string,
+  userName: string,
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.LOGIN,
     userId,
@@ -102,28 +89,13 @@ export function logLogin(userId: string, userName: string): AuditLog {
   });
 }
 
-export function logOpenDocument(
-  userId: string,
-  userName: string,
-  branchId: string,
-  documentId: string,
-): AuditLog {
-  return createAuditLog({
-    action: AuditAction.OPEN_DOCUMENT,
-    userId,
-    userName,
-    branchId,
-    documentId,
-  });
-}
-
-export function logStartCount(
+export async function logStartCount(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.START_COUNT,
     userId,
@@ -134,14 +106,14 @@ export function logStartCount(
   });
 }
 
-export function logAutoSave(
+export async function logAutoSave(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
   lineId: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.AUTO_SAVE_COUNT,
     userId,
@@ -153,13 +125,13 @@ export function logAutoSave(
   });
 }
 
-export function logSubmit(
+export async function logSubmit(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.SUBMIT_TO_SUPERVISOR,
     userId,
@@ -170,14 +142,14 @@ export function logSubmit(
   });
 }
 
-export function logCreateVersion(
+export async function logCreateVersion(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
   detail?: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.CREATE_VERSION,
     userId,
@@ -189,14 +161,14 @@ export function logCreateVersion(
   });
 }
 
-export function logRequestRecount(
+export async function logRequestRecount(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
   detail?: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.REQUEST_RECOUNT,
     userId,
@@ -208,13 +180,13 @@ export function logRequestRecount(
   });
 }
 
-export function logApproveVersion(
+export async function logApproveVersion(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
   versionId: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.APPROVE_VERSION,
     userId,
@@ -225,12 +197,12 @@ export function logApproveVersion(
   });
 }
 
-export function logCompleteDocument(
+export async function logCompleteDocument(
   userId: string,
   userName: string,
   branchId: string,
   documentId: string,
-): AuditLog {
+): Promise<AuditLog> {
   return createAuditLog({
     action: AuditAction.COMPLETE_DOCUMENT,
     userId,

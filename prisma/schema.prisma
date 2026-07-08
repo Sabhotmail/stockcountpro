@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  HQ
+  SUPERVISOR
+  BRANCH_MANAGER
+  STAFF
+  COUNTER
+  VIEWER
+}
+
+enum DocumentStatus {
+  IMPORTED
+  COUNTING
+  SUBMITTED
+  REVIEWING
+  RECOUNT_REQUESTED
+  APPROVED
+  COMPLETED
+}
+
+enum VersionStatus {
+  DRAFT
+  SUBMITTED
+  RECOUNT
+  APPROVED
+  LOCKED
+}
+
+enum AuditAction {
+  LOGIN
+  OPEN_DOCUMENT
+  START_COUNT
+  AUTO_SAVE_COUNT
+  SUBMIT_TO_SUPERVISOR
+  CREATE_VERSION
+  REQUEST_RECOUNT
+  APPROVE_VERSION
+  COMPLETE_DOCUMENT
+}
+
+model Branch {
+  id        String          @id
+  code      String          @unique
+  name      String
+  users     UserBranch[]
+  documents CountDocument[]
+  auditLogs AuditLog[]
+}
+
+model User {
+  id       String       @id
+  name     String
+  role     UserRole
+  branches UserBranch[]
+}
+
+model UserBranch {
+  userId   String
+  branchId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+}
+
+model CountDocument {
+  id               String           @id
+  documentNo       String
+  documentDate     DateTime         @db.Date
+  branchId         String
+  status           DocumentStatus
+  currentVersionId String?
+  currentVersionNo Int              @default(0)
+  totalLines       Int
+  countedLines     Int              @default(0)
+  note             String?
+  createdAt        DateTime
+  updatedAt        DateTime
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  versions         CountVersion[]
+  productLines     ProductLine[]
+  recountRequests  RecountRequest[]
+  auditLogs        AuditLog[]
+  finalEntries     FinalCountEntry[]
+}
+
+model ProductLine {
+  lineId          String            @id
+  documentId      String
+  lineNo          Int
+  productCode     String
+  productName     String
+  productImageUrl String?
+  barcode         String
+  unitCaseName    String?
+  unitPackName    String?
+  unitPieceName   String
+  caseRatio       Int
+  packRatio       Int
+  allowCase       Boolean
+  allowPack       Boolean
+  allowPiece      Boolean
+  expectedQty     Int?
+  document        CountDocument     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  entry           CountEntry?
+  snapshots       EntrySnapshot[]
+  finalEntries    FinalCountEntry[]
+
+  @@index([documentId])
+}
+
+model CountVersion {
+  id            String          @id
+  documentId    String
+  versionNo     Int
+  status        VersionStatus
+  baseVersionId String?
+  createdAt     DateTime
+  createdBy     String
+  submittedAt   DateTime?
+  submittedBy   String?
+  document      CountDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  snapshots     EntrySnapshot[]
+
+  @@unique([documentId, versionNo])
+}
+
+model CountEntry {
+  lineId       String      @id
+  qtyCase      Int?
+  qtyPack      Int?
+  qtyPiece     Int?
+  totalBaseQty Int?
+  note         String?
+  revision     Int         @default(0)
+  updatedAt    DateTime
+  updatedBy    String
+  line         ProductLine @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
+}
+
+model EntrySnapshot {
+  id           String       @id @default(cuid())
+  versionId    String
+  lineId       String
+  qtyCase      Int?
+  qtyPack      Int?
+  qtyPiece     Int?
+  totalBaseQty Int?
+  note         String?
+  revision     Int
+  updatedAt    DateTime
+  updatedBy    String
+  version      CountVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  line         ProductLine  @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
+
+  @@unique([versionId, lineId])
+  @@index([versionId])
+}
+
+model FinalCountEntry {
+  documentId   String
+  lineId       String
+  qtyCase      Int?
+  qtyPack      Int?
+  qtyPiece     Int?
+  totalBaseQty Int?
+  note         String?
+  revision     Int
+  updatedAt    DateTime
+  updatedBy    String
+  document     CountDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  line         ProductLine   @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
+
+  @@id([documentId, lineId])
+}
+
+model RecountRequest {
+  id            String               @id
+  documentId    String
+  baseVersionId String
+  newVersionId  String
+  requestedBy   String
+  requestedAt   DateTime
+  document      CountDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  items         RecountRequestItem[]
+}
+
+model RecountRequestItem {
+  id               String         @id @default(cuid())
+  recountRequestId String
+  lineId           String
+  reason           String
+  recountRequest   RecountRequest @relation(fields: [recountRequestId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String      @id
+  action     AuditAction
+  userId     String
+  userName   String
+  branchId   String?
+  documentId String?
+  versionId  String?
+  lineId     String?
+  detail     String?
+  createdAt  DateTime
+  branch     Branch?        @relation(fields: [branchId], references: [id])
+  document   CountDocument? @relation(fields: [documentId], references: [id])
+
+  @@index([documentId, createdAt])
+}

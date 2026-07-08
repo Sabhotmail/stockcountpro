@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = listBranchesForAdmin(session);
+  const result = await listBranchesForAdmin(session);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 403 });
   }

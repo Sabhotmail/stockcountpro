@@ -1,7 +1,11 @@
-import { getMockDb } from "@/mock/mock-db";
+import {
+  mapCountVersion,
+  mapProductLine,
+} from "@/lib/db/mappers";
 import { getDocumentForSession } from "@/lib/document-access";
 import { getEntriesForVersion } from "@/lib/entry-snapshot";
 import { filterLinesForRole } from "@/lib/product-line-filter";
+import { prisma } from "@/lib/prisma";
 import { getDocumentDetail } from "@/services/count-document.service";
 import type {
   CountVersion,
@@ -11,56 +15,61 @@ import type {
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
-export function listDocumentVersions(
+export async function listDocumentVersions(
   session: MockSession,
   documentId: string,
-): CountVersion[] | { error: string } {
-  const detail = getDocumentDetail(session, documentId);
+): Promise<CountVersion[] | { error: string }> {
+  const detail = await getDocumentDetail(session, documentId);
   if (!detail) return { error: "Document not found" };
 
-  const db = getMockDb();
-  return db.versions
-    .filter((version) => version.documentId === documentId)
-    .sort((a, b) => a.versionNo - b.versionNo);
+  const versions = await prisma.countVersion.findMany({
+    where: { documentId },
+    orderBy: { versionNo: "asc" },
+  });
+
+  return versions.map(mapCountVersion);
 }
 
-export function getVersionDetail(
+export async function getVersionDetail(
   session: MockSession,
   documentId: string,
   versionId: string,
-): VersionDetail | { error: string } {
-  const access = getDocumentForSession(session, documentId);
+): Promise<VersionDetail | { error: string }> {
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
-  const db = getMockDb();
-  const version = db.versions.find(
-    (item) => item.id === versionId && item.documentId === documentId,
-  );
+  const version = await prisma.countVersion.findFirst({
+    where: { id: versionId, documentId },
+  });
   if (!version) return { error: "Version not found" };
 
   const lines = filterLinesForRole(
-    db.productLines[documentId] ?? [],
+    (
+      await prisma.productLine.findMany({
+        where: { documentId },
+        orderBy: { lineNo: "asc" },
+      })
+    ).map(mapProductLine),
     session.role,
   );
 
   return {
-    version,
-    entries: getEntriesForVersion(documentId, versionId),
+    version: mapCountVersion(version),
+    entries: await getEntriesForVersion(documentId, versionId),
     lines,
   };
 }
 
-export function compareDocumentVersions(
+export async function compareDocumentVersions(
   session: MockSession,
   documentId: string,
   fromVersionNo: number,
   toVersionNo: number,
-): VersionCompareResult | { error: string } {
-  const access = getDocumentForSession(session, documentId);
+): Promise<VersionCompareResult | { error: string }> {
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
-  const db = getMockDb();
-  const versions = db.versions.filter((version) => version.documentId === documentId);
+  const versions = await prisma.countVersion.findMany({ where: { documentId } });
   const fromVersion = versions.find((version) => version.versionNo === fromVersionNo);
   const toVersion = versions.find((version) => version.versionNo === toVersionNo);
 
@@ -68,9 +77,15 @@ export function compareDocumentVersions(
     return { error: "Version not found" };
   }
 
-  const lines = db.productLines[documentId] ?? [];
-  const fromEntries = getEntriesForVersion(documentId, fromVersion.id);
-  const toEntries = getEntriesForVersion(documentId, toVersion.id);
+  const lines = (
+    await prisma.productLine.findMany({
+      where: { documentId },
+      orderBy: { lineNo: "asc" },
+    })
+  ).map(mapProductLine);
+
+  const fromEntries = await getEntriesForVersion(documentId, fromVersion.id);
+  const toEntries = await getEntriesForVersion(documentId, toVersion.id);
 
   const compareLines: VersionCompareLine[] = lines.map((line) => {
     const fromEntry = fromEntries.find((entry) => entry.lineId === line.lineId);
@@ -92,8 +107,8 @@ export function compareDocumentVersions(
 
   return {
     documentId,
-    fromVersion,
-    toVersion,
+    fromVersion: mapCountVersion(fromVersion),
+    toVersion: mapCountVersion(toVersion),
     lines: compareLines,
   };
 }

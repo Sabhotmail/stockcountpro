@@ -23,7 +23,7 @@ export async function GET(
     );
   }
 
-  const result = compareDocumentVersions(session, documentId, from, to);
+  const result = await compareDocumentVersions(session, documentId, from, to);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

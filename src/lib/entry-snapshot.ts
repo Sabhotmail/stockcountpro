@@ -1,9 +1,12 @@
-import { getMockDb } from "@/mock/mock-db";
+import { prisma } from "@/lib/prisma";
+import {
+  mapCountDocument,
+  mapCountVersion,
+  mapFinalEntry,
+  mapSnapshotEntry,
+} from "@/lib/db/mappers";
 import type { CountEntry, CountVersion } from "@/types/count";
-
-function clone<T>(value: T): T {
-  return structuredClone(value);
-}
+import type { CountDocument } from "@/types/count";
 
 function getVersionChain(
   versions: CountVersion[],
@@ -23,81 +26,140 @@ function getVersionChain(
   return chain;
 }
 
-function getRawEntriesForVersion(
-  documentId: string,
+async function getRawEntriesForVersion(
+  document: CountDocument,
   versionId: string,
-): CountEntry[] {
-  const db = getMockDb();
-  const doc = db.documents.find((item) => item.id === documentId);
-  const lines = db.productLines[documentId] ?? [];
-  const lineIds = new Set(lines.map((line) => line.lineId));
+): Promise<CountEntry[]> {
+  const snapshots = await prisma.entrySnapshot.findMany({
+    where: { versionId },
+  });
 
-  if (db.entrySnapshots[versionId]) {
-    return clone(db.entrySnapshots[versionId]);
+  if (snapshots.length > 0) {
+    return snapshots.map(mapSnapshotEntry);
   }
 
-  if (doc?.currentVersionId === versionId) {
-    return clone(db.entries.filter((entry) => lineIds.has(entry.lineId)));
+  if (document.currentVersionId === versionId) {
+    const lines = await prisma.productLine.findMany({
+      where: { documentId: document.id },
+      include: { entry: true },
+    });
+
+    return lines
+      .map((line) => line.entry)
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .map((entry) => ({
+        lineId: entry.lineId,
+        qtyCase: entry.qtyCase,
+        qtyPack: entry.qtyPack,
+        qtyPiece: entry.qtyPiece,
+        totalBaseQty: entry.totalBaseQty,
+        note: entry.note,
+        revision: entry.revision,
+        updatedAt: entry.updatedAt.toISOString(),
+        updatedBy: entry.updatedBy,
+      }));
   }
 
   return [];
 }
 
-export function resolveEffectiveEntries(
+export async function resolveEffectiveEntries(
   documentId: string,
   versionId: string,
-): CountEntry[] {
-  const db = getMockDb();
-  const versions = db.versions
-    .filter((version) => version.documentId === documentId)
-    .sort((a, b) => a.versionNo - b.versionNo);
+): Promise<CountEntry[]> {
+  const documentRow = await prisma.countDocument.findUnique({
+    where: { id: documentId },
+  });
+  if (!documentRow) return [];
+
+  const document = mapCountDocument(documentRow);
+  const versions = (
+    await prisma.countVersion.findMany({
+      where: { documentId },
+      orderBy: { versionNo: "asc" },
+    })
+  ).map(mapCountVersion);
 
   const chain = getVersionChain(versions, versionId);
-  if (chain.length === 0) return [];
-
   const effective = new Map<string, CountEntry>();
 
   for (const version of chain) {
-    const entries = getRawEntriesForVersion(documentId, version.id);
+    const entries = await getRawEntriesForVersion(document, version.id);
     for (const entry of entries) {
-      effective.set(entry.lineId, clone(entry));
+      effective.set(entry.lineId, entry);
     }
   }
 
   return Array.from(effective.values());
 }
 
-export function snapshotDocumentEntries(
+export async function snapshotDocumentEntries(
   documentId: string,
   versionId: string,
-): CountEntry[] {
-  const snapshot = resolveEffectiveEntries(documentId, versionId);
-  const db = getMockDb();
-  db.entrySnapshots[versionId] = snapshot;
-  return clone(snapshot);
+): Promise<CountEntry[]> {
+  const entries = await resolveEffectiveEntries(documentId, versionId);
+
+  await prisma.entrySnapshot.deleteMany({ where: { versionId } });
+  if (entries.length > 0) {
+    await prisma.entrySnapshot.createMany({
+      data: entries.map((entry) => ({
+        versionId,
+        lineId: entry.lineId,
+        qtyCase: entry.qtyCase,
+        qtyPack: entry.qtyPack,
+        qtyPiece: entry.qtyPiece,
+        totalBaseQty: entry.totalBaseQty,
+        note: entry.note,
+        revision: entry.revision,
+        updatedAt: new Date(entry.updatedAt),
+        updatedBy: entry.updatedBy,
+      })),
+    });
+  }
+
+  return entries;
 }
 
-export function snapshotFinalCountEntries(
+export async function snapshotFinalCountEntries(
   documentId: string,
   versionId: string,
-): CountEntry[] {
-  const db = getMockDb();
-  const snapshot = snapshotDocumentEntries(documentId, versionId);
-  db.finalCountEntries[documentId] = clone(snapshot);
-  return snapshot;
+): Promise<CountEntry[]> {
+  const entries = await snapshotDocumentEntries(documentId, versionId);
+
+  await prisma.finalCountEntry.deleteMany({ where: { documentId } });
+  if (entries.length > 0) {
+    await prisma.finalCountEntry.createMany({
+      data: entries.map((entry) => ({
+        documentId,
+        lineId: entry.lineId,
+        qtyCase: entry.qtyCase,
+        qtyPack: entry.qtyPack,
+        qtyPiece: entry.qtyPiece,
+        totalBaseQty: entry.totalBaseQty,
+        note: entry.note,
+        revision: entry.revision,
+        updatedAt: new Date(entry.updatedAt),
+        updatedBy: entry.updatedBy,
+      })),
+    });
+  }
+
+  return entries;
 }
 
-export function getEntriesForVersion(
+export async function getEntriesForVersion(
   documentId: string,
   versionId: string,
-): CountEntry[] {
+): Promise<CountEntry[]> {
   return resolveEffectiveEntries(documentId, versionId);
 }
 
-export function getFinalCountEntries(documentId: string): CountEntry[] {
-  const db = getMockDb();
-  if (db.finalCountEntries[documentId]) {
-    return clone(db.finalCountEntries[documentId]);
-  }
-  return [];
+export async function getFinalCountEntries(
+  documentId: string,
+): Promise<CountEntry[]> {
+  const entries = await prisma.finalCountEntry.findMany({
+    where: { documentId },
+  });
+
+  return entries.map(mapFinalEntry);
 }

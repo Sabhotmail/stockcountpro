@@ -1,11 +1,13 @@
-import { getMockDb } from "@/mock/mock-db";
+import { mapCountEntry } from "@/lib/db/mappers";
 import { getDocumentForSession } from "@/lib/document-access";
 import { canMutateCount } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 import {
   calculateTotalBaseQty,
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
+import { countCountedLines } from "@/services/count-document.service";
 import { logAutoSave } from "@/services/audit-log.service";
 import {
   DocumentStatus,
@@ -18,29 +20,14 @@ import {
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
-function countLinesForDocument(documentId: string): number {
-  const db = getMockDb();
-  const lines = db.productLines[documentId] ?? [];
-  const entries = db.entries.filter((entry) =>
-    lines.some((line) => line.lineId === entry.lineId),
-  );
-
-  return lines.filter((line) => {
-    const entry = entries.find((item) => item.lineId === line.lineId);
-    if (!entry) return false;
-    return isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece);
-  }).length;
-}
-
-function applyEntrySave(
+async function applyEntrySave(
   session: MockSession,
   documentId: string,
   versionId: string,
   lineId: string,
   payload: SaveEntryPayload,
-): SaveEntryResponse | { error: string } {
-  const db = getMockDb();
-  const access = getDocumentForSession(session, documentId);
+): Promise<SaveEntryResponse | { error: string }> {
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
@@ -48,7 +35,7 @@ function applyEntrySave(
     return { error: "Document is completed" };
   }
 
-  const version = db.versions.find((item) => item.id === versionId);
+  const version = await prisma.countVersion.findUnique({ where: { id: versionId } });
   if (!version || version.documentId !== documentId) {
     return { error: "Version not found" };
   }
@@ -57,18 +44,24 @@ function applyEntrySave(
     return { error: "Version is not editable" };
   }
 
-  const line = db.productLines[documentId]?.find((item) => item.lineId === lineId);
+  const line = await prisma.productLine.findFirst({
+    where: { documentId, lineId },
+  });
   if (!line) return { error: "Line not found" };
 
   const validationError = validateQuantities(
-    line,
+    {
+      allowCase: line.allowCase,
+      allowPack: line.allowPack,
+      allowPiece: line.allowPiece,
+    },
     payload.qtyCase,
     payload.qtyPack,
     payload.qtyPiece,
   );
   if (validationError) return { error: validationError };
 
-  const existing = db.entries.find((entry) => entry.lineId === lineId);
+  const existing = await prisma.countEntry.findUnique({ where: { lineId } });
   const qtyCase =
     payload.qtyCase !== undefined ? payload.qtyCase : (existing?.qtyCase ?? null);
   const qtyPack =
@@ -78,31 +71,49 @@ function applyEntrySave(
       ? payload.qtyPiece
       : (existing?.qtyPiece ?? null);
 
-  const totalBaseQty = calculateTotalBaseQty(line, qtyCase, qtyPack, qtyPiece);
-  const now = new Date().toISOString();
-
-  const entry: CountEntry = {
-    lineId,
+  const totalBaseQty = calculateTotalBaseQty(
+    { caseRatio: line.caseRatio, packRatio: line.packRatio },
     qtyCase,
     qtyPack,
     qtyPiece,
-    totalBaseQty,
-    note: null,
-    revision: (existing?.revision ?? 0) + 1,
-    updatedAt: now,
-    updatedBy: session.userId,
-  };
+  );
+  const now = new Date();
 
-  if (existing) {
-    Object.assign(existing, entry);
-  } else {
-    db.entries.push(entry);
-  }
+  const saved = await prisma.countEntry.upsert({
+    where: { lineId },
+    create: {
+      lineId,
+      qtyCase,
+      qtyPack,
+      qtyPiece,
+      totalBaseQty,
+      note: null,
+      revision: 1,
+      updatedAt: now,
+      updatedBy: session.userId,
+    },
+    update: {
+      qtyCase,
+      qtyPack,
+      qtyPiece,
+      totalBaseQty,
+      note: null,
+      revision: (existing?.revision ?? 0) + 1,
+      updatedAt: now,
+      updatedBy: session.userId,
+    },
+  });
 
-  doc.countedLines = countLinesForDocument(documentId);
-  doc.updatedAt = now;
+  const countedLines = await countCountedLines(documentId, versionId);
+  await prisma.countDocument.update({
+    where: { id: documentId },
+    data: {
+      countedLines,
+      updatedAt: now,
+    },
+  });
 
-  logAutoSave(
+  await logAutoSave(
     session.userId,
     session.userName,
     doc.branchId,
@@ -111,16 +122,16 @@ function applyEntrySave(
     lineId,
   );
 
-  return { status: "SAVED", entry };
+  return { status: "SAVED", entry: mapCountEntry(saved) };
 }
 
-export function saveEntry(
+export async function saveEntry(
   session: MockSession,
   documentId: string,
   versionId: string,
   lineId: string,
   payload: SaveEntryPayload,
-): SaveEntryResponse | { error: string } {
+): Promise<SaveEntryResponse | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
@@ -128,12 +139,12 @@ export function saveEntry(
   return applyEntrySave(session, documentId, versionId, lineId, payload);
 }
 
-export function saveEntriesBatch(
+export async function saveEntriesBatch(
   session: MockSession,
   documentId: string,
   versionId: string,
   items: BatchSaveEntryItem[],
-): BatchSaveEntryResponse | { error: string } {
+): Promise<BatchSaveEntryResponse | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
@@ -146,7 +157,7 @@ export function saveEntriesBatch(
 
   for (const item of items) {
     const { lineId, ...payload } = item;
-    const result = applyEntrySave(
+    const result = await applyEntrySave(
       session,
       documentId,
       versionId,

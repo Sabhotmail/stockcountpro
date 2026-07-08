@@ -14,7 +14,7 @@ export async function GET(
   }
 
   const { documentId, versionId } = await params;
-  const result = getVersionDetail(session, documentId, versionId);
+  const result = await getVersionDetail(session, documentId, versionId);
 
   if ("error" in result) {
     const status =

@@ -12,7 +12,7 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  const result = startCount(session, documentId);
+  const result = await startCount(session, documentId);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

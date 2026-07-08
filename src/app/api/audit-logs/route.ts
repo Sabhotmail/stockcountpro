@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const result = getAuditLogsForDocumentSession(session, documentId);
+  const result = await getAuditLogsForDocumentSession(session, documentId);
   if ("error" in result) {
     const status = result.error === "Access denied" ? 403 : 404;
     return NextResponse.json({ error: result.error }, { status });

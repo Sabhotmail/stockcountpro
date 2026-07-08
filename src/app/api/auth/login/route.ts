@@ -9,12 +9,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
-  const session = buildSessionFromUserId(body.userId);
+  const session = await buildSessionFromUserId(body.userId);
   if (!session) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  logLogin(session.userId, session.userName);
+  await logLogin(session.userId, session.userName);
 
   const response = NextResponse.json({ session });
   response.headers.set("Set-Cookie", serializeSessionCookie(session));

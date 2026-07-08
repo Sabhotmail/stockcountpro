@@ -1,6 +1,6 @@
-import { getUserById } from "@/mock/users";
 import { MOCK_SESSION_COOKIE } from "@/lib/mock-session";
 import type { MockSession } from "@/types/user";
+import { getUserById } from "@/services/user.service";
 import { cookies } from "next/headers";
 
 export async function getServerSession(): Promise<MockSession | null> {
@@ -15,8 +15,10 @@ export async function getServerSession(): Promise<MockSession | null> {
   }
 }
 
-export function buildSessionFromUserId(userId: string): MockSession | null {
-  const user = getUserById(userId);
+export async function buildSessionFromUserId(
+  userId: string,
+): Promise<MockSession | null> {
+  const user = await getUserById(userId);
   if (!user) return null;
 
   return {

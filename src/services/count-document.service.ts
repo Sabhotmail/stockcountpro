@@ -1,21 +1,25 @@
-import { getBranchById } from "@/mock/branches";
-import { getMockDb } from "@/mock/mock-db";
+import {
+  mapBranch,
+  mapCountDocument,
+  mapCountEntry,
+  mapCountVersion,
+  mapProductLine,
+} from "@/lib/db/mappers";
 import { getDocumentForSession } from "@/lib/document-access";
+import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
 import {
   canAccessBranch,
   canMutateCount,
   filterDocumentsForStaff,
 } from "@/lib/permissions";
 import { filterLinesForRole } from "@/lib/product-line-filter";
+import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
-import {
-  logStartCount,
-  logSubmit,
-} from "@/services/audit-log.service";
-import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
+import { logStartCount, logSubmit } from "@/services/audit-log.service";
 import {
   DocumentStatus,
   VersionStatus,
+  type CountDocument,
   type CountDocumentDetail,
   type CountDocumentListItem,
   type CountEntry,
@@ -25,34 +29,45 @@ import {
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 
-function enrichDocument(doc: ReturnType<typeof getMockDb>["documents"][0]): CountDocumentListItem {
-  const branch = getBranchById(doc.branchId)!;
+async function getBranch(branchId: string) {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  return branch ? mapBranch(branch) : null;
+}
+
+async function enrichDocument(doc: CountDocument): Promise<CountDocumentListItem> {
+  const branch = await getBranch(doc.branchId);
   return {
     ...doc,
-    branchCode: branch.code,
-    branchName: branch.name,
+    branchCode: branch?.code ?? "",
+    branchName: branch?.name ?? "",
   };
 }
 
-export function countCountedLines(documentId: string, versionId: string | null): number {
-  if (!versionId) return 0;
-  const db = getMockDb();
-  const lines = db.productLines[documentId] ?? [];
-  const entries = db.entries.filter((e) =>
-    lines.some((l) => l.lineId === e.lineId),
-  );
+export async function countCountedLines(
+  documentId: string,
+  _versionId: string | null,
+): Promise<number> {
+  const lines = await prisma.productLine.findMany({
+    where: { documentId },
+    include: { entry: true },
+  });
 
   return lines.filter((line) => {
-    const entry = entries.find((e) => e.lineId === line.lineId);
+    const entry = line.entry;
     if (!entry) return false;
     return isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece);
   }).length;
 }
 
-export function listDocumentsForUser(session: MockSession): CountDocumentListItem[] {
-  const db = getMockDb();
+export async function listDocumentsForUser(
+  session: MockSession,
+): Promise<CountDocumentListItem[]> {
+  const documents = await prisma.countDocument.findMany({
+    orderBy: { documentDate: "desc" },
+  });
 
-  return db.documents
+  const filtered = documents
+    .map(mapCountDocument)
     .filter((doc) => {
       if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
         return false;
@@ -68,61 +83,71 @@ export function listDocumentsForUser(session: MockSession): CountDocumentListIte
       }
 
       return true;
-    })
-    .map((doc) => {
-      const enriched = enrichDocument(doc);
-      enriched.countedLines = countCountedLines(doc.id, doc.currentVersionId);
-      return enriched;
-    })
-    .sort((a, b) => b.documentDate.localeCompare(a.documentDate));
+    });
+
+  const result: CountDocumentListItem[] = [];
+  for (const doc of filtered) {
+    const enriched = await enrichDocument(doc);
+    enriched.countedLines = await countCountedLines(doc.id, doc.currentVersionId);
+    result.push(enriched);
+  }
+
+  return result;
 }
 
-export function getDocumentDetail(
+export async function getDocumentDetail(
   session: MockSession,
   documentId: string,
-): CountDocumentDetail | null {
-  const access = getDocumentForSession(session, documentId);
+): Promise<CountDocumentDetail | null> {
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return null;
 
   const doc = access.document;
-  const db = getMockDb();
-  const branch = getBranchById(doc.branchId)!;
-  const version = doc.currentVersionId
-    ? db.versions.find((v) => v.id === doc.currentVersionId) ?? null
+  const branch = await getBranch(doc.branchId);
+  const versionRow = doc.currentVersionId
+    ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
     : null;
 
   const lines = filterLinesForRole(
-    db.productLines[documentId] ?? [],
+    (
+      await prisma.productLine.findMany({
+        where: { documentId },
+        orderBy: { lineNo: "asc" },
+      })
+    ).map(mapProductLine),
     session.role,
   );
 
-  const lineIds = new Set(lines.map((l) => l.lineId));
-  const entries = db.entries.filter((e) => lineIds.has(e.lineId));
+  const lineIds = lines.map((line) => line.lineId);
+  const entries = (
+    await prisma.countEntry.findMany({
+      where: { lineId: { in: lineIds } },
+    })
+  ).map(mapCountEntry);
 
   return {
     ...doc,
-    branchCode: branch.code,
-    branchName: branch.name,
-    version,
+    branchCode: branch?.code ?? "",
+    branchName: branch?.name ?? "",
+    version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries,
-    countedLines: countCountedLines(documentId, doc.currentVersionId),
+    countedLines: await countCountedLines(documentId, doc.currentVersionId),
   };
 }
 
-export function startCount(
+export async function startCount(
   session: MockSession,
   documentId: string,
-): CountDocumentDetail | { error: string } {
+): Promise<CountDocumentDetail | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
-  const access = getDocumentForSession(session, documentId);
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
-  const db = getMockDb();
   if (
     doc.status === DocumentStatus.COMPLETED ||
     doc.status === DocumentStatus.SUBMITTED
@@ -131,33 +156,41 @@ export function startCount(
   }
 
   if (doc.status === DocumentStatus.RECOUNT_REQUESTED && doc.currentVersionId) {
-    const detail = getDocumentDetail(session, documentId);
+    const detail = await getDocumentDetail(session, documentId);
     return detail ?? { error: "Document not found" };
   }
 
   if (doc.currentVersionId) {
-    const detail = getDocumentDetail(session, documentId);
+    const detail = await getDocumentDetail(session, documentId);
     return detail ?? { error: "Document not found" };
   }
 
   const versionId = `ver_${documentId}_v1`;
-  const now = new Date().toISOString();
+  const now = new Date();
 
-  db.versions.push({
-    id: versionId,
-    documentId,
-    versionNo: 1,
-    status: VersionStatus.DRAFT,
-    createdAt: now,
-    createdBy: session.userId,
-  });
+  await prisma.$transaction([
+    prisma.countVersion.create({
+      data: {
+        id: versionId,
+        documentId,
+        versionNo: 1,
+        status: VersionStatus.DRAFT,
+        createdAt: now,
+        createdBy: session.userId,
+      },
+    }),
+    prisma.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.COUNTING,
+        currentVersionId: versionId,
+        currentVersionNo: 1,
+        updatedAt: now,
+      },
+    }),
+  ]);
 
-  doc.status = DocumentStatus.COUNTING;
-  doc.currentVersionId = versionId;
-  doc.currentVersionNo = 1;
-  doc.updatedAt = now;
-
-  logStartCount(
+  await logStartCount(
     session.userId,
     session.userName,
     doc.branchId,
@@ -165,25 +198,24 @@ export function startCount(
     versionId,
   );
 
-  const detail = getDocumentDetail(session, documentId);
+  const detail = await getDocumentDetail(session, documentId);
   return detail ?? { error: "Document not found" };
 }
 
-export function submitVersion(
+export async function submitVersion(
   session: MockSession,
   documentId: string,
   versionId: string,
-): { success: true } | { error: string } {
+): Promise<{ success: true } | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
-  const access = getDocumentForSession(session, documentId);
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
-  const db = getMockDb();
-  const version = db.versions.find((v) => v.id === versionId);
+  const version = await prisma.countVersion.findUnique({ where: { id: versionId } });
   if (!version || version.documentId !== documentId) {
     return { error: "Version not found" };
   }
@@ -192,18 +224,30 @@ export function submitVersion(
     return { error: "Version is not editable" };
   }
 
-  // TODO: Block submit if pending offline sync exists
-  const now = new Date().toISOString();
-  version.status = VersionStatus.SUBMITTED;
-  version.submittedAt = now;
-  version.submittedBy = session.userId;
-  doc.status = DocumentStatus.SUBMITTED;
-  doc.updatedAt = now;
-  doc.countedLines = countCountedLines(documentId, versionId);
+  const now = new Date();
+  const countedLines = await countCountedLines(documentId, versionId);
 
-  snapshotDocumentEntries(documentId, versionId);
+  await prisma.$transaction([
+    prisma.countVersion.update({
+      where: { id: versionId },
+      data: {
+        status: VersionStatus.SUBMITTED,
+        submittedAt: now,
+        submittedBy: session.userId,
+      },
+    }),
+    prisma.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.SUBMITTED,
+        countedLines,
+        updatedAt: now,
+      },
+    }),
+  ]);
 
-  logSubmit(
+  await snapshotDocumentEntries(documentId, versionId);
+  await logSubmit(
     session.userId,
     session.userName,
     doc.branchId,
@@ -214,16 +258,16 @@ export function submitVersion(
   return { success: true };
 }
 
-export function saveDocumentNote(
+export async function saveDocumentNote(
   session: MockSession,
   documentId: string,
   note: string | null,
-): { success: true; note: string | null } | { error: string } {
+): Promise<{ success: true; note: string | null } | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
 
-  const access = getDocumentForSession(session, documentId);
+  const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
@@ -231,17 +275,23 @@ export function saveDocumentNote(
     return { error: "Document is completed" };
   }
 
-  doc.note = note?.trim() ? note.trim() : null;
-  doc.updatedAt = new Date().toISOString();
+  const normalizedNote = note?.trim() ? note.trim() : null;
+  await prisma.countDocument.update({
+    where: { id: documentId },
+    data: {
+      note: normalizedNote,
+      updatedAt: new Date(),
+    },
+  });
 
-  return { success: true, note: doc.note };
+  return { success: true, note: normalizedNote };
 }
 
-export function getDocumentSummary(
+export async function getDocumentSummary(
   session: MockSession,
   documentId: string,
-): CountSummary | { error: string } {
-  const detail = getDocumentDetail(session, documentId);
+): Promise<CountSummary | { error: string }> {
+  const detail = await getDocumentDetail(session, documentId);
   if (!detail) return { error: "Document not found" };
 
   const summaryLines: CountSummaryLine[] = detail.lines.map((line) => {
@@ -275,12 +325,19 @@ export function getDocumentSummary(
   };
 }
 
-export function getEntriesForDocument(
+export async function getEntriesForDocument(
   documentId: string,
-  versionId: string,
-): CountEntry[] {
-  const db = getMockDb();
-  const lines = db.productLines[documentId] ?? [];
-  const lineIds = new Set(lines.map((l) => l.lineId));
-  return db.entries.filter((e) => lineIds.has(e.lineId));
+  _versionId: string,
+): Promise<CountEntry[]> {
+  const lines = await prisma.productLine.findMany({
+    where: { documentId },
+    select: { lineId: true },
+  });
+  const lineIds = lines.map((line) => line.lineId);
+
+  return (
+    await prisma.countEntry.findMany({
+      where: { lineId: { in: lineIds } },
+    })
+  ).map(mapCountEntry);
 }

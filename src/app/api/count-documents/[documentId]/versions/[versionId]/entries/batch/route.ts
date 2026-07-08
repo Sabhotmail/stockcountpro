@@ -25,7 +25,7 @@ export async function POST(
     );
   }
 
-  const result = saveEntriesBatch(session, documentId, versionId, items);
+  const result = await saveEntriesBatch(session, documentId, versionId, items);
 
   if ("error" in result) {
     const status =

@@ -14,7 +14,7 @@ export async function POST(
 
   const { documentId } = await params;
   const payload = (await request.json()) as RecountRequestPayload;
-  const result = requestRecount(session, documentId, payload);
+  const result = await requestRecount(session, documentId, payload);
 
   if ("error" in result) {
     const status =
