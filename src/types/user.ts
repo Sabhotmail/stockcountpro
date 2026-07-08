@@ -20,6 +20,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
+  isActive: boolean;
   branchIds: string[];
 }
 
