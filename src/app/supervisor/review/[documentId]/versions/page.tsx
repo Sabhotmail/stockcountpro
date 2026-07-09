@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
@@ -31,36 +31,44 @@ export default function SupervisorVersionsPage() {
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadVersions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/count-documents/${documentId}/versions`);
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to load versions");
-      const data = await res.json();
-      const list = data.versions as CountVersion[];
-      setVersions(list);
-      if (list.length >= 2) {
-        setFromVersion(list[list.length - 2].versionNo);
-        setToVersion(list[list.length - 1].versionNo);
-      } else if (list.length === 1) {
-        setFromVersion(list[0].versionNo);
-        setToVersion(list[0].versionNo);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId, router]);
-
   useEffect(() => {
-    loadVersions();
-  }, [loadVersions]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/count-documents/${documentId}/versions`);
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load versions");
+        const data = await res.json();
+        const list = data.versions as CountVersion[];
+        if (cancelled) return;
+        setVersions(list);
+        if (list.length >= 2) {
+          setFromVersion(list[list.length - 2].versionNo);
+          setToVersion(list[list.length - 1].versionNo);
+        } else if (list.length === 1) {
+          setFromVersion(list[0].versionNo);
+          setToVersion(list[0].versionNo);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, router]);
 
   const canCompare = useMemo(
     () =>

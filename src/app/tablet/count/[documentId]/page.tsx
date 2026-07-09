@@ -32,6 +32,55 @@ import {
 
 const AUTO_SAVE_DELAY_MS = 1000;
 
+function CountLineRow({
+  line,
+  locks,
+  currentUserId,
+  entry,
+  syncStatus,
+  isEditable,
+  conflictMessage,
+  onAcceptServer,
+  onEditStart,
+  onEditEnd,
+  onQtyChange,
+}: {
+  line: ProductLine;
+  locks: Record<string, LineLockInfo>;
+  currentUserId: string | null;
+  entry: CountEntry | undefined;
+  syncStatus: SyncStatus;
+  isEditable: boolean;
+  conflictMessage: string | null;
+  onAcceptServer: () => void;
+  onEditStart: () => void;
+  onEditEnd: () => void;
+  onQtyChange: (field: "qtyCase" | "qtyPack" | "qtyPiece", value: number | null) => void;
+}) {
+  const lock = locks[line.lineId];
+  const lockHeldByOther =
+    lock &&
+    lock.lockedByUserId !== currentUserId &&
+    new Date(lock.expiresAt) > new Date()
+      ? lock.lockedByUserName
+      : null;
+
+  return (
+    <ProductCard
+      line={line}
+      entry={entry}
+      syncStatus={syncStatus}
+      disabled={!isEditable || !!lockHeldByOther}
+      lockHeldByOther={lockHeldByOther}
+      conflictMessage={conflictMessage}
+      onAcceptServer={onAcceptServer}
+      onEditStart={onEditStart}
+      onEditEnd={onEditEnd}
+      onQtyChange={onQtyChange}
+    />
+  );
+}
+
 export default function TabletCountPage() {
   const params = useParams<{ documentId: string }>();
   const router = useRouter();
@@ -144,33 +193,51 @@ export default function TabletCountPage() {
     return (await res.json()) as CountDocumentWithLocksResponse;
   }, [documentId, router]);
 
-  const loadDocument = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchDocumentWithLocks();
-      if (!data) return;
-
-      const doc = data.document as CountDocumentDetail;
-      setDocument(doc);
-      setDocumentNote(doc.note ?? "");
-      setLocks(parseLocks(data.locks ?? []));
-
-      const entryMap: Record<string, CountEntry> = {};
-      for (const entry of doc.entries) {
-        entryMap[entry.lineId] = entry;
-      }
-      setEntries(entryMap);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchDocumentWithLocks, parseLocks]);
-
   useEffect(() => {
-    loadDocument();
-  }, [loadDocument]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/count-documents/${documentId}`);
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load document");
+        const data = (await res.json()) as CountDocumentWithLocksResponse;
+
+        const doc = data.document as CountDocumentDetail;
+        const lockMap: Record<string, LineLockInfo> = {};
+        for (const lock of data.locks ?? []) {
+          lockMap[lock.lineId] = lock;
+        }
+
+        const entryMap: Record<string, CountEntry> = {};
+        for (const entry of doc.entries) {
+          entryMap[entry.lineId] = entry;
+        }
+
+        if (cancelled) return;
+        setDocument(doc);
+        setDocumentNote(doc.note ?? "");
+        setLocks(lockMap);
+        setEntries(entryMap);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, router]);
 
   const markOverwriteNotified = useCallback(
     (
@@ -726,37 +793,26 @@ export default function TabletCountPage() {
 
         <div className="flex flex-col gap-3">
           {filteredLines.map((line) => (
-            (() => {
-              const lock = locks[line.lineId];
-              const lockHeldByOther =
-                lock &&
-                lock.lockedByUserId !== currentUserId &&
-                new Date(lock.expiresAt) > new Date()
-                  ? lock.lockedByUserName
-                  : null;
-
-              return (
-                <ProductCard
-                  key={line.lineId}
-                  line={line}
-                  entry={entries[line.lineId]}
-                  syncStatus={syncStatusByLine[line.lineId] ?? "idle"}
-                  disabled={!isEditable || !!lockHeldByOther}
-                  lockHeldByOther={lockHeldByOther}
-                  conflictMessage={conflictByLine[line.lineId] ?? null}
-                  onAcceptServer={() => acceptServerEntry(line.lineId)}
-                  onEditStart={() => {
-                    void ensureLock(line.lineId);
-                  }}
-                  onEditEnd={() => {
-                    void releaseLock(line.lineId);
-                  }}
-                  onQtyChange={(field, value) => {
-                    void updateEntry(line, field, value);
-                  }}
-                />
-              );
-            })()
+            <CountLineRow
+              key={line.lineId}
+              line={line}
+              locks={locks}
+              currentUserId={currentUserId}
+              entry={entries[line.lineId]}
+              syncStatus={syncStatusByLine[line.lineId] ?? "idle"}
+              isEditable={isEditable}
+              conflictMessage={conflictByLine[line.lineId] ?? null}
+              onAcceptServer={() => acceptServerEntry(line.lineId)}
+              onEditStart={() => {
+                void ensureLock(line.lineId);
+              }}
+              onEditEnd={() => {
+                void releaseLock(line.lineId);
+              }}
+              onQtyChange={(field, value) => {
+                void updateEntry(line, field, value);
+              }}
+            />
           ))}
 
           {filteredLines.length === 0 && (

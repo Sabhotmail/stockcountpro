@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -45,7 +45,7 @@ export default function TabletDocumentsPage() {
   const [syncing, setSyncing] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
 
-  const loadDocuments = useCallback(async () => {
+  async function loadDocuments() {
     setLoading(true);
     setError(null);
     try {
@@ -62,11 +62,37 @@ export default function TabletDocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }
 
   useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/count-documents");
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load documents");
+        const data = await res.json();
+        if (!cancelled) setDocuments(data.documents);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const filtered = useMemo(() => {
     return documents.filter((doc) => {

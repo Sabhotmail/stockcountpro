@@ -1,3 +1,11 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDateTimeShortTH } from "@/lib/datetime";
 import type { CountVersion } from "@/types/count";
 import { VersionStatus } from "@/types/count";
@@ -13,46 +21,42 @@ const statusLabels: Record<VersionStatus, string> = {
 export function VersionCompareTable({ versions }: { versions: CountVersion[] }) {
   if (versions.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500">ยังไม่มีเวอร์ชัน</p>
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        ยังไม่มีเวอร์ชัน
+      </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-slate-600">
-          <tr>
-            <th className="px-3 py-2 font-medium">เวอร์ชัน</th>
-            <th className="px-3 py-2 font-medium">สถานะ</th>
-            <th className="px-3 py-2 font-medium">สร้างโดย</th>
-            <th className="px-3 py-2 font-medium">สร้างเมื่อ</th>
-            <th className="px-3 py-2 font-medium">ส่งเมื่อ</th>
-            <th className="px-3 py-2 font-medium">อ้างอิง</th>
-          </tr>
-        </thead>
-        <tbody>
-          {versions.map((version) => (
-            <tr key={version.id} className="border-t border-slate-100">
-              <td className="px-3 py-2 font-semibold text-slate-900">
-                V{version.versionNo}
-              </td>
-              <td className="px-3 py-2 text-slate-700">
-                {statusLabels[version.status]}
-              </td>
-              <td className="px-3 py-2 text-slate-600">{version.createdBy}</td>
-              <td className="px-3 py-2 text-slate-500">
-                {formatDateTimeShortTH(version.createdAt)}
-              </td>
-              <td className="px-3 py-2 text-slate-500">
-                {formatDateTimeShortTH(version.submittedAt)}
-              </td>
-              <td className="px-3 py-2 text-slate-500">
-                {version.baseVersionId ?? "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>เวอร์ชัน</TableHead>
+          <TableHead>สถานะ</TableHead>
+          <TableHead>สร้างโดย</TableHead>
+          <TableHead>สร้างเมื่อ</TableHead>
+          <TableHead>ส่งเมื่อ</TableHead>
+          <TableHead>อ้างอิง</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {versions.map((version) => (
+          <TableRow key={version.id}>
+            <TableCell className="font-semibold">V{version.versionNo}</TableCell>
+            <TableCell>{statusLabels[version.status]}</TableCell>
+            <TableCell>{version.createdBy}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {formatDateTimeShortTH(version.createdAt)}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {formatDateTimeShortTH(version.submittedAt)}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {version.baseVersionId ?? "—"}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

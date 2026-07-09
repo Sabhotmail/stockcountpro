@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { PageShell } from "@/components/PageShell";
@@ -30,33 +30,40 @@ export default function SupervisorReviewPage() {
   const [showRecountModal, setShowRecountModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
 
-  const loadReview = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/supervisor/count-documents/${documentId}/review`,
-      );
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Failed to load review");
-      }
-      const data = await res.json();
-      setReview(data.review);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId, router]);
-
   useEffect(() => {
-    loadReview();
-  }, [loadReview]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/supervisor/count-documents/${documentId}/review`,
+        );
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Failed to load review");
+        }
+        const data = await res.json();
+        if (!cancelled) setReview(data.review);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, router]);
 
   async function handleApprove() {
     if (!review) return;

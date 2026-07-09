@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
@@ -85,32 +85,39 @@ export default function SupervisorDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDocuments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/supervisor/count-documents");
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (res.status === 403) {
-        router.push("/tablet/documents");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to load documents");
-      const data = await res.json();
-      setDocuments(data.documents);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/supervisor/count-documents");
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (res.status === 403) {
+          router.push("/tablet/documents");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load documents");
+        const data = await res.json();
+        if (!cancelled) setDocuments(data.documents);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });

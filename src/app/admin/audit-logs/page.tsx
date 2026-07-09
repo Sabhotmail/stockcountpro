@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { LogoutButton, PageShell } from "@/components/PageShell";
@@ -19,15 +19,42 @@ export default function AdminAuditLogsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadLogs = useCallback(
-    async (filterDocumentId?: string) => {
+  async function loadLogs(filterDocumentId?: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const query = filterDocumentId
+        ? `?documentId=${encodeURIComponent(filterDocumentId)}`
+        : "";
+      const res = await fetch(`/api/admin/audit-logs${query}`, {
+        credentials: "same-origin",
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (res.status === 403) {
+        router.push("/tablet/documents");
+        return;
+      }
+      if (!res.ok) throw new Error("Failed to load audit logs");
+      const data = await res.json();
+      setLogs(data.logs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Load failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
       setLoading(true);
       setError(null);
       try {
-        const query = filterDocumentId
-          ? `?documentId=${encodeURIComponent(filterDocumentId)}`
-          : "";
-        const res = await fetch(`/api/admin/audit-logs${query}`, {
+        const res = await fetch("/api/admin/audit-logs", {
           credentials: "same-origin",
         });
         if (res.status === 401) {
@@ -40,19 +67,21 @@ export default function AdminAuditLogsPage() {
         }
         if (!res.ok) throw new Error("Failed to load audit logs");
         const data = await res.json();
-        setLogs(data.logs);
+        if (!cancelled) setLogs(data.logs);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Load failed");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    },
-    [router],
-  );
+    }
 
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });

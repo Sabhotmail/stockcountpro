@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -22,32 +22,39 @@ export default function AdminBranchesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadBranches = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/branches", { credentials: "same-origin" });
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (res.status === 403) {
-        router.push("/tablet/documents");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to load branches");
-      const data = await res.json();
-      setBranches(data.branches);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   useEffect(() => {
-    loadBranches();
-  }, [loadBranches]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/admin/branches", { credentials: "same-origin" });
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (res.status === 403) {
+          router.push("/tablet/documents");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load branches");
+        const data = await res.json();
+        if (!cancelled) setBranches(data.branches);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,33 +30,42 @@ export default function AdminSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const loadSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/settings", { credentials: "same-origin" });
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (res.status === 403) {
-        router.push("/tablet/documents");
-        return;
-      }
-      if (!res.ok) throw new Error("โหลดการตั้งค่าไม่สำเร็จ");
-      const data = await res.json();
-      setSettings(data.settings);
-      setLineLockTtlSeconds(String(data.settings.lineLockTtlSeconds));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "โหลดไม่สำเร็จ");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/admin/settings", { credentials: "same-origin" });
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (res.status === 403) {
+          router.push("/tablet/documents");
+          return;
+        }
+        if (!res.ok) throw new Error("โหลดการตั้งค่าไม่สำเร็จ");
+        const data = await res.json();
+        if (!cancelled) {
+          setSettings(data.settings);
+          setLineLockTtlSeconds(String(data.settings.lineLockTtlSeconds));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "โหลดไม่สำเร็จ");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

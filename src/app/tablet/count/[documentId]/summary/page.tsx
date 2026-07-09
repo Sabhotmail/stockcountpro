@@ -2,8 +2,20 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import {
   DocumentStatus,
   VersionStatus,
@@ -20,28 +32,35 @@ export default function TabletSummaryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/count-documents/${documentId}/summary`);
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to load summary");
-      const data = await res.json();
-      setSummary(data.summary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId, router]);
-
   useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/count-documents/${documentId}/summary`);
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load summary");
+        const data = await res.json();
+        if (!cancelled) setSummary(data.summary);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, router]);
 
   async function handleSubmit() {
     const versionId = summary?.document.currentVersionId;
@@ -68,17 +87,20 @@ export default function TabletSummaryPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">กำลังโหลดสรุป...</p>
+      <div className="flex min-h-screen items-center justify-center bg-muted/40">
+        <p className="text-muted-foreground">กำลังโหลดสรุป...</p>
       </div>
     );
   }
 
   if (!summary) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100">
-        <p className="text-slate-500">ไม่พบเอกสาร</p>
-        <Link href="/tablet/documents" className="text-blue-600">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-muted/40">
+        <p className="text-muted-foreground">ไม่พบเอกสาร</p>
+        <Link
+          href="/tablet/documents"
+          className={buttonVariants({ variant: "link" })}
+        >
           กลับรายการ
         </Link>
       </div>
@@ -91,22 +113,29 @@ export default function TabletSummaryPage() {
     document.version?.status === VersionStatus.DRAFT;
   const hasUncounted = summary.uncountedLines > 0;
 
+  const stats = [
+    { label: "ทั้งหมด", value: summary.totalLines },
+    { label: "นับแล้ว", value: summary.countedLines },
+    { label: "ยังไม่นับ", value: summary.uncountedLines },
+    { label: "นับได้ 0", value: summary.zeroCountLines },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-100 pb-24">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 shadow-sm sm:px-6">
+    <div className="min-h-screen bg-muted/40 pb-24">
+      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 shadow-sm sm:px-6">
         <div className="mx-auto max-w-4xl">
           <Link
             href={`/tablet/count/${documentId}`}
-            className="text-sm text-blue-600 hover:underline"
+            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
           >
             ← กลับไปนับต่อ
           </Link>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
+              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
                 สรุปก่อนส่ง — {document.documentNo}
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {document.branchCode} · เวอร์ชัน {document.currentVersionNo}
               </p>
             </div>
@@ -117,95 +146,91 @@ export default function TabletSummaryPage() {
 
       <main className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-6">
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         <section className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "ทั้งหมด", value: summary.totalLines },
-            { label: "นับแล้ว", value: summary.countedLines },
-            { label: "ยังไม่นับ", value: summary.uncountedLines },
-            { label: "นับได้ 0", value: summary.zeroCountLines },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm"
-            >
-              <p className="text-2xl font-bold text-slate-900">{item.value}</p>
-              <p className="mt-1 text-sm text-slate-500">{item.label}</p>
-            </div>
+          {stats.map((item) => (
+            <Card key={item.label}>
+              <CardContent className="pt-6 text-center">
+                <p className="text-2xl font-bold">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.label}</p>
+              </CardContent>
+            </Card>
           ))}
         </section>
 
         {document.note && (
-          <section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            หมายเหตุเอกสาร: {document.note}
-          </section>
+          <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-900">
+            <AlertDescription>หมายเหตุเอกสาร: {document.note}</AlertDescription>
+          </Alert>
         )}
 
         {hasUncounted && isEditable && (
-          <section className="mb-4 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
-            ยังมี {summary.uncountedLines} รายการที่ยังไม่นับ — สามารถส่งได้
-            แต่ควรตรวจสอบก่อน
-          </section>
+          <Alert className="mb-4 border-orange-200 bg-orange-50 text-orange-800">
+            <AlertDescription>
+              ยังมี {summary.uncountedLines} รายการที่ยังไม่นับ — สามารถส่งได้
+              แต่ควรตรวจสอบก่อน
+            </AlertDescription>
+          </Alert>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="px-4 py-3 font-medium">รหัส</th>
-                  <th className="px-4 py-3 font-medium">ชื่อสินค้า</th>
-                  <th className="px-4 py-3 font-medium text-right">นับได้</th>
-                  <th className="px-4 py-3 font-medium text-center">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">รายการสินค้า</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>รหัส</TableHead>
+                  <TableHead>ชื่อสินค้า</TableHead>
+                  <TableHead className="text-right">นับได้</TableHead>
+                  <TableHead className="text-center">สถานะ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {summary.lines.map((line) => (
-                  <tr key={line.lineId} className="border-t border-slate-100">
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {line.productCode}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {line.productName}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-700">
+                  <TableRow key={line.lineId}>
+                    <TableCell className="font-medium">{line.productCode}</TableCell>
+                    <TableCell>{line.productName}</TableCell>
+                    <TableCell className="text-right">
                       {line.totalBaseQty ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                    </TableCell>
+                    <TableCell className="text-center">
                       {!line.isCounted ? (
                         <span className="text-amber-600">ยังไม่นับ</span>
                       ) : line.isZeroCount ? (
-                        <span className="text-slate-600">นับได้ 0</span>
+                        <span className="text-muted-foreground">นับได้ 0</span>
                       ) : (
                         <span className="text-green-600">นับแล้ว</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href={`/tablet/count/${documentId}`}
-            className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
           >
             แก้ไขการนับ
           </Link>
-          <button
+          <Button
             type="button"
+            size="lg"
+            className="bg-green-600 hover:bg-green-700"
             onClick={handleSubmit}
             disabled={!isEditable || submitting}
-            className="rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40"
           >
             {submitting ? "กำลังส่ง..." : "ยืนยันส่งให้หัวหน้างาน"}
-          </button>
+          </Button>
         </div>
       </main>
     </div>
