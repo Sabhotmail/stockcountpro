@@ -96,6 +96,7 @@ model CountDocument {
   recountRequests  RecountRequest[]
   auditLogs        AuditLog[]
   finalEntries     FinalCountEntry[]
+  lineLocks        CountLineLock[]
 }
 
 model ProductLine {
@@ -119,6 +120,7 @@ model ProductLine {
   entry           CountEntry?
   snapshots       EntrySnapshot[]
   finalEntries    FinalCountEntry[]
+  lineLocks       CountLineLock[]
 
   @@index([documentId])
 }
@@ -150,6 +152,20 @@ model CountEntry {
   updatedAt    DateTime
   updatedBy    String
   line         ProductLine @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
+}
+
+model CountLineLock {
+  documentId       String
+  lineId           String
+  lockedByUserId   String
+  lockedByUserName String
+  expiresAt        DateTime
+  updatedAt        DateTime
+  document         CountDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  line             ProductLine   @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
+
+  @@id([documentId, lineId])
+  @@index([documentId, expiresAt])
 }
 
 model EntrySnapshot {
