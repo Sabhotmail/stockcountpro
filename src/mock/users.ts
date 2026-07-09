@@ -2,6 +2,7 @@ import type { User } from "@/types/user";
 import { UserRole } from "@/types/user";
 
 export const DEFAULT_SEED_PASSWORD = "StockCount1!";
+export const ADMIN_SEED_PASSWORD = "12345678";
 
 export const mockUsers: Array<User & { username: string }> = [
   {

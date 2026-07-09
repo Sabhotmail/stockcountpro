@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
 import { mockBranches } from "../src/mock/branches";
-import { DEFAULT_SEED_PASSWORD, mockUsers } from "../src/mock/users";
+import { DEFAULT_SEED_PASSWORD, ADMIN_SEED_PASSWORD, mockUsers } from "../src/mock/users";
 
 const prisma = new PrismaClient();
 
@@ -38,6 +38,7 @@ async function main() {
   }
 
   const defaultPasswordHash = await hashPassword(DEFAULT_SEED_PASSWORD);
+  const adminPasswordHash = await hashPassword(ADMIN_SEED_PASSWORD);
 
   for (const user of mockUsers) {
     await prisma.user.create({
@@ -45,7 +46,8 @@ async function main() {
         id: user.id,
         username: user.username,
         name: user.name,
-        passwordHash: defaultPasswordHash,
+        passwordHash:
+          user.id === "user_admin" ? adminPasswordHash : defaultPasswordHash,
         role: user.role,
         isActive: true,
         branches: {

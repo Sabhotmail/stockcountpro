@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
     "db:seed": "dotenv -e .env.local -- prisma db seed",
+    "db:set-admin-password": "dotenv -e .env.local -- tsx prisma/set-admin-password.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:reset": "dotenv -e .env.local -- prisma migrate reset",
     "db:deploy": "dotenv -e .env.local -- prisma migrate deploy"
