@@ -7,7 +7,7 @@ import { DocumentStatus } from "@/types/count";
 import type { ExpressStockCountLine } from "@/types/express";
 import type { Branch, MockSession } from "@/types/user";
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+import { parseDateKeyBangkok } from "@/lib/datetime";
 
 export type ExpressSyncBranchResult = {
   branchCode: string;
@@ -26,10 +26,7 @@ export type ExpressSyncResult = {
 };
 
 function parseCountDate(value: string): Date | null {
-  if (!DATE_PATTERN.test(value)) return null;
-
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return parseDateKeyBangkok(value);
 }
 
 function buildDocumentId(branchId: string, countDate: string): string {

@@ -7,6 +7,7 @@ import { CountToast, type CountToastItem } from "@/components/CountToast";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
+import { toIsoInstant } from "@/lib/datetime";
 import {
   convertPieceOverflowToCase,
   isEntryCounted,
@@ -543,7 +544,7 @@ export default function TabletCountPage() {
         totalBaseQty: existing?.totalBaseQty ?? null,
         note: null,
         revision: existing?.revision ?? 0,
-        updatedAt: new Date().toISOString(),
+        updatedAt: toIsoInstant(),
         updatedBy: existing?.updatedBy ?? "",
       },
     }));

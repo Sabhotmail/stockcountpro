@@ -13,6 +13,7 @@ import {
   LINE_LOCK_TTL_MAX_SECONDS,
   LINE_LOCK_TTL_MIN_SECONDS,
 } from "@/lib/count-collab-constants";
+import { formatDateTimeShortTH } from "@/lib/datetime";
 
 type AppSettings = {
   lineLockTtlSeconds: number;
@@ -150,7 +151,7 @@ export default function AdminSettingsPage() {
               {settings?.updatedAt && (
                 <p className="text-xs text-slate-400">
                   แก้ไขล่าสุด:{" "}
-                  {new Date(settings.updatedAt).toLocaleString("th-TH")}
+                  {formatDateTimeShortTH(settings.updatedAt)}
                 </p>
               )}
 

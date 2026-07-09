@@ -1,7 +1,9 @@
 import { DocumentStatus } from "@/types/count";
 import type { CountDocument } from "@/types/count";
 
-const today = new Date().toISOString().split("T")[0];
+import { todayDateKeyBangkok } from "@/lib/datetime";
+
+const today = todayDateKeyBangkok();
 
 export const initialCountDocuments: CountDocument[] = [
   {

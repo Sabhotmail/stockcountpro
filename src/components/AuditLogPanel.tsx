@@ -1,3 +1,4 @@
+import { formatDateTimeShortTH } from "@/lib/datetime";
 import type { AuditLog } from "@/types/audit";
 import { AuditAction } from "@/types/audit";
 import {
@@ -46,7 +47,7 @@ export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
           {logs.map((log, index) => (
             <TableRow key={`${log.id}-${log.createdAt}-${index}`}>
               <TableCell className="whitespace-nowrap text-muted-foreground">
-                {new Date(log.createdAt).toLocaleString("th-TH")}
+                {formatDateTimeShortTH(log.createdAt)}
               </TableCell>
               <TableCell className="font-medium">
                 {actionLabels[log.action]}

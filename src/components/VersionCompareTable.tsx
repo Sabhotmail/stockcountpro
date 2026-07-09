@@ -1,3 +1,4 @@
+import { formatDateTimeShortTH } from "@/lib/datetime";
 import type { CountVersion } from "@/types/count";
 import { VersionStatus } from "@/types/count";
 
@@ -40,12 +41,10 @@ export function VersionCompareTable({ versions }: { versions: CountVersion[] }) 
               </td>
               <td className="px-3 py-2 text-slate-600">{version.createdBy}</td>
               <td className="px-3 py-2 text-slate-500">
-                {new Date(version.createdAt).toLocaleString("th-TH")}
+                {formatDateTimeShortTH(version.createdAt)}
               </td>
               <td className="px-3 py-2 text-slate-500">
-                {version.submittedAt
-                  ? new Date(version.submittedAt).toLocaleString("th-TH")
-                  : "—"}
+                {formatDateTimeShortTH(version.submittedAt)}
               </td>
               <td className="px-3 py-2 text-slate-500">
                 {version.baseVersionId ?? "—"}

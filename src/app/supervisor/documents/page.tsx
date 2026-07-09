@@ -4,15 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { formatDateTimeShortTH } from "@/lib/datetime";
 import type { SupervisorDocumentListItem } from "@/types/count";
-
-function formatSubmittedAt(value: string | null): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("th-TH", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
   return (
@@ -55,7 +48,7 @@ function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
         <div className="col-span-2">
           <dt className="text-slate-500">ส่งเมื่อ</dt>
           <dd className="font-medium text-slate-800">
-            {formatSubmittedAt(doc.submittedAt)}
+            {formatDateTimeShortTH(doc.submittedAt)}
           </dd>
         </div>
       </dl>
@@ -184,7 +177,7 @@ export default function SupervisorDocumentsPage() {
                     {doc.submittedByName ?? "—"}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-500">
-                    {formatSubmittedAt(doc.submittedAt)}
+                    {formatDateTimeShortTH(doc.submittedAt)}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {doc.countedLines}/{doc.totalLines}

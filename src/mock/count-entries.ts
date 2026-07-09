@@ -1,5 +1,6 @@
-import type { CountEntry } from "@/types/count";
+import { toIsoInstant } from "@/lib/datetime";
 import { createProductLinesForDocument } from "@/mock/products";
+import type { CountEntry } from "@/types/count";
 
 function makeEntry(
   lineId: string,
@@ -18,7 +19,7 @@ function makeEntry(
     totalBaseQty,
     note,
     revision: 1,
-    updatedAt: new Date().toISOString(),
+    updatedAt: toIsoInstant(),
     updatedBy: userId,
   };
 }

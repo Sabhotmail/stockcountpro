@@ -1,7 +1,9 @@
 import { fetchExpressCountDate } from "../src/services/express-api.service";
 import { prisma } from "../src/lib/prisma";
 
-const date = process.argv[2] ?? new Date().toISOString().split("T")[0];
+import { todayDateKeyBangkok } from "../src/lib/datetime";
+
+const date = process.argv[2] ?? todayDateKeyBangkok();
 
 async function main() {
   const result = await fetchExpressCountDate(date);

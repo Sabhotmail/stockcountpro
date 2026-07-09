@@ -25,14 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { todayDateKeyBangkok } from "@/lib/datetime";
 import type { ExpressSyncBranchResult } from "@/services/express-sync.service";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
-
-function todayKey(): string {
-  return new Date().toISOString().split("T")[0];
-}
 
 export default function TabletDocumentsPage() {
   const router = useRouter();
@@ -44,7 +41,7 @@ export default function TabletDocumentsPage() {
   const [syncResults, setSyncResults] = useState<ExpressSyncBranchResult[] | null>(
     null,
   );
-  const [countDate, setCountDate] = useState(todayKey());
+  const [countDate, setCountDate] = useState(todayDateKeyBangkok());
   const [syncing, setSyncing] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
 
