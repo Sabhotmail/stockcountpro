@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDocumentDetail } from "@/services/count-document.service";
+import { getDocumentDetailWithLocks } from "@/services/count-document.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function GET(
@@ -12,11 +12,11 @@ export async function GET(
   }
 
   const { documentId } = await params;
-  const detail = await getDocumentDetail(session, documentId);
+  const result = await getDocumentDetailWithLocks(session, documentId);
 
-  if (!detail) {
+  if (!result) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ document: detail });
+  return NextResponse.json(result);
 }

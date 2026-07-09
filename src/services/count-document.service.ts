@@ -16,6 +16,8 @@ import { filterLinesForRole } from "@/lib/product-line-filter";
 import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
 import { logStartCount, logSubmit } from "@/services/audit-log.service";
+import { listActiveLocks } from "@/services/count-line-lock.service";
+import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
   VersionStatus,
@@ -126,6 +128,15 @@ export async function getDocumentDetail(
     })
   ).map(mapCountEntry);
 
+  const userIds = [...new Set(entries.map((e) => e.updatedBy))];
+  const users = await Promise.all(userIds.map((id) => getUserById(id)));
+  const nameById = new Map(users.filter(Boolean).map((u) => [u!.id, u!.name]));
+
+  const enrichedEntries = entries.map((entry) => ({
+    ...entry,
+    updatedByName: nameById.get(entry.updatedBy) ?? entry.updatedBy,
+  }));
+
   return {
     ...doc,
     branchCode: branch?.code ?? "",
@@ -133,9 +144,19 @@ export async function getDocumentDetail(
     branchExpressLocationCode: branch?.expressLocationCode ?? null,
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
-    entries,
+    entries: enrichedEntries,
     countedLines: await countCountedLines(documentId, doc.currentVersionId),
   };
+}
+
+export async function getDocumentDetailWithLocks(
+  session: MockSession,
+  documentId: string,
+) {
+  const document = await getDocumentDetail(session, documentId);
+  if (!document) return null;
+  const locks = await listActiveLocks(documentId);
+  return { document, locks };
 }
 
 export async function startCount(
