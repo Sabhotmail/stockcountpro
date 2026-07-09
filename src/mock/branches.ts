@@ -5,21 +5,21 @@ export const mockBranches: Branch[] = [
     id: "branch_bkk1",
     code: "BKK1",
     name: "กรุงเทพ 1",
-    expressLocationCode: "32D1",
+    expressLocationCodes: ["32D1", "32D2"],
   },
   {
     id: "branch_bkk2",
     code: "BKK2",
     name: "กรุงเทพ 2",
-    expressLocationCode: "32F1",
+    expressLocationCodes: ["32F1"],
   },
   {
     id: "branch_chm",
     code: "CHM",
     name: "เชียงใหม่",
-    expressLocationCode: "32G1",
+    expressLocationCodes: ["32G1"],
   },
-  { id: "branch_srb", code: "SRB", name: "สระบุรี" },
+  { id: "branch_srb", code: "SRB", name: "สระบุรี", expressLocationCodes: [] },
 ];
 
 export function getBranchById(id: string): Branch | undefined {

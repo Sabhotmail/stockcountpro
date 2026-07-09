@@ -25,7 +25,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatExpressLocationCodes } from "@/lib/express-location";
 import type { Branch } from "@/types/user";
+
+function LocationBadges({ codes }: { codes: string[] }) {
+  if (codes.length === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {codes.map((code) => (
+        <span
+          key={code}
+          className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs"
+        >
+          {code}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminBranchesPage() {
   const router = useRouter();
@@ -37,7 +57,8 @@ export default function AdminBranchesPage() {
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
-  const [editExpressCode, setEditExpressCode] = useState("");
+  const [editLocationCodes, setEditLocationCodes] = useState<string[]>([]);
+  const [newLocationInput, setNewLocationInput] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -80,9 +101,26 @@ export default function AdminBranchesPage() {
 
   function openEdit(branch: Branch) {
     setEditBranch(branch);
-    setEditExpressCode(branch.expressLocationCode ?? "");
+    setEditLocationCodes([...branch.expressLocationCodes]);
+    setNewLocationInput("");
     setEditError(null);
     setEditOpen(true);
+  }
+
+  function addLocationCode() {
+    const code = newLocationInput.trim().toUpperCase();
+    if (!code) return;
+    if (editLocationCodes.includes(code)) {
+      setEditError(`รหัส ${code} มีในรายการแล้ว`);
+      return;
+    }
+    setEditError(null);
+    setEditLocationCodes((prev) => [...prev, code].sort());
+    setNewLocationInput("");
+  }
+
+  function removeLocationCode(code: string) {
+    setEditLocationCodes((prev) => prev.filter((item) => item !== code));
   }
 
   async function submitEdit() {
@@ -95,9 +133,7 @@ export default function AdminBranchesPage() {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          expressLocationCode: editExpressCode.trim() || null,
-        }),
+        body: JSON.stringify({ expressLocationCodes: editLocationCodes }),
       });
 
       if (res.status === 401) {
@@ -132,7 +168,7 @@ export default function AdminBranchesPage() {
   return (
     <PageShell
       title="จัดการสาขา"
-      subtitle="รายการสาขาและรหัส Express Location"
+      subtitle="รายการสาขาและรหัส Express Location (หลาย location ต่อสาขาได้)"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<AdminNav />}
     >
@@ -152,14 +188,12 @@ export default function AdminBranchesPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">{branch.code}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-1 text-sm">
+                <CardContent className="space-y-2 text-sm">
                   <p>{branch.name}</p>
-                  <p className="text-muted-foreground">
-                    Express:{" "}
-                    <span className="font-mono">
-                      {branch.expressLocationCode ?? "—"}
-                    </span>
-                  </p>
+                  <div>
+                    <p className="mb-1 text-muted-foreground">Express Locations</p>
+                    <LocationBadges codes={branch.expressLocationCodes} />
+                  </div>
                   <p className="font-mono text-xs text-muted-foreground">{branch.id}</p>
                 </CardContent>
                 <CardFooter>
@@ -169,7 +203,7 @@ export default function AdminBranchesPage() {
                     className="w-full"
                     onClick={() => openEdit(branch)}
                   >
-                    แก้ไข Express Location
+                    จัดการ Express Locations
                   </Button>
                 </CardFooter>
               </Card>
@@ -183,7 +217,7 @@ export default function AdminBranchesPage() {
                   <TableRow>
                     <TableHead>รหัส</TableHead>
                     <TableHead>ชื่อสาขา</TableHead>
-                    <TableHead>Express Location</TableHead>
+                    <TableHead>Express Locations</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead className="text-right">การทำงาน</TableHead>
                   </TableRow>
@@ -193,8 +227,8 @@ export default function AdminBranchesPage() {
                     <TableRow key={branch.id}>
                       <TableCell className="font-semibold">{branch.code}</TableCell>
                       <TableCell>{branch.name}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {branch.expressLocationCode ?? "—"}
+                      <TableCell>
+                        <LocationBadges codes={branch.expressLocationCodes} />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {branch.id}
@@ -218,13 +252,14 @@ export default function AdminBranchesPage() {
       )}
 
       <p className="mt-4 text-sm text-muted-foreground">
-        แก้ไขรหัส Express Location ได้จากปุ่ม Edit — ใช้สำหรับ sync สินค้าจาก Express
+        สาขาหนึ่งสามารถมีหลาย Express Location ได้ — ระบบจะรวมรายการสินค้าจากทุก location
+        เป็นเอกสารนับสต็อกเดียวต่อสาขาต่อวัน
       </p>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>แก้ไข Express Location</DialogTitle>
+            <DialogTitle>จัดการ Express Locations</DialogTitle>
             <DialogDescription>
               {editBranch ? (
                 <>
@@ -241,18 +276,62 @@ export default function AdminBranchesPage() {
             </Alert>
           )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="express-location-code">Express Location Code</Label>
-            <Input
-              id="express-location-code"
-              value={editExpressCode}
-              onChange={(e) => setEditExpressCode(e.target.value.toUpperCase())}
-              placeholder="เช่น 32D1"
-              className="font-mono"
-              autoComplete="off"
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>รหัสที่กำหนดแล้ว</Label>
+              {editLocationCodes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">ยังไม่มี location</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {editLocationCodes.map((code) => (
+                    <div
+                      key={code}
+                      className="flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1 font-mono text-sm"
+                    >
+                      {code}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="h-5 w-5"
+                        onClick={() => removeLocationCode(code)}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <div className="grid flex-1 gap-2">
+                <Label htmlFor="new-location-code">เพิ่ม Location Code</Label>
+                <Input
+                  id="new-location-code"
+                  value={newLocationInput}
+                  onChange={(e) => setNewLocationInput(e.target.value.toUpperCase())}
+                  placeholder="เช่น 32D1"
+                  className="font-mono"
+                  autoComplete="off"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addLocationCode();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button type="button" variant="outline" onClick={addLocationCode}>
+                  เพิ่ม
+                </Button>
+              </div>
+            </div>
+
             <p className="text-xs text-muted-foreground">
-              ปล่อยว่างเพื่อลบการเชื่อม Express — รองรับ A–Z และ 0–9 สูงสุด 16 ตัว
+              รองรับ A–Z และ 0–9 สูงสุด 16 ตัว — ปัจจุบัน{" "}
+              {formatExpressLocationCodes(editLocationCodes) || "ไม่มี"}
             </p>
           </div>
 

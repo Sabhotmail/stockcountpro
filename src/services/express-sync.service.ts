@@ -5,6 +5,7 @@ import { logExpressSync } from "@/services/audit-log.service";
 import { fetchExpressCountDate } from "@/services/express-api.service";
 import { DocumentStatus } from "@/types/count";
 import type { ExpressStockCountLine } from "@/types/express";
+import { mapBranch } from "@/lib/db/mappers";
 import type { Branch, MockSession } from "@/types/user";
 
 import { parseDateKeyBangkok } from "@/lib/datetime";
@@ -82,13 +83,60 @@ function buildExpressBranchLookup(branches: Branch[]): Map<string, Branch> {
   for (const branch of branches) {
     lookup.set(branch.code.toUpperCase(), branch);
 
-    const expressCode = branch.expressLocationCode?.trim().toUpperCase();
-    if (expressCode) {
-      lookup.set(expressCode, branch);
+    for (const expressCode of branch.expressLocationCodes) {
+      const normalized = expressCode.trim().toUpperCase();
+      if (normalized) {
+        lookup.set(normalized, branch);
+      }
     }
   }
 
   return lookup;
+}
+
+async function loadBranchesForExpressLookup(): Promise<Branch[]> {
+  const branches = await prisma.branch.findMany({
+    include: { expressLocations: { orderBy: { locationCode: "asc" } } },
+  });
+  return branches.map(mapBranch);
+}
+
+function aggregateExpressLinesByBranch(
+  groups: Map<string, ExpressStockCountLine[]>,
+  branchByLocationCode: Map<string, Branch>,
+  session: MockSession,
+): {
+  linesByBranchId: Map<string, { branch: Branch; lines: ExpressStockCountLine[] }>;
+  skipped: ExpressSyncBranchResult[];
+} {
+  const linesByBranchId = new Map<
+    string,
+    { branch: Branch; lines: ExpressStockCountLine[] }
+  >();
+  const skipped: ExpressSyncBranchResult[] = [];
+
+  for (const [locationCode, lines] of groups) {
+    const branch = resolveBranchByLocationCode(locationCode, branchByLocationCode);
+    if (!branch) {
+      skipped.push({
+        branchCode: locationCode,
+        status: "skipped",
+        reason: `ไม่พบสาขาในระบบสำหรับ Express LocationCode "${locationCode}"`,
+        lineCount: lines.length,
+      });
+      continue;
+    }
+
+    if (!canAccessBranch(session.role, session.branchIds, branch.id)) {
+      continue;
+    }
+
+    const bucket = linesByBranchId.get(branch.id) ?? { branch, lines: [] };
+    bucket.lines.push(...lines);
+    linesByBranchId.set(branch.id, bucket);
+  }
+
+  return { linesByBranchId, skipped };
 }
 
 function resolveBranchByLocationCode(
@@ -215,34 +263,17 @@ export async function syncExpressCountDate(
 
   const expressLines = expressResult.stockCountData ?? [];
   const groups = groupExpressLinesByLocation(expressLines);
-  const branches = await prisma.branch.findMany();
-  const branchByLocationCode = buildExpressBranchLookup(branches.map((branch) => ({
-    id: branch.id,
-    code: branch.code,
-    name: branch.name,
-    expressLocationCode: branch.expressLocationCode,
-  })));
+  const branches = await loadBranchesForExpressLookup();
+  const branchByLocationCode = buildExpressBranchLookup(branches);
+  const { linesByBranchId, skipped: skippedResults } = aggregateExpressLinesByBranch(
+    groups,
+    branchByLocationCode,
+    session,
+  );
 
-  const results: ExpressSyncBranchResult[] = [];
+  const results: ExpressSyncBranchResult[] = [...skippedResults];
 
-  for (const [locationCode, lines] of groups) {
-    const branch = resolveBranchByLocationCode(locationCode, branchByLocationCode);
-    if (!branch) {
-      results.push({
-        branchCode: locationCode,
-        status: "skipped",
-        reason: `ไม่พบสาขาในระบบสำหรับ Express LocationCode "${locationCode}"`,
-        lineCount: lines.length,
-      });
-      continue;
-    }
-
-    if (
-      !canAccessBranch(session.role, session.branchIds, branch.id)
-    ) {
-      continue;
-    }
-
+  for (const { branch, lines } of linesByBranchId.values()) {
     const result = await upsertImportedDocument(
       branch.id,
       branch.code,
@@ -263,13 +294,13 @@ export async function syncExpressCountDate(
 
   const created = results.filter((item) => item.status === "created").length;
   const updated = results.filter((item) => item.status === "updated").length;
-  const skipped = results.filter((item) => item.status === "skipped").length;
+  const skippedCount = results.filter((item) => item.status === "skipped").length;
 
   await logExpressSync(session.userId, session.userName, countDate, {
     expressLineCount: expressLines.length,
     created,
     updated,
-    skipped,
+    skipped: skippedCount,
   });
 
   return {
@@ -304,28 +335,20 @@ export async function previewExpressCountDate(
 
   const lines = expressResult.stockCountData ?? [];
   const groups = groupExpressLinesByLocation(lines);
-  const branches = await prisma.branch.findMany();
-  const branchByLocationCode = buildExpressBranchLookup(branches.map((branch) => ({
-    id: branch.id,
-    code: branch.code,
-    name: branch.name,
-    expressLocationCode: branch.expressLocationCode,
-  })));
+  const branches = await loadBranchesForExpressLookup();
+  const branchByLocationCode = buildExpressBranchLookup(branches);
+  const { linesByBranchId } = aggregateExpressLinesByBranch(
+    groups,
+    branchByLocationCode,
+    session,
+  );
 
-  const locations = Array.from(groups.entries())
-    .filter(([locationCode]) => {
-      const branch = resolveBranchByLocationCode(locationCode, branchByLocationCode);
-      if (!branch) return false;
-      return canAccessBranch(session.role, session.branchIds, branch.id);
-    })
-    .map(([locationCode, branchLines]) => {
-      const branch = resolveBranchByLocationCode(locationCode, branchByLocationCode);
-      return {
-        branchCode: branch?.code ?? locationCode,
-        expressLocationCode: locationCode,
-        lineCount: branchLines.length,
-      };
-    })
+  const locations = Array.from(linesByBranchId.values())
+    .map(({ branch, lines }) => ({
+      branchCode: branch.code,
+      expressLocationCodes: branch.expressLocationCodes,
+      lineCount: lines.length,
+    }))
     .sort((a, b) => a.branchCode.localeCompare(b.branchCode));
 
   if (locations.length === 0) {

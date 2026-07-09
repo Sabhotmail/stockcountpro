@@ -50,13 +50,15 @@ async function main() {
     );
   }
 
-  const branches = await prisma.branch.findMany();
+  const branches = await prisma.branch.findMany({
+    include: { expressLocations: { orderBy: { locationCode: "asc" } } },
+  });
   console.log(
     "DB branches:",
     branches.map((b) => ({
       code: b.code,
       id: b.id,
-      expressLocationCode: b.expressLocationCode,
+      expressLocationCodes: b.expressLocations.map((item) => item.locationCode),
     })),
   );
 

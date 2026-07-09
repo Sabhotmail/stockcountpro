@@ -17,18 +17,25 @@ async function main() {
   await prisma.countDocument.deleteMany();
   await prisma.userBranch.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.branchExpressLocation.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.countLineLock.deleteMany();
   await prisma.appSetting.deleteMany();
 
-  await prisma.branch.createMany({
-    data: mockBranches.map((branch) => ({
-      id: branch.id,
-      code: branch.code,
-      name: branch.name,
-      expressLocationCode: branch.expressLocationCode ?? null,
-    })),
-  });
+  for (const branch of mockBranches) {
+    await prisma.branch.create({
+      data: {
+        id: branch.id,
+        code: branch.code,
+        name: branch.name,
+        expressLocations: {
+          create: branch.expressLocationCodes.map((locationCode) => ({
+            locationCode,
+          })),
+        },
+      },
+    });
+  }
 
   const defaultPasswordHash = await hashPassword(DEFAULT_SEED_PASSWORD);
 

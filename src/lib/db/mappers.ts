@@ -12,6 +12,7 @@ import type {
   RecountRequest as PrismaRecountRequest,
   RecountRequestItem as PrismaRecountRequestItem,
   User as PrismaUser,
+  BranchExpressLocation as PrismaBranchExpressLocation,
 } from "@prisma/client";
 import type { AuditLog } from "@/types/audit";
 import { AuditAction } from "@/types/audit";
@@ -35,12 +36,18 @@ function toDateOnly(value: Date): string {
   return toDateKeyBangkok(value);
 }
 
-export function mapBranch(branch: PrismaBranch): Branch {
+type BranchWithLocations = PrismaBranch & {
+  expressLocations?: Pick<PrismaBranchExpressLocation, "locationCode">[];
+};
+
+export function mapBranch(branch: BranchWithLocations): Branch {
   return {
     id: branch.id,
     code: branch.code,
     name: branch.name,
-    expressLocationCode: branch.expressLocationCode,
+    expressLocationCodes: (branch.expressLocations ?? [])
+      .map((item) => item.locationCode)
+      .sort(),
   };
 }
 

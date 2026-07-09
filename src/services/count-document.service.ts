@@ -32,7 +32,10 @@ import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 
 async function getBranch(branchId: string) {
-  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  const branch = await prisma.branch.findUnique({
+    where: { id: branchId },
+    include: { expressLocations: { orderBy: { locationCode: "asc" } } },
+  });
   return branch ? mapBranch(branch) : null;
 }
 
@@ -42,7 +45,7 @@ async function enrichDocument(doc: CountDocument): Promise<CountDocumentListItem
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
-    branchExpressLocationCode: branch?.expressLocationCode ?? null,
+    branchExpressLocationCodes: branch?.expressLocationCodes ?? [],
   };
 }
 
@@ -141,7 +144,7 @@ export async function getDocumentDetail(
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
-    branchExpressLocationCode: branch?.expressLocationCode ?? null,
+    branchExpressLocationCodes: branch?.expressLocationCodes ?? [],
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries: enrichedEntries,

@@ -1,4 +1,8 @@
 import { mapBranch } from "@/lib/db/mappers";
+import {
+  normalizeExpressLocationCodes,
+  validateExpressLocationCode,
+} from "@/lib/express-location";
 import { prisma } from "@/lib/prisma";
 import {
   getAuditLogsByDocument,
@@ -11,22 +15,12 @@ import { UserRole } from "@/types/user";
 import { Prisma } from "@prisma/client";
 
 export type UpdateAdminBranchInput = {
-  expressLocationCode: string | null;
+  expressLocationCodes: string[];
 };
 
-function normalizeExpressLocationCode(value: string | null): string | null {
-  if (value === null) return null;
-  const trimmed = value.trim().toUpperCase();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function validateExpressLocationCode(value: string | null): string | null {
-  if (value === null) return null;
-  if (!/^[A-Z0-9]{1,16}$/.test(value)) {
-    return "Express location code must be 1–16 alphanumeric characters";
-  }
-  return null;
-}
+const branchInclude = {
+  expressLocations: { orderBy: { locationCode: "asc" as const } },
+};
 
 export function canAccessAdmin(session: MockSession): boolean {
   return session.role === UserRole.ADMIN || session.role === UserRole.HQ;
@@ -42,6 +36,7 @@ export async function listBranchesForAdmin(session: MockSession) {
 
   const branches = await prisma.branch.findMany({
     orderBy: { code: "asc" },
+    include: branchInclude,
   });
 
   return branches.map(mapBranch);
@@ -54,29 +49,62 @@ export async function updateBranchForAdmin(
 ): Promise<Branch | { error: string }> {
   if (!canAccessAdmin(session)) return { error: "Access denied" };
 
-  if (input.expressLocationCode === undefined) {
-    return { error: "expressLocationCode is required" };
+  if (!Array.isArray(input.expressLocationCodes)) {
+    return { error: "expressLocationCodes must be an array" };
   }
 
-  const expressLocationCode = normalizeExpressLocationCode(
-    input.expressLocationCode,
+  const expressLocationCodes = normalizeExpressLocationCodes(
+    input.expressLocationCodes,
   );
-  const formatError = validateExpressLocationCode(expressLocationCode);
-  if (formatError) return { error: formatError };
+
+  for (const code of expressLocationCodes) {
+    const formatError = validateExpressLocationCode(code);
+    if (formatError) return { error: formatError };
+  }
+
+  const existingBranch = await prisma.branch.findUnique({
+    where: { id: branchId },
+    select: { id: true },
+  });
+  if (!existingBranch) return { error: "Branch not found" };
+
+  if (expressLocationCodes.length > 0) {
+    const conflicts = await prisma.branchExpressLocation.findMany({
+      where: {
+        locationCode: { in: expressLocationCodes },
+        branchId: { not: branchId },
+      },
+      select: { locationCode: true },
+    });
+
+    if (conflicts.length > 0) {
+      return {
+        error: `Express location code "${conflicts[0].locationCode}" is already used by another branch`,
+      };
+    }
+  }
 
   try {
-    const branch = await prisma.branch.update({
-      where: { id: branchId },
-      data: { expressLocationCode },
+    await prisma.$transaction(async (tx) => {
+      await tx.branchExpressLocation.deleteMany({ where: { branchId } });
+
+      if (expressLocationCodes.length > 0) {
+        await tx.branchExpressLocation.createMany({
+          data: expressLocationCodes.map((locationCode) => ({
+            branchId,
+            locationCode,
+          })),
+        });
+      }
     });
+
+    const branch = await prisma.branch.findUniqueOrThrow({
+      where: { id: branchId },
+      include: branchInclude,
+    });
+
     return mapBranch(branch);
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
-      return { error: "Branch not found" };
-    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"

@@ -49,7 +49,8 @@ Allowed roles: `STAFF`, `COUNTER`, `BRANCH_MANAGER`, `ADMIN`, `HQ`
 Rules:
 
 - Groups Express lines by `LocationCode`
-- Matches branches via `expressLocationCode` first, then internal `code`
+- Matches branches via any configured `expressLocationCodes`, then internal `code`
+- Merges lines from all matched locations into **one document per branch per date**
 - Syncs only branches the user can access
 - Creates/updates documents with status `IMPORTED` only
 - Skips documents that already started counting (`COUNTING` or later)
@@ -59,7 +60,7 @@ Rules:
 
 | Express | App |
 |---------|-----|
-| `LocationCode` | Branch `expressLocationCode` (or `code` if matched) |
+| `LocationCode` | Branch `expressLocationCodes[]` (or `code` if matched) |
 | `ProductCode` | `productCode` |
 | `ProductName` | `productName` |
 | `CaseQty` / `PieceQty` | `qtyCase` / `qtyPiece` |
