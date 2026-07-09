@@ -11,10 +11,15 @@ interface ProductCardProps {
   entry: CountEntry | undefined;
   syncStatus: SyncStatus;
   disabled?: boolean;
+  lockHeldByOther?: string | null;
+  conflictMessage?: string | null;
+  onAcceptServer?: () => void;
   onQtyChange: (
     field: "qtyCase" | "qtyPack" | "qtyPiece",
     value: number | null,
   ) => void;
+  onEditStart?: () => void;
+  onEditEnd?: () => void;
 }
 
 function normalizeUnitLabel(raw: string | undefined, fallback: string): string {
@@ -50,7 +55,12 @@ export function ProductCard({
   entry,
   syncStatus,
   disabled,
+  lockHeldByOther,
+  conflictMessage,
+  onAcceptServer,
   onQtyChange,
+  onEditStart,
+  onEditEnd,
 }: ProductCardProps) {
   const counted = entry
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
@@ -72,6 +82,27 @@ export function ProductCard({
         counted ? "border-slate-200" : "border-amber-200 bg-amber-50/30"
       }`}
     >
+      {lockHeldByOther && (
+        <div className="mb-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800">
+          กำลังนับโดย {lockHeldByOther}
+        </div>
+      )}
+
+      {conflictMessage && (
+        <div className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p>{conflictMessage}</p>
+          {onAcceptServer && (
+            <button
+              type="button"
+              onClick={onAcceptServer}
+              className="mt-2 rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white"
+            >
+              ใช้ข้อมูลของระบบ
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-4">
         <ProductImage
           src={line.productImageUrl}
@@ -112,6 +143,8 @@ export function ProductCard({
                 label={line.unitCaseName ?? "ลัง"}
                 value={entry?.qtyCase ?? null}
                 disabled={disabled}
+                onFocus={onEditStart}
+                onBlur={onEditEnd}
                 onChange={(value) => onQtyChange("qtyCase", value)}
               />
             )}
@@ -121,6 +154,8 @@ export function ProductCard({
                 label={line.unitPackName ?? "แพ็ค"}
                 value={entry?.qtyPack ?? null}
                 disabled={disabled}
+                onFocus={onEditStart}
+                onBlur={onEditEnd}
                 onChange={(value) => onQtyChange("qtyPack", value)}
               />
             )}
@@ -130,15 +165,24 @@ export function ProductCard({
                 label={pieceUnitLabel}
                 value={entry?.qtyPiece ?? null}
                 disabled={disabled}
+                onFocus={onEditStart}
+                onBlur={onEditEnd}
                 onChange={(value) => onQtyChange("qtyPiece", value)}
               />
             )}
           </div>
 
           {counted && (
-            <p className="mt-2 text-xs text-slate-500">
-              รวม ({pieceUnitLabel}): {totalBaseQty ?? "—"}
-            </p>
+            <>
+              <p className="mt-2 text-xs text-slate-500">
+                รวม ({pieceUnitLabel}): {totalBaseQty ?? "—"}
+              </p>
+              {entry?.updatedByName && (
+                <p className="mt-1 text-xs text-slate-400">
+                  บันทึกโดย {entry.updatedByName}
+                </p>
+              )}
+            </>
           )}
 
           {conversionNotes.length > 0 && (

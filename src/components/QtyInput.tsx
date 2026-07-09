@@ -4,6 +4,8 @@ interface QtyInputProps {
   onChange: (value: number | null) => void;
   disabled?: boolean;
   compact?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function QtyInput({
@@ -12,6 +14,8 @@ export function QtyInput({
   onChange,
   disabled,
   compact,
+  onFocus,
+  onBlur,
 }: QtyInputProps) {
   if (compact) {
     return (
@@ -24,6 +28,8 @@ export function QtyInput({
           disabled={disabled}
           value={value ?? ""}
           placeholder="—"
+          onFocus={onFocus}
+          onBlur={onBlur}
           onChange={(e) => {
             const raw = e.target.value;
             if (raw === "") {
@@ -55,6 +61,8 @@ export function QtyInput({
         disabled={disabled}
         value={value ?? ""}
         placeholder="—"
+        onFocus={onFocus}
+        onBlur={onBlur}
         onChange={(e) => {
           const raw = e.target.value;
           if (raw === "") {
