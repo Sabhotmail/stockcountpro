@@ -9,7 +9,7 @@ import { mapBranch } from "@/lib/db/mappers";
 import type { Branch, MockSession } from "@/types/user";
 
 import { parseDateKeyBangkok } from "@/lib/datetime";
-import { mapExpressExpectedQty } from "@/lib/express-expected-qty";
+import { mapExpressExpectedQty, mapExpressFieldQty } from "@/lib/express-expected-qty";
 
 export type ExpressSyncBranchResult = {
   branchCode: string;
@@ -78,6 +78,8 @@ function mapExpressLineToProductLine(
       line.TransactionValue,
       line.PhysicalBalance,
     ),
+    expectedQtyCase: mapExpressFieldQty(line.CaseQty),
+    expectedQtyPiece: mapExpressFieldQty(line.PieceQty),
   };
 }
 

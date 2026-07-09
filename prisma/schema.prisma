@@ -125,6 +125,8 @@ model ProductLine {
   allowPack       Boolean
   allowPiece      Boolean
   expectedQty     Int?
+  expectedQtyCase Int?
+  expectedQtyPiece Int?
   document        CountDocument     @relation(fields: [documentId], references: [id], onDelete: Cascade)
   entry           CountEntry?
   snapshots       EntrySnapshot[]

@@ -63,6 +63,20 @@ function getQtyFieldLabel(
   }
 }
 
+function isExpressFieldNotCountedForLine(
+  line: ProductLine,
+  field: "qtyCase" | "qtyPack" | "qtyPiece",
+): boolean {
+  switch (field) {
+    case "qtyCase":
+      return line.expressCaseNotCounted ?? true;
+    case "qtyPiece":
+      return line.expressPieceNotCounted ?? true;
+    case "qtyPack":
+      return true;
+  }
+}
+
 function CountLineRow({
   line,
   locks,
@@ -675,7 +689,12 @@ export default function TabletCountPage() {
     const currentValue = getQtyFieldValue(existing, field);
     if (value === currentValue) return;
 
-    if (requiresQtySaveConfirmation(value)) {
+    if (
+      requiresQtySaveConfirmation(
+        value,
+        isExpressFieldNotCountedForLine(line, field),
+      )
+    ) {
       const gotLock = await ensureLock(line.lineId);
       if (!gotLock) return;
 

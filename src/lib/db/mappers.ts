@@ -96,6 +96,8 @@ export function mapProductLine(line: PrismaProductLine): ProductLine {
     allowPack: line.allowPack,
     allowPiece: line.allowPiece,
     expectedQty: line.expectedQty ?? undefined,
+    expectedQtyCase: line.expectedQtyCase ?? undefined,
+    expectedQtyPiece: line.expectedQtyPiece ?? undefined,
   };
 }
 

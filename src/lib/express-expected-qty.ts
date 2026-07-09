@@ -28,3 +28,18 @@ export function formatExpectedQtyForSupervisor(
   }
   return String(expectedQty);
 }
+
+export function mapExpressFieldQty(
+  value: number | null | undefined,
+): number | null {
+  if (value === undefined || value === null) return null;
+  return Math.round(value);
+}
+
+/** Express CaseQty/PieceQty of -1 means that unit was not counted in Express yet. */
+export function isExpressFieldNotCounted(
+  value: number | null | undefined,
+): boolean {
+  if (value === null || value === undefined) return true;
+  return value === EXPRESS_EXPECTED_NOT_COUNTED;
+}

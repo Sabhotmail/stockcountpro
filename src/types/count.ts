@@ -34,6 +34,12 @@ export interface ProductLine {
   allowPack: boolean;
   allowPiece: boolean;
   expectedQty?: number;
+  expectedQtyCase?: number;
+  expectedQtyPiece?: number;
+  /** Staff API only — Express case qty was -1 or missing. */
+  expressCaseNotCounted?: boolean;
+  /** Staff API only — Express piece qty was -1 or missing. */
+  expressPieceNotCounted?: boolean;
 }
 
 export interface CountEntry {

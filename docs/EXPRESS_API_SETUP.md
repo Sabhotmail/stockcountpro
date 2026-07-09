@@ -63,7 +63,7 @@ Rules:
 | `LocationCode` | Branch `expressLocationCodes[]` (or `code` if matched) |
 | `ProductCode` | `productCode` |
 | `ProductName` | `productName` |
-| `CaseQty` / `PieceQty` | `qtyCase` / `qtyPiece` |
+| `CaseQty` / `PieceQty` | `expectedQtyCase` / `expectedQtyPiece` (internal); `-1` = ยังไม่ตรวจนับในหน่วยนั้น |
 | `CaseUnitFactor` | `caseRatio` |
 | `TransactionValue` | `expectedQty` (supervisor only); `-1` = ยังไม่ตรวจนับใน Express → เก็บเป็น `null` |
 | `CountDate` | `documentDate` |
