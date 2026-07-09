@@ -18,6 +18,8 @@ async function main() {
   await prisma.userBranch.deleteMany();
   await prisma.user.deleteMany();
   await prisma.branch.deleteMany();
+  await prisma.countLineLock.deleteMany();
+  await prisma.appSetting.deleteMany();
 
   await prisma.branch.createMany({
     data: mockBranches.map((branch) => ({
@@ -45,6 +47,14 @@ async function main() {
       },
     });
   }
+
+  await prisma.appSetting.create({
+    data: {
+      id: "default",
+      lineLockTtlSeconds: 30,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 main()

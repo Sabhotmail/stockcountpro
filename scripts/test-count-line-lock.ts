@@ -1,6 +1,11 @@
-import { LINE_LOCK_TTL_MS } from "@/lib/count-collab-constants";
+import { DEFAULT_LINE_LOCK_TTL_SECONDS } from "@/lib/count-collab-constants";
+import { getLineLockTtlMs } from "@/services/app-settings.service";
 
-console.log(`LINE_LOCK_TTL_MS = ${LINE_LOCK_TTL_MS} (${LINE_LOCK_TTL_MS / 1000}s)`);
+console.log(`Default LINE_LOCK_TTL = ${DEFAULT_LINE_LOCK_TTL_SECONDS}s (DB-backed at runtime)`);
+
+getLineLockTtlMs().then((ms) => {
+  console.log(`Current LINE_LOCK_TTL_MS from DB = ${ms} (${ms / 1000}s)`);
+});
 
 console.log(`
 Manual two-user lock test checklist
@@ -19,7 +24,7 @@ Prerequisites:
    - Expect: SaveLockError with message "รายการนี้กำลังถูกนับโดย {A's name}"
 
 3. User A continues editing (lock renewal)
-   - Call acquireOrRenewLineLock again within ${LINE_LOCK_TTL_MS / 1000}s
+   - Call acquireOrRenewLineLock again within configured TTL
    - Expect: lock renewed, expiresAt extended
 
 4. User A saves an entry
@@ -34,7 +39,7 @@ Prerequisites:
    - Call acquireOrRenewLineLock(sessionB, documentId, lineId)
    - Expect: returns LineLockInfo with lockedByUserId = B
 
-7. Lock expiry (wait > ${LINE_LOCK_TTL_MS / 1000}s without renewal)
+7. Lock expiry (wait past configured TTL without renewal)
    - Do not call acquireOrRenewLineLock
    - Call assertCallerHoldsActiveLock(sessionB, documentId, lineId)
    - Expect: SaveLockError with message "การยึดรายการหมดอายุ กรุณาเริ่มนับรายการนี้ใหม่"

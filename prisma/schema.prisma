@@ -239,3 +239,10 @@ model AuditLog {
 
   @@index([documentId, createdAt])
 }
+
+model AppSetting {
+  id                 String   @id @default("default")
+  lineLockTtlSeconds Int      @default(30)
+  updatedAt          DateTime
+  updatedBy          String?
+}

@@ -1,13 +1,14 @@
 import { mapLineLock } from "@/lib/db/mappers";
-import { LINE_LOCK_TTL_MS } from "@/lib/count-collab-constants";
+import { getLineLockTtlMs } from "@/services/app-settings.service";
 import { getDocumentForSession } from "@/lib/document-access";
 import { canMutateCount } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { LineLockInfo } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
-function lockExpiresAt(from = new Date()): Date {
-  return new Date(from.getTime() + LINE_LOCK_TTL_MS);
+async function lockExpiresAt(from = new Date()): Promise<Date> {
+  const ttlMs = await getLineLockTtlMs();
+  return new Date(from.getTime() + ttlMs);
 }
 
 export async function purgeExpiredLocks(documentId: string): Promise<void> {
@@ -49,7 +50,7 @@ export async function acquireOrRenewLineLock(
   });
 
   const now = new Date();
-  const expiresAt = lockExpiresAt(now);
+  const expiresAt = await lockExpiresAt(now);
 
   if (
     existing &&

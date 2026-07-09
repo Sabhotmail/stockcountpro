@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/admin/users", label: "ผู้ใช้" },
   { href: "/admin/branches", label: "สาขา" },
+  { href: "/admin/settings", label: "ตั้งค่า" },
   { href: "/admin/audit-logs", label: "Audit Log" },
   { href: "/tablet/documents", label: "Tablet / Sync" },
   { href: "/supervisor/documents", label: "Supervisor" },
