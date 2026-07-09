@@ -1,0 +1,80 @@
+---
+description: Design specs must be standalone HTML with visual UI mockups — no Markdown spec files
+alwaysApply: true
+---
+
+# Design Specs — HTML Only (with UI Mockups)
+
+When brainstorming, designing features, or writing specs under `docs/superpowers/specs/`:
+
+## Do NOT create `.md` design specs
+
+- **Never** write `docs/superpowers/specs/*.md` or `*-design.md`.
+- If a Markdown spec already exists, convert it to HTML and delete the `.md` file in the same change set.
+- Implementation **plans** in `docs/superpowers/plans/` may stay `.md` unless the user asks otherwise.
+
+## Output format
+
+Create a **single self-contained HTML file**:
+
+```
+docs/superpowers/specs/YYYY-MM-DD-<topic>-design.html
+```
+
+Requirements:
+
+- Valid HTML5, `lang="th"` when UI copy is Thai
+- **Inline CSS** only (no external assets required to open the file)
+- Openable by double-click in a browser
+- Readable typography, tables, code blocks, and section cards
+
+## Required sections
+
+Every design spec HTML must include:
+
+1. **Header** — title, date, owner, scope
+2. **Goals / Non-goals**
+3. **Current state**
+4. **User workflow** (numbered steps)
+5. **UI Details** — see below (mandatory)
+6. **Data model / API** (when applicable)
+7. **Error handling & test checklist**
+
+## UI Details section (mandatory)
+
+Include a dedicated `<section id="ui-details">` with **visual HTML mockups**, not prose-only descriptions.
+
+For each screen, dialog, or major state:
+
+- Build a **wireframe** using HTML + CSS (boxes, borders, placeholder inputs, badges, buttons)
+- Label each mockup: screen name, route, and who can access it
+- Show **key states** when relevant (empty, loading, error, locked, success)
+- Use **real Thai UI copy** from the product (button labels, toasts, banners)
+- Annotate behavior with short callouts beside or below the mockup
+
+Example pattern:
+
+```html
+<section id="ui-details">
+  <h2>UI Details</h2>
+  <h3>หน้านับสินค้า — /tablet/count/[documentId]</h3>
+  <div class="mockup">
+    <div class="mockup-header">CNT-BKK1-20260311 · นับแล้ว 12/414</div>
+    <div class="mockup-card mockup-locked">
+      <span class="badge badge-amber">กำลังนับโดย สมชาย</span>
+      ...
+    </div>
+  </div>
+  <p class="mockup-note">เมื่อ lock หมด 30 วินาที การ์ดกลับเป็นแก้ไขได้</p>
+</section>
+```
+
+Add mockup CSS classes (`.mockup`, `.mockup-card`, `.badge`, `.mockup-note`) in the same file.
+
+## Brainstorming / superpowers override
+
+When `brainstorming` skill says to write `docs/superpowers/specs/*.md`, follow **this rule instead**: write `.html` with UI mockups, then ask the user to review the HTML file.
+
+## Commit
+
+After adding or updating a design spec HTML, commit and push per `commit-and-push` rule.

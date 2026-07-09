@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin User Management — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #2563eb; --accent-soft: #eff6ff;
+      --code-bg: #f1f5f9; --pre-bg: #1e293b; --pre-text: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    h3:first-child { margin-top: 0; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--pre-bg); color: var(--pre-text); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .mockup-screen { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgb(15 23 42 / 8%); }
+    .mockup-topbar { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .mockup-btn { display: inline-block; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; }
+    .mockup-btn-primary { background: var(--accent); color: #fff; }
+    .mockup-btn-ghost { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+    .mockup-btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .mockup-table { width: 100%; font-size: 0.82rem; border-collapse: collapse; }
+    .mockup-table th, .mockup-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .mockup-table th { background: #f8fafc; font-weight: 600; }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; }
+    .badge-green { background: #d1fae5; color: #047857; }
+    .badge-gray { background: #f1f5f9; color: #64748b; }
+    .mockup-dialog { max-width: 420px; margin: 1rem auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgb(15 23 42 / 12%); }
+    .mockup-dialog-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-weight: 700; }
+    .mockup-dialog-body { padding: 1rem 1.25rem; }
+    .mockup-field { margin-bottom: 0.75rem; }
+    .mockup-field label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--muted); }
+    .mockup-field input, .mockup-field select { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; }
+    .mockup-radio { font-size: 0.88rem; margin: 0.35rem 0; }
+    .mockup-dialog-footer { padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .mockup-grid { display: grid; gap: 1rem; }
+    @media (min-width: 720px) { .mockup-grid-2 { grid-template-columns: 1fr 1fr; } }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Admin User Management (Design Spec)</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-07-08</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Admin UI + API จัดการผู้ใช้ (สร้าง/แก้ไข/ปิดใช้งาน/รีเซ็ตรหัสผ่าน)</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals</h2>
+      <ul>
+        <li>หน้า Admin จัดการผู้ใช้: สร้าง, แก้ไข (ชื่อ, role, สาขา), ปิด/เปิดใช้งาน, รีเซ็ตรหัสผ่าน</li>
+        <li>รหัสผ่าน: ตั้งเอง หรือ สุ่ม (แสดงครั้งเดียวให้ copy)</li>
+        <li>ผู้ใช้ที่ปิดใช้งาน login ไม่ได้ (พฤติกรรมเดิม)</li>
+      </ul>
+    </section>
+
+    <section id="non-goals">
+      <h2>Non-goals</h2>
+      <ul>
+        <li>เปลี่ยนรหัสผ่านด้วยตนเอง (self-service)</li>
+        <li>ส่งรหัสผ่านทาง Email/SMS</li>
+        <li>Audit log การแก้ user (phase 2)</li>
+      </ul>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>เส้นทาง: <code>/admin/users</code> · ผู้ใช้: ADMIN, HQ เท่านั้น</p>
+
+      <h3>1) ตารางรายชื่อผู้ใช้</h3>
+      <div class="mockup">
+        <div class="mockup-label">Wireframe — หน้าหลัก</div>
+        <div class="mockup-screen">
+          <div class="mockup-topbar">
+            <strong>จัดการผู้ใช้</strong>
+            <span class="mockup-btn mockup-btn-primary">+ เพิ่มผู้ใช้</span>
+          </div>
+          <table class="mockup-table">
+            <thead>
+              <tr>
+                <th>ชื่อ</th><th>Username</th><th>Role</th><th>สาขา</th><th>สถานะ</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ผู้ดูแลระบบ</td><td>admin</td><td>ADMIN</td><td>ทั้งหมด</td>
+                <td><span class="badge badge-green">ใช้งาน</span></td>
+                <td><span class="mockup-btn mockup-btn-ghost">แก้ไข</span></td>
+              </tr>
+              <tr>
+                <td>พนักงาน BKK1</td><td>bkk1.staff</td><td>STAFF</td><td>1 สาขา</td>
+                <td><span class="badge badge-green">ใช้งาน</span></td>
+                <td><span class="mockup-btn mockup-btn-ghost">แก้ไข</span></td>
+              </tr>
+              <tr>
+                <td>พนักงานเก่า</td><td>old.staff</td><td>STAFF</td><td>1 สาขา</td>
+                <td><span class="badge badge-gray">ปิดใช้งาน</span></td>
+                <td><span class="mockup-btn mockup-btn-ghost">แก้ไข</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mockup-note">คลิก “แก้ไข” เปิด dialog · ปุ่มรีเซ็ตรหัสผ่าน / ปิดใช้งาน อยู่ใน dialog หรือเมนูแถว</p>
+      </div>
+
+      <div class="mockup-grid mockup-grid-2">
+        <div>
+          <h3>2) Dialog — เพิ่มผู้ใช้</h3>
+          <div class="mockup-dialog">
+            <div class="mockup-dialog-header">เพิ่มผู้ใช้</div>
+            <div class="mockup-dialog-body">
+              <div class="mockup-field"><label>ชื่อ *</label><input value="พนักงานใหม่" readonly /></div>
+              <div class="mockup-field"><label>Username *</label><input value="bkk1.new" readonly /></div>
+              <div class="mockup-field"><label>Role *</label><select><option>STAFF</option></select></div>
+              <div class="mockup-field"><label>สาขา *</label><input value="☑ BKK1  ☐ BKK2  ☐ CHM" readonly /></div>
+              <div class="mockup-radio">◉ ตั้งรหัสผ่านเอง</div>
+              <div class="mockup-field"><label>รหัสผ่าน</label><input type="password" value="********" readonly /></div>
+              <div class="mockup-field"><label>ยืนยันรหัสผ่าน</label><input type="password" value="********" readonly /></div>
+              <div class="mockup-radio">○ สุ่มรหัสผ่าน</div>
+            </div>
+            <div class="mockup-dialog-footer">
+              <span class="mockup-btn mockup-btn-ghost">ยกเลิก</span>
+              <span class="mockup-btn mockup-btn-primary">บันทึก</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>3) Dialog — สำเร็จ (รหัสสุ่ม)</h3>
+          <div class="mockup-dialog">
+            <div class="mockup-dialog-header">สร้างผู้ใช้สำเร็จ</div>
+            <div class="mockup-dialog-body">
+              <p style="font-size:0.9rem;margin:0 0 0.75rem">รหัสผ่านแสดงครั้งเดียว — กรุณา copy ให้ผู้ใช้</p>
+              <div class="mockup-field">
+                <label>รหัสผ่าน</label>
+                <input value="Kx9#mP2qLn4!" readonly style="font-family:monospace" />
+              </div>
+              <span class="mockup-btn mockup-btn-ghost">คัดลอก</span>
+            </div>
+            <div class="mockup-dialog-footer">
+              <span class="mockup-btn mockup-btn-primary">ปิด</span>
+            </div>
+          </div>
+          <p class="mockup-note">ใช้รูปแบบเดียวกันเมื่อรีเซ็ตรหัสผ่านแบบสุ่ม</p>
+        </div>
+      </div>
+
+      <h3>4) Dialog — แก้ไขผู้ใช้</h3>
+      <div class="mockup">
+        <div class="mockup-dialog" style="max-width:480px">
+          <div class="mockup-dialog-header">แก้ไขผู้ใช้ — bkk1.staff</div>
+          <div class="mockup-dialog-body">
+            <div class="mockup-field"><label>ชื่อ</label><input value="พนักงาน BKK1" readonly /></div>
+            <div class="mockup-field"><label>Username</label><input value="bkk1.staff" readonly style="background:#f8fafc;color:var(--muted)" /></div>
+            <div class="mockup-field"><label>Role</label><select><option>STAFF</option></select></div>
+            <div class="mockup-field"><label>สาขา</label><input value="☑ BKK1" readonly /></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0" />
+            <span class="mockup-btn mockup-btn-ghost">รีเซ็ตรหัสผ่าน</span>
+            <span class="mockup-btn mockup-btn-danger" style="margin-left:0.5rem">ปิดใช้งาน</span>
+          </div>
+          <div class="mockup-dialog-footer">
+            <span class="mockup-btn mockup-btn-ghost">ยกเลิก</span>
+            <span class="mockup-btn mockup-btn-primary">บันทึก</span>
+          </div>
+        </div>
+        <p class="mockup-note">Username แก้ไม่ได้ · ปิดใช้งานตัวเองไม่ได้ (admin คนที่ login อยู่)</p>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>API Design</h2>
+      <table>
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/admin/users</code></td><td>รายการผู้ใช้</td></tr>
+          <tr><td>POST</td><td><code>/api/admin/users</code></td><td>สร้างผู้ใช้</td></tr>
+          <tr><td>PATCH</td><td><code>/api/admin/users/[userId]</code></td><td>แก้ไข + isActive</td></tr>
+          <tr><td>POST</td><td><code>/api/admin/users/[userId]/reset-password</code></td><td>รีเซ็ตรหัสผ่าน</td></tr>
+        </tbody>
+      </table>
+      <h3>POST create body</h3>
+      <pre><code>{
+  "name": "string",
+  "username": "string",
+  "role": "STAFF",
+  "branchIds": ["branch_bkk1"],
+  "passwordMode": "set" | "generate",
+  "password": "optional when set"
+}</code></pre>
+    </section>
+
+    <section id="validation">
+      <h2>Validation Rules</h2>
+      <ul>
+        <li><code>username</code> — trim, lowercase, unique</li>
+        <li><code>password</code> — ความยาวขั้นต่ำ (เช่น 8+) · hash ด้วย <code>hashPassword</code></li>
+        <li><code>branchIds</code> — บังคับอย่างน้อย 1 สาขาสำหรับ role ที่ไม่ใช่ ADMIN/HQ</li>
+        <li>ห้ามปิดใช้งานตัวเอง (<code>session.userId === targetUserId</code>)</li>
+      </ul>
+    </section>
+
+    <section id="testing">
+      <h2>Test Plan</h2>
+      <ol>
+        <li>สร้าง user ตั้งรหัสเอง → login ได้</li>
+        <li>สร้าง user สุ่มรหัส → copy แล้ว login ได้</li>
+        <li>แก้ role/สาขา → สิทธิ์เปลี่ยนตาม</li>
+        <li>ปิดใช้งาน → login ไม่ได้ · เปิดใหม่ → login ได้</li>
+        <li>รีเซ็ตรหัสผ่าน → รหัสเก่าใช้ไม่ได้</li>
+      </ol>
+    </section>
+
+    <footer>StockCount Pro — Admin User Management Design Spec · 2026-07-08</footer>
+  </div>
+</body>
+</html>

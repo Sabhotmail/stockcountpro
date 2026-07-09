@@ -181,6 +181,128 @@
       color: var(--muted);
       margin-top: 2rem;
     }
+
+    /* UI mockups */
+    .mockup {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      background: #fafbfc;
+    }
+
+    .mockup-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .mockup-screen {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgb(15 23 42 / 8%);
+    }
+
+    .mockup-header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .mockup-header strong { display: block; font-size: 1rem; }
+
+    .mockup-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .mockup-pill {
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .mockup-pill.active { background: #ffedd5; color: #c2410c; }
+
+    .mockup-card {
+      margin: 0.75rem 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+
+    .mockup-card.locked {
+      background: #fffbeb;
+      border-color: #fcd34d;
+      opacity: 0.95;
+    }
+
+    .mockup-card.conflict {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    .mockup-card.counted { background: #fff; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge-amber { background: #fef3c7; color: #b45309; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-green { background: #d1fae5; color: #047857; }
+
+    .mockup-input {
+      display: inline-block;
+      width: 4rem;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      text-align: center;
+      margin: 0 0.25rem;
+    }
+
+    .mockup-input.disabled { background: #f1f5f9; color: var(--muted); }
+
+    .mockup-toast {
+      position: relative;
+      margin: 0.75rem 1rem;
+      padding: 0.65rem 1rem;
+      background: #1e293b;
+      color: #f8fafc;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .mockup-note {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+      padding-left: 0.5rem;
+      border-left: 3px solid var(--accent);
+    }
+
+    .mockup-grid { display: grid; gap: 1rem; }
+    @media (min-width: 700px) { .mockup-grid-2 { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -235,6 +357,79 @@
         <li>After lock expires, another user may edit; if they save, users with stale data are <strong>notified</strong>.</li>
         <li>Any counter may submit when document is 100% counted (existing submit flow).</li>
       </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>เส้นทาง: <code>/tablet/count/[documentId]</code> · ผู้ใช้: STAFF / COUNTER ในสาขาเดียวกัน</p>
+
+      <h3>1) หน้ารายการสินค้า — กรอง “เฉพาะที่ยังไม่นับ”</h3>
+      <div class="mockup">
+        <div class="mockup-label">Wireframe — list + filter</div>
+        <div class="mockup-screen">
+          <div class="mockup-header">
+            <strong>CNT-BKK1-20260311</strong>
+            BKK1 (Express 32D1) · วันที่ 2026-03-11 · นับแล้ว 45/414 รายการ
+          </div>
+          <div class="mockup-toolbar">
+            <span class="mockup-pill">ค้นหารหัสสินค้า</span>
+            <span class="mockup-pill">ค้นหาชื่อสินค้า</span>
+            <span class="mockup-pill active">เฉพาะที่ยังไม่นับ</span>
+          </div>
+          <div class="mockup-card locked">
+            <span class="badge badge-amber">กำลังนับโดย สมหญิง</span>
+            <div><strong>P001</strong> น้ำดื่ม 600ml</div>
+            <div style="margin-top:0.5rem;color:var(--muted)">ลัง <span class="mockup-input disabled">—</span> ชิ้น <span class="mockup-input disabled">—</span></div>
+          </div>
+          <div class="mockup-card counted">
+            <span class="badge badge-green">นับแล้ว</span>
+            <div><strong>P002</strong> น้ำอัดลม</div>
+            <div style="margin-top:0.5rem">ลัง <span class="mockup-input">2</span> ชิ้น <span class="mockup-input">0</span></div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:0.35rem">บันทึกโดย สมชาย</div>
+          </div>
+        </div>
+        <p class="mockup-note">รายการที่คนอื่น lock อยู่จะ<strong>ไม่แสดง</strong>ในโหมด “เฉพาะที่ยังไม่นับ” แต่ยังเห็นใน “แสดงทั้งหมด” เป็นการ์ด disabled</p>
+      </div>
+
+      <h3>2) การ์ดสินค้า — ถูก lock โดยคนอื่น</h3>
+      <div class="mockup-grid mockup-grid-2">
+        <div class="mockup">
+          <div class="mockup-label">สถานะ: คนอื่นกำลังนับ</div>
+          <div class="mockup-card locked">
+            <span class="badge badge-amber">กำลังนับโดย สมหญิง</span>
+            <div><strong>4010001</strong> คูปองส่วนลด</div>
+            <div style="margin-top:0.5rem">ชิ้น <span class="mockup-input disabled">—</span> <em style="color:var(--muted);font-size:0.8rem">(แก้ไขไม่ได้)</em></div>
+          </div>
+          <p class="mockup-note">Lock หมดอายุ 30 วินาทีหลังไม่มีการแตะ — คนอื่นจึงแย่งนับได้</p>
+        </div>
+        <div class="mockup">
+          <div class="mockup-label">สถานะ: ถูกทับขณะยังไม่บันทึก</div>
+          <div class="mockup-card conflict">
+            <span class="badge badge-red">มีคนอื่นบันทึกทับ — โปรดตรวจสอบ</span>
+            <div><strong>P015</strong> ขนมขบเคี้ยว</div>
+            <div style="margin-top:0.5rem">ชิ้น <span class="mockup-input">12</span> <span style="font-size:0.8rem;color:#b91c1c">(คุณพิมพ์) vs ระบบ: 8</span></div>
+            <div style="margin-top:0.65rem"><span class="mockup-pill active">ใช้ข้อมูลของระบบ</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>3) Toast แจ้งเตือน (มุมล่าง)</h3>
+      <div class="mockup">
+        <div class="mockup-toast">P015 ถูกบันทึกโดย สมหญิง</div>
+        <div class="mockup-toast" style="margin-top:0.5rem">P015 ถูกแก้ไขโดย สมหญิง ขณะที่คุณกำลังนับ — โปรดตรวจสอบจำนวนใหม่</div>
+        <p class="mockup-note">Toast แบบบน = poll ตรวจพบทับ · แบบล่าง = บันทึกแล้วเจอ 409 conflict</p>
+      </div>
+
+      <h3>4) Silent refresh — ไม่กระพริบ</h3>
+      <div class="mockup">
+        <div class="mockup-label">พฤติกรรมที่ผู้ใช้เห็น</div>
+        <ul style="margin:0;font-size:0.92rem">
+          <li>ไม่มี spinner ทับทั้งหน้าหลังโหลดครั้งแรก</li>
+          <li>ตัวเลขที่พิมพ์อยู่<strong>ไม่หาย</strong>ระหว่าง poll ทุก 10 วินาที</li>
+          <li>scroll position คงที่ — รายการไม่กระโดด</li>
+          <li>progress “นับแล้ว X/Y” อัปเดตเงียบ ๆ เมื่อคนอื่นบันทึก</li>
+        </ul>
+      </div>
     </section>
 
     <section id="architecture">
