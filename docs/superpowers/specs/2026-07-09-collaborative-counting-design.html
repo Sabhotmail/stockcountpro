@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collaborative Counting — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --code-bg: #f1f5f9;
+      --pre-bg: #1e293b;
+      --pre-text: #e2e8f0;
+      --amber: #d97706;
+      --green: #059669;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header.doc-header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgb(15 23 42 / 6%);
+    }
+
+    header.doc-header h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.75rem;
+      line-height: 1.3;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .meta strong { color: var(--text); }
+
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.35rem;
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent-soft);
+      padding-bottom: 0.4rem;
+    }
+
+    h3 {
+      margin: 1.5rem 0 0.75rem;
+      font-size: 1.1rem;
+    }
+
+    h3:first-child { margin-top: 0; }
+
+    p { margin: 0 0 1rem; }
+
+    ul, ol {
+      margin: 0 0 1rem;
+      padding-left: 1.5rem;
+    }
+
+    li { margin-bottom: 0.35rem; }
+
+    strong { font-weight: 600; }
+
+    code {
+      font-family: Consolas, "Cascadia Code", monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: var(--pre-bg);
+      color: var(--pre-text);
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin: 0 0 1rem;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0 0 1rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent-soft);
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) td { background: #fafbfc; }
+
+    blockquote {
+      margin: 0 0 1rem;
+      padding: 0.75rem 1rem;
+      border-left: 4px solid var(--amber);
+      background: #fffbeb;
+      color: #92400e;
+      border-radius: 0 8px 8px 0;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-right: 0.35rem;
+    }
+
+    .trigger-label {
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Collaborative Counting (Design Spec)</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-07-09</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Multiple STAFF in the same branch counting the same document concurrently (informal work split)</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals</h2>
+      <ul>
+        <li>Allow several counters to open <strong>one count document</strong> and each pick <strong>uncounted lines</strong> without upfront assignment.</li>
+        <li>Prevent most duplicate work via <strong>short-lived soft locks</strong> (30 seconds).</li>
+        <li>When another user overwrites a line (after lock expires or via conflict), show a <strong>clear notification</strong> to affected users.</li>
+        <li>Background refresh must <strong>not clear counted data</strong> and must <strong>not flicker</strong> the page.</li>
+      </ul>
+    </section>
+
+    <section id="non-goals">
+      <h2>Non-goals</h2>
+      <ul>
+        <li>Supervisor pre-assignment of line ranges or areas</li>
+        <li>WebSocket / real-time push (polling is sufficient for v1)</li>
+        <li>Hard database row locks</li>
+        <li>Splitting one Express document into multiple sub-documents</li>
+      </ul>
+    </section>
+
+    <section id="current-state">
+      <h2>Current State (as-is)</h2>
+      <ul>
+        <li>One <code>CountEntry</code> per <code>ProductLine</code> (<code>lineId</code> PK) shared by all users.</li>
+        <li><code>CountEntry</code> has <code>revision</code> and <code>updatedBy</code> (userId) but save API <strong>ignores</strong> <code>baseRevision</code> (last write wins).</li>
+        <li>Tablet count page loads document once; no background sync.</li>
+        <li>Filter <strong>“เฉพาะที่ยังไม่นับ”</strong> exists but does not exclude lines locked by others.</li>
+        <li>Full reload sets <code>loading=true</code> and replaces all entry state (risk of flicker if reused for polling).</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User Workflow (approved)</h2>
+      <ol>
+        <li>Staff A, B, C open the same document.</li>
+        <li>Each uses <strong>“เฉพาะที่ยังไม่นับ”</strong> and picks lines freely.</li>
+        <li>When a user starts editing a line, the system <strong>soft-locks</strong> it for others.</li>
+        <li>Lock TTL = <strong>30 seconds</strong>, extended on continued activity (sliding window).</li>
+        <li>After lock expires, another user may edit; if they save, users with stale data are <strong>notified</strong>.</li>
+        <li>Any counter may submit when document is 100% counted (existing submit flow).</li>
+      </ol>
+    </section>
+
+    <section id="architecture">
+      <h2>Architecture Overview</h2>
+      <pre><code>Tablet Count Page
+  ├─ acquire/renew lock on edit focus
+  ├─ autosave entry (with baseRevision)
+  ├─ silent poll every 10s → merge entries + locks
+  └─ toast/banner on overwrite detected
+
+Count Entry API (PATCH)
+  ├─ require active lock held by caller (or renew)
+  ├─ optimistic concurrency via baseRevision
+  └─ 409 CONFLICT when revision mismatch
+
+Line Lock API
+  ├─ POST acquire/renew (30s sliding TTL)
+  └─ DELETE release (on blur / leave line / unmount)</code></pre>
+    </section>
+
+    <section id="data-model">
+      <h2>Data Model</h2>
+
+      <h3>New table: <code>CountLineLock</code></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>documentId</code></td><td>String</td><td>FK to CountDocument</td></tr>
+          <tr><td><code>lineId</code></td><td>String</td><td>FK to ProductLine</td></tr>
+          <tr><td><code>lockedByUserId</code></td><td>String</td><td>Current holder</td></tr>
+          <tr><td><code>lockedByUserName</code></td><td>String</td><td>Denormalized for UI (no extra lookup)</td></tr>
+          <tr><td><code>expiresAt</code></td><td>DateTime</td><td><code>now + 30s</code> on each renew</td></tr>
+          <tr><td><code>updatedAt</code></td><td>DateTime</td><td>Last renew</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Primary key: <code>(documentId, lineId)</code> — one lock per line per document.</li>
+        <li>Index on <code>(documentId, expiresAt)</code> for cleanup queries.</li>
+        <li>Expired locks are treated as <strong>no lock</strong> (lazy delete on read or periodic cleanup in service).</li>
+      </ul>
+
+      <h3>CountEntry (unchanged schema)</h3>
+      <p>Continue using <code>revision</code> + <code>updatedBy</code> for overwrite detection.</p>
+
+      <h3>API response enrichment</h3>
+      <p>Add optional <code>updatedByName</code> on <code>CountEntry</code> in API responses (resolved from <code>User.name</code> server-side) so notifications can show a person’s name without extra client calls.</p>
+    </section>
+
+    <section id="lock-rules">
+      <h2>Lock Rules</h2>
+
+      <h3>TTL: 30 seconds (sliding)</h3>
+      <ul>
+        <li>On <strong>first focus / first qty change</strong> on a line → <code>POST lock</code> (acquire).</li>
+        <li>On <strong>each qty change</strong> while editing → <code>POST lock</code> (renew), resets <code>expiresAt = now + 30s</code>.</li>
+        <li>On <strong>successful autosave</strong> → optional renew once (keeps lock while user may continue).</li>
+        <li>On <strong>blur leaving line</strong> or <strong>navigate away</strong> → <code>DELETE lock</code> (release).</li>
+        <li>On <strong>unmount</strong> → best-effort <code>DELETE</code> via <code>navigator.sendBeacon</code> or fire-and-forget fetch.</li>
+      </ul>
+
+      <h3>Who can edit</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>State</th>
+            <th>Current user</th>
+            <th>Other users</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No lock / expired</td>
+            <td>Can acquire</td>
+            <td>Can acquire</td>
+          </tr>
+          <tr>
+            <td>Lock held by self</td>
+            <td>Can edit</td>
+            <td>See “กำลังนับโดย {name}” — inputs disabled</td>
+          </tr>
+          <tr>
+            <td>Lock held by other (active)</td>
+            <td>Inputs disabled</td>
+            <td>Can edit if holder</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>“เฉพาะที่ยังไม่นับ” filter additionally <strong>hides lines locked by other users</strong> (still visible in “แสดงทั้งหมด” as disabled cards).</p>
+
+      <h3>Lock vs counted line</h3>
+      <ul>
+        <li>A counted line is <strong>not</strong> locked unless someone is actively editing it.</li>
+        <li>Editing a previously counted line requires acquiring a new lock (same rules).</li>
+      </ul>
+    </section>
+
+    <section id="save-overwrite">
+      <h2>Save &amp; Overwrite Rules</h2>
+
+      <h3>Optimistic concurrency (implement <code>baseRevision</code>)</h3>
+      <p><code>PATCH .../entries/:lineId</code> payload already supports <code>baseRevision</code>.</p>
+      <p>Server logic:</p>
+      <ol>
+        <li>If <code>baseRevision</code> is provided and <code>existing.revision !== baseRevision</code> → <strong>409 CONFLICT</strong>
+          <pre><code>{
+  "error": "CONFLICT",
+  "message": "รายการนี้ถูกแก้ไขโดย {updatedByName} แล้ว",
+  "entry": { ...server entry... }
+}</code></pre>
+        </li>
+        <li>If no <code>baseRevision</code> and entry exists → treat as conflict if <code>revision &gt; 0</code> (force clients to send revision).</li>
+        <li>Require caller holds an <strong>active lock</strong> on the line (unless entry is new and lock was just acquired).</li>
+      </ol>
+
+      <h3>Overwrite notifications (user requirement)</h3>
+      <p>Notify when <strong>another user</strong> saved over data the current user was viewing/editing.</p>
+
+      <p><span class="trigger-label">Trigger A — Save response (active editor)</span><br />
+      User tries to save stale data → 409 → inline error on card + toast:</p>
+      <blockquote>“{productCode} ถูกแก้ไขโดย {name} ขณะที่คุณกำลังนับ — โปรดตรวจสอบจำนวนใหม่”</blockquote>
+      <p>Apply server <code>entry</code> to local state (discard local pending values for that line).</p>
+
+      <p><span class="trigger-label">Trigger B — Silent poll (passive viewer / expired lock)</span><br />
+      Poll detects for any line where:</p>
+      <ul>
+        <li><code>server.revision &gt; local.revision</code>, and</li>
+        <li><code>server.updatedBy !== currentUserId</code>, and</li>
+        <li>line is not in <code>dirtyLines</code> (no unsaved local edits)</li>
+      </ul>
+      <p>→ Show <strong>non-blocking toast</strong> (dedupe per line per session):</p>
+      <blockquote>“{productCode} ถูกบันทึกโดย {name}”</blockquote>
+      <p>Update local entry from server.</p>
+
+      <p><span class="trigger-label">Trigger C — Poll while line is dirty</span><br />
+      If user has unsaved edits and server revision advanced:</p>
+      <p>→ Show stronger banner on that card + toast:</p>
+      <blockquote>“มีคนอื่นบันทึกทับขณะคุณยังไม่ได้บันทึก — โปรดตรวจสอบ”</blockquote>
+      <p>Offer actions: <strong>ใช้ข้อมูลของระบบ</strong> (reset to server) — no “force overwrite” in v1.</p>
+    </section>
+
+    <section id="api">
+      <h2>API Endpoints</h2>
+
+      <h3><code>GET /api/count-documents/:documentId</code></h3>
+      <p>Extend existing response with:</p>
+      <pre><code>{
+  "document": { ... },
+  "locks": [
+    {
+      "lineId": "...",
+      "lockedByUserId": "...",
+      "lockedByUserName": "...",
+      "expiresAt": "ISO"
+    }
+  ]
+}</code></pre>
+      <p>Only return <strong>non-expired</strong> locks.</p>
+
+      <h3><code>POST /api/count-documents/:documentId/versions/:versionId/locks/:lineId</code></h3>
+      <p>Acquire or renew lock for current user.</p>
+      <ul>
+        <li>If unheld or expired → create/overwrite lock.</li>
+        <li>If held by self → renew.</li>
+        <li>If held by other and not expired → <strong>409 LOCKED</strong>
+          <pre><code>{ "error": "LOCKED", "lockedByUserName": "..." }</code></pre>
+        </li>
+      </ul>
+
+      <h3><code>DELETE /api/count-documents/:documentId/versions/:versionId/locks/:lineId</code></h3>
+      <p>Release lock if held by current user (idempotent).</p>
+
+      <h3><code>PATCH .../entries/:lineId</code> (existing)</h3>
+      <p>Add lock check + <code>baseRevision</code> enforcement as above.</p>
+    </section>
+
+    <section id="ui">
+      <h2>Tablet UI Changes</h2>
+
+      <h3>ProductCard</h3>
+      <ul>
+        <li>Show lock banner when locked by another user: “กำลังนับโดย {name}” (amber badge)</li>
+        <li>Show overwrite banner when conflict detected on that line.</li>
+        <li>Disable qty inputs when locked by other or document not editable.</li>
+        <li>Show “บันทึกโดย {updatedByName}” on counted lines (subtle, optional).</li>
+      </ul>
+
+      <h3>Count page state</h3>
+      <p>New state slices:</p>
+      <ul>
+        <li><code>locks: Record&lt;lineId, LineLockInfo&gt;</code></li>
+        <li><code>dirtyLines: Set&lt;lineId&gt;</code> — local edits not yet confirmed saved</li>
+        <li><code>lastKnownRevision: Record&lt;lineId, number&gt;</code> — for poll diffing</li>
+        <li><code>notifiedRevisions: Set&lt;lineId@revision&gt;</code> — dedupe toasts</li>
+      </ul>
+
+      <h3>Silent refresh (no flicker)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Function</th>
+            <th><code>loading</code> spinner</th>
+            <th>Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>loadDocumentInitial()</code></td>
+            <td>Yes (first mount only)</td>
+            <td>Full load</td>
+          </tr>
+          <tr>
+            <td><code>refreshDocumentSilent()</code></td>
+            <td><strong>No</strong></td>
+            <td>Poll every <strong>10s</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><code>refreshDocumentSilent()</code> merge rules:</p>
+      <ol>
+        <li><strong>Never</strong> call <code>setLoading(true)</code>.</li>
+        <li>Update <code>document.countedLines</code>, <code>document.status</code> only if changed.</li>
+        <li>For each <code>entry</code> from server:
+          <ul>
+            <li>If <code>lineId ∈ dirtyLines</code> or <code>syncStatus === "saving"</code> → <strong>skip</strong> (keep local).</li>
+            <li>Else if <code>revision</code> changed → update local entry.</li>
+          </ul>
+        </li>
+        <li>Replace <code>locks</code> entirely from server response.</li>
+        <li><strong>Do not</strong> reset <code>codeFilter</code>, <code>nameFilter</code>, <code>showUncountedOnly</code>, scroll position.</li>
+        <li>Use stable React keys (<code>line.lineId</code>) — no list remount.</li>
+        <li>Avoid replacing <code>document.lines</code> array reference if deep-equal (optional micro-opt).</li>
+      </ol>
+      <p>Scroll preservation: store <code>scrollY</code> in ref before merge; restore after <code>requestAnimationFrame</code> if unchanged filter.</p>
+
+      <h3>Autosave interaction with lock</h3>
+      <ul>
+        <li>Schedule autosave (1s debounce) only if lock held by self.</li>
+        <li>On save success: update <code>lastKnownRevision</code>, remove from <code>dirtyLines</code>, set entry from response.</li>
+        <li>On 409: show notification, apply server entry, remove dirty flag.</li>
+      </ul>
+    </section>
+
+    <section id="security">
+      <h2>Permissions &amp; Security</h2>
+      <ul>
+        <li>Reuse existing <code>canMutateCount</code> + branch document access checks.</li>
+        <li>Users can only acquire/release locks on documents they can count.</li>
+        <li>Lock holder must match session userId for save and release.</li>
+        <li>Server is source of truth; client notifications are advisory except on save conflict.</li>
+      </ul>
+    </section>
+
+    <section id="audit">
+      <h2>Audit Log (optional v1)</h2>
+      <p>Defer new audit actions. Existing <code>AUTO_SAVE_COUNT</code> already logs saves with <code>lineId</code>.</p>
+      <p>Phase 2: <code>LOCK_LINE</code> / <code>OVERWRITE_CONFLICT</code> if needed.</p>
+    </section>
+
+    <section id="errors">
+      <h2>Error Handling</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Case</th>
+            <th>HTTP</th>
+            <th>User message</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lock held by other</td>
+            <td>409 LOCKED</td>
+            <td>“รายการนี้กำลังถูกนับโดย {name}”</td>
+          </tr>
+          <tr>
+            <td>Revision mismatch</td>
+            <td>409 CONFLICT</td>
+            <td>“ถูกแก้ไขโดย {name} แล้ว”</td>
+          </tr>
+          <tr>
+            <td>Lock expired before save</td>
+            <td>409 LOCKED</td>
+            <td>“การยึดรายการหมดอายุ กรุณาเริ่มนับรายการนี้ใหม่”</td>
+          </tr>
+          <tr>
+            <td>Document not editable</td>
+            <td>400</td>
+            <td>existing messages</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="testing">
+      <h2>Testing Checklist</h2>
+
+      <h3>Two-tablet manual test</h3>
+      <ol>
+        <li>User A starts editing line X → User B sees lock banner, cannot edit.</li>
+        <li>User A idle &gt;30s → lock expires → User B can edit and save.</li>
+        <li>User A still on page with stale qty → poll or save shows <strong>overwrite notification</strong> with B’s name.</li>
+        <li>User A and B edit <strong>different</strong> lines concurrently → both save successfully.</li>
+        <li>Silent poll for 2 minutes → no full-page spinner, no scroll jump, counted numbers remain visible.</li>
+        <li>“เฉพาะที่ยังไม่นับ” hides lines locked by others.</li>
+        <li>Submit still works when all lines counted.</li>
+      </ol>
+
+      <h3>Automated (light)</h3>
+      <ul>
+        <li>Service unit tests: lock acquire/renew/expire, revision conflict detection.</li>
+        <li>Optional API route tests for 409 paths.</li>
+      </ul>
+    </section>
+
+    <section id="implementation">
+      <h2>Implementation Notes</h2>
+      <ul>
+        <li>New service: <code>src/services/count-line-lock.service.ts</code></li>
+        <li>Extend: <code>count-entry.service.ts</code>, <code>count-document.service.ts</code> (include locks in detail)</li>
+        <li>New routes under <code>src/app/api/count-documents/.../locks/</code></li>
+        <li>Primary UI work: <code>src/app/tablet/count/[documentId]/page.tsx</code>, <code>ProductCard.tsx</code></li>
+        <li>Types: <code>LineLockInfo</code>, extend <code>CountDocumentDetail</code>, <code>SaveEntryResponse</code> union with conflict</li>
+      </ul>
+    </section>
+
+    <section id="decisions">
+      <h2>Open Decisions (resolved)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Question</th>
+            <th>Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lock duration</td>
+            <td><strong>30 seconds</strong>, sliding on activity</td>
+          </tr>
+          <tr>
+            <td>Assignment model</td>
+            <td><strong>None</strong> (informal / uncounted picker)</td>
+          </tr>
+          <tr>
+            <td>Overwrite notification</td>
+            <td><strong>Required</strong> — toast + inline on card</td>
+          </tr>
+          <tr>
+            <td>Refresh UX</td>
+            <td><strong>Silent merge</strong>, no flicker, preserve scroll and dirty edits</td>
+          </tr>
+          <tr>
+            <td>Submit who</td>
+            <td>Any counter when 100% (unchanged)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      StockCount Pro — Collaborative Counting Design Spec · 2026-07-09
+    </footer>
+  </div>
+</body>
+</html>
