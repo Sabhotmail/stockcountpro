@@ -1,3 +1,8 @@
+import {
+  COUNT_QTY_NOT_COUNTED,
+  effectiveQtyForTotal,
+  isQtyFieldCounted,
+} from "@/lib/count-qty";
 import type { ProductLine } from "@/types/count";
 
 export function calculateTotalBaseQty(
@@ -6,13 +11,17 @@ export function calculateTotalBaseQty(
   qtyPack: number | null,
   qtyPiece: number | null,
 ): number | null {
-  if (qtyCase === null && qtyPack === null && qtyPiece === null) {
+  if (
+    !isQtyFieldCounted(qtyCase) &&
+    !isQtyFieldCounted(qtyPack) &&
+    !isQtyFieldCounted(qtyPiece)
+  ) {
     return null;
   }
 
-  const c = qtyCase ?? 0;
-  const p = qtyPack ?? 0;
-  const pc = qtyPiece ?? 0;
+  const c = effectiveQtyForTotal(qtyCase);
+  const p = effectiveQtyForTotal(qtyPack);
+  const pc = effectiveQtyForTotal(qtyPiece);
 
   return c * line.caseRatio + p * line.packRatio + pc;
 }
@@ -27,6 +36,10 @@ export function convertPieceOverflowToCase(
   qtyPiece: number | null,
 ): { qtyCase: number | null; qtyPiece: number | null } {
   if (!line.allowCase || line.caseRatio <= 1) {
+    return { qtyCase, qtyPiece };
+  }
+
+  if (qtyCase === COUNT_QTY_NOT_COUNTED || qtyPiece === COUNT_QTY_NOT_COUNTED) {
     return { qtyCase, qtyPiece };
   }
 
@@ -49,7 +62,11 @@ export function isEntryCounted(
   qtyPack: number | null,
   qtyPiece: number | null,
 ): boolean {
-  return qtyCase !== null || qtyPack !== null || qtyPiece !== null;
+  return (
+    isQtyFieldCounted(qtyCase) ||
+    isQtyFieldCounted(qtyPack) ||
+    isQtyFieldCounted(qtyPiece)
+  );
 }
 
 export function validateQuantities(
@@ -69,7 +86,11 @@ export function validateQuantities(
     if (!field.allowed) {
       return `${field.name} is not allowed for this product`;
     }
-    if (!Number.isInteger(field.value) || field.value < 0) {
+    if (!Number.isInteger(field.value)) {
+      return `${field.name} must be an integer`;
+    }
+    if (field.value === COUNT_QTY_NOT_COUNTED) continue;
+    if (field.value < 0) {
       return `${field.name} must be a non-negative integer`;
     }
   }

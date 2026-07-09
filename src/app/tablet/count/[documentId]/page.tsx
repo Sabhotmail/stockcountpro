@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CountQtyConfirmDialog } from "@/components/CountQtyConfirmDialog";
 import { CountToast, type CountToastItem } from "@/components/CountToast";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
@@ -12,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
+import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +33,35 @@ import {
 } from "@/types/count";
 
 const AUTO_SAVE_DELAY_MS = 1000;
+
+type PendingQtyConfirm = {
+  line: ProductLine;
+  field: "qtyCase" | "qtyPack" | "qtyPiece";
+  value: number;
+  fieldLabel: string;
+};
+
+function getQtyFieldValue(
+  entry: CountEntry | undefined,
+  field: "qtyCase" | "qtyPack" | "qtyPiece",
+): number | null {
+  if (!entry) return null;
+  return entry[field];
+}
+
+function getQtyFieldLabel(
+  line: ProductLine,
+  field: "qtyCase" | "qtyPack" | "qtyPiece",
+): string {
+  switch (field) {
+    case "qtyCase":
+      return line.unitCaseName ?? "ลัง";
+    case "qtyPack":
+      return line.unitPackName ?? "แพ็ค";
+    case "qtyPiece":
+      return line.unitPieceName ?? "ชิ้น";
+  }
+}
 
 function CountLineRow({
   line,
@@ -107,6 +138,8 @@ export default function TabletCountPage() {
     Record<string, CountEntry>
   >({});
   const [toasts, setToasts] = useState<CountToastItem[]>([]);
+  const [pendingQtyConfirm, setPendingQtyConfirm] =
+    useState<PendingQtyConfirm | null>(null);
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
@@ -594,7 +627,7 @@ export default function TabletCountPage() {
     };
   }
 
-  async function updateEntry(
+  async function applyEntryUpdate(
     line: ProductLine,
     field: "qtyCase" | "qtyPack" | "qtyPiece",
     value: number | null,
@@ -629,6 +662,45 @@ export default function TabletCountPage() {
     });
 
     scheduleSave(line.lineId, payload);
+  }
+
+  async function updateEntry(
+    line: ProductLine,
+    field: "qtyCase" | "qtyPack" | "qtyPiece",
+    value: number | null,
+  ) {
+    if (!isEditable) return;
+
+    const existing = entriesRef.current[line.lineId];
+    const currentValue = getQtyFieldValue(existing, field);
+    if (value === currentValue) return;
+
+    if (requiresQtySaveConfirmation(value)) {
+      const gotLock = await ensureLock(line.lineId);
+      if (!gotLock) return;
+
+      setPendingQtyConfirm({
+        line,
+        field,
+        value: value as number,
+        fieldLabel: getQtyFieldLabel(line, field),
+      });
+      return;
+    }
+
+    await applyEntryUpdate(line, field, value);
+  }
+
+  function confirmPendingQty() {
+    if (!pendingQtyConfirm) return;
+
+    const { line, field, value } = pendingQtyConfirm;
+    setPendingQtyConfirm(null);
+    void applyEntryUpdate(line, field, value);
+  }
+
+  function cancelPendingQty() {
+    setPendingQtyConfirm(null);
   }
 
   const acceptServerEntry = useCallback((lineId: string) => {
@@ -822,6 +894,15 @@ export default function TabletCountPage() {
           )}
         </div>
       </main>
+      <CountQtyConfirmDialog
+        open={pendingQtyConfirm !== null}
+        productCode={pendingQtyConfirm?.line.productCode ?? ""}
+        productName={pendingQtyConfirm?.line.productName ?? ""}
+        fieldLabel={pendingQtyConfirm?.fieldLabel ?? ""}
+        value={pendingQtyConfirm?.value ?? 0}
+        onConfirm={confirmPendingQty}
+        onCancel={cancelPendingQty}
+      />
       <CountToast items={toasts} onDismiss={dismissToast} />
     </div>
   );
