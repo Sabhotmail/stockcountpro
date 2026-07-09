@@ -1,10 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
+import { LogoutButton, PageShell } from "@/components/PageShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { AuditLog } from "@/types/audit";
 
 export default function AdminAuditLogsPage() {
@@ -22,7 +27,9 @@ export default function AdminAuditLogsPage() {
         const query = filterDocumentId
           ? `?documentId=${encodeURIComponent(filterDocumentId)}`
           : "";
-        const res = await fetch(`/api/admin/audit-logs${query}`);
+        const res = await fetch(`/api/admin/audit-logs${query}`, {
+          credentials: "same-origin",
+        });
         if (res.status === 401) {
           router.push("/login");
           return;
@@ -48,7 +55,7 @@ export default function AdminAuditLogsPage() {
   }, [loadLogs]);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     router.push("/login");
   }
 
@@ -58,85 +65,55 @@ export default function AdminAuditLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-8">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-lg font-bold text-slate-900 sm:text-2xl">
-              Audit Log
-            </h1>
-            <button
+    <PageShell
+      title="Audit Log"
+      subtitle="ประวัติการใช้งานระบบ"
+      actions={<LogoutButton onClick={handleLogout} />}
+      nav={<AdminNav />}
+    >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card className="mb-4">
+        <CardContent className="pt-6">
+          <form onSubmit={handleFilter} className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1 space-y-2">
+              <Label htmlFor="document-id-filter">กรองตาม Document ID</Label>
+              <Input
+                id="document-id-filter"
+                value={documentId}
+                onChange={(e) => setDocumentId(e.target.value)}
+                placeholder="เช่น doc_bkk1_001"
+              />
+            </div>
+            <Button type="submit">กรอง</Button>
+            <Button
               type="button"
-              onClick={handleLogout}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              variant="outline"
+              onClick={() => {
+                setDocumentId("");
+                loadLogs();
+              }}
             >
-              ออกจากระบบ
-            </button>
-          </div>
-          <div className="mt-4">
-            <AdminNav />
-          </div>
-        </div>
-      </header>
+              แสดงทั้งหมด
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
-        )}
-
-        <form
-          onSubmit={handleFilter}
-          className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-        >
-          <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-sm">
-            <span className="font-medium text-slate-600">กรองตาม Document ID</span>
-            <input
-              type="text"
-              value={documentId}
-              onChange={(e) => setDocumentId(e.target.value)}
-              placeholder="เช่น doc_bkk1_001"
-              className="rounded-lg border border-slate-200 px-3 py-2"
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            กรอง
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDocumentId("");
-              loadLogs();
-            }}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            แสดงทั้งหมด
-          </button>
-        </form>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          {loading ? (
-            <p className="text-slate-500">กำลังโหลด...</p>
-          ) : (
-            <>
-              <p className="mb-3 text-sm text-slate-500">
-                แสดง {logs.length} รายการ
-              </p>
-              <AuditLogPanel logs={logs} />
-            </>
-          )}
-        </section>
-
-        <p className="mt-4 text-sm text-slate-500">
-          <Link href="/admin/users" className="text-blue-600">
-            กลับหน้าผู้ใช้
-          </Link>
-        </p>
-      </main>
-    </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {loading ? "กำลังโหลด..." : `แสดง ${logs.length} รายการ`}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!loading && <AuditLogPanel logs={logs} />}
+        </CardContent>
+      </Card>
+    </PageShell>
   );
 }

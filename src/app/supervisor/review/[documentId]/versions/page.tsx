@@ -3,9 +3,20 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageShell } from "@/components/PageShell";
+import { SupervisorNav } from "@/components/SupervisorNav";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
 import { VersionCompareTable } from "@/components/VersionCompareTable";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { CountVersion, VersionCompareResult } from "@/types/count";
+
+const selectClassName = cn(
+  "h-8 w-full min-w-[8rem] rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+);
 
 export default function SupervisorVersionsPage() {
   const params = useParams<{ documentId: string }>();
@@ -83,56 +94,58 @@ export default function SupervisorVersionsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">กำลังโหลดเวอร์ชัน...</p>
-      </div>
+      <PageShell title="เปรียบเทียบเวอร์ชัน" subtitle="กำลังโหลด...">
+        <p className="py-12 text-center text-muted-foreground">กำลังโหลดเวอร์ชัน...</p>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-8">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-        <div className="mx-auto max-w-6xl">
+    <PageShell
+      title="เปรียบเทียบเวอร์ชัน"
+      nav={
+        <div className="space-y-3">
           <Link
             href={`/supervisor/review/${documentId}`}
-            className="text-sm text-blue-600 hover:underline"
+            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
           >
             ← กลับหน้าตรวจสอบ
           </Link>
-          <h1 className="mt-2 text-lg font-bold text-slate-900 sm:text-2xl">
-            เปรียบเทียบเวอร์ชัน
-          </h1>
+          <SupervisorNav />
         </div>
-      </header>
+      }
+    >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
-        )}
-
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold text-slate-900">
-            รายการเวอร์ชัน
-          </h2>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base">รายการเวอร์ชัน</CardTitle>
+        </CardHeader>
+        <CardContent>
           <VersionCompareTable versions={versions} />
-        </section>
+        </CardContent>
+      </Card>
 
-        {versions.length >= 2 && (
-          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-base font-semibold text-slate-900">
-              เลือกเวอร์ชันเปรียบเทียบ
-            </h2>
+      {versions.length >= 2 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">เลือกเวอร์ชันเปรียบเทียบ</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">จาก</span>
+              <div className="space-y-2">
+                <Label htmlFor="from-version">จาก</Label>
                 <select
+                  id="from-version"
                   value={fromVersion ?? ""}
                   onChange={(e) =>
                     setFromVersion(Number.parseInt(e.target.value, 10))
                   }
-                  className="rounded-lg border border-slate-200 px-3 py-2"
+                  className={selectClassName}
                 >
                   {versions.map((version) => (
                     <option key={version.id} value={version.versionNo}>
@@ -140,15 +153,16 @@ export default function SupervisorVersionsPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">เป็น</span>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="to-version">เป็น</Label>
                 <select
+                  id="to-version"
                   value={toVersion ?? ""}
                   onChange={(e) =>
                     setToVersion(Number.parseInt(e.target.value, 10))
                   }
-                  className="rounded-lg border border-slate-200 px-3 py-2"
+                  className={selectClassName}
                 >
                   {versions.map((version) => (
                     <option key={version.id} value={version.versionNo}>
@@ -156,28 +170,29 @@ export default function SupervisorVersionsPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-              <button
+              </div>
+              <Button
                 type="button"
                 onClick={handleCompare}
                 disabled={!canCompare || comparing}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
               >
                 {comparing ? "กำลังเปรียบเทียบ..." : "เปรียบเทียบ"}
-              </button>
+              </Button>
             </div>
-          </section>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {compare && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-base font-semibold text-slate-900">
-              ผลการเปรียบเทียบ
-            </h2>
+      {compare && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">ผลการเปรียบเทียบ</CardTitle>
+          </CardHeader>
+          <CardContent>
             <VersionCompareDetail compare={compare} />
-          </section>
-        )}
-      </main>
-    </div>
+          </CardContent>
+        </Card>
+      )}
+    </PageShell>
   );
 }

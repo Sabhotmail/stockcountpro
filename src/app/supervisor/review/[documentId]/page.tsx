@@ -5,11 +5,17 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { PageShell } from "@/components/PageShell";
 import { RecountRequestModal } from "@/components/RecountRequestModal";
 import {
   ReviewLineCard,
   ReviewLineTable,
 } from "@/components/ReviewLineList";
+import { SupervisorNav } from "@/components/SupervisorNav";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { DocumentStatus, type ReviewDetail } from "@/types/count";
 
 export default function SupervisorReviewPage() {
@@ -104,20 +110,27 @@ export default function SupervisorReviewPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">กำลังโหลดข้อมูลตรวจสอบ...</p>
-      </div>
+      <PageShell title="กำลังโหลด..." subtitle="ข้อมูลตรวจสอบ">
+        <p className="py-12 text-center text-muted-foreground">
+          กำลังโหลดข้อมูลตรวจสอบ...
+        </p>
+      </PageShell>
     );
   }
 
   if (!review) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100">
-        <p className="text-slate-500">ไม่พบเอกสาร</p>
-        <Link href="/supervisor/documents" className="text-blue-600">
-          กลับรายการ
-        </Link>
-      </div>
+      <PageShell title="ไม่พบเอกสาร">
+        <div className="flex flex-col items-center gap-4 py-12">
+          <p className="text-muted-foreground">ไม่พบเอกสาร</p>
+          <Link
+            href="/supervisor/documents"
+            className={buttonVariants({ variant: "link" })}
+          >
+            กลับรายการ
+          </Link>
+        </div>
+      </PageShell>
     );
   }
 
@@ -127,106 +140,102 @@ export default function SupervisorReviewPage() {
     document.status === DocumentStatus.SUBMITTED ||
     document.status === DocumentStatus.REVIEWING;
 
-  const actionButtonClass =
-    "rounded-xl px-4 py-3 text-sm font-medium transition sm:py-2";
+  const subtitle = `${document.branchCode} ${document.branchName} · เวอร์ชัน ${document.currentVersionNo} · นับแล้ว ${document.countedLines}/${document.totalLines}`;
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-8">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 shadow-sm sm:px-6">
-        <div className="mx-auto max-w-6xl">
+    <PageShell
+      title={document.documentNo}
+      subtitle={subtitle}
+      nav={
+        <div className="space-y-3">
           <Link
             href="/supervisor/documents"
-            className="text-sm text-blue-600 hover:underline"
+            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
           >
             ← กลับรายการ
           </Link>
-          <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <h1 className="text-lg font-bold text-slate-900 sm:text-2xl">
-                  {document.documentNo}
-                </h1>
-                <DocumentStatusBadge status={document.status} compact />
-              </div>
-              <p className="mt-1 text-sm text-slate-500">
-                {document.branchCode} {document.branchName} · เวอร์ชัน{" "}
-                {document.currentVersionNo} · นับแล้ว {document.countedLines}/
-                {document.totalLines}
-              </p>
-              {document.note && (
-                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  หมายเหตุเอกสาร: {document.note}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
-              <button
-                type="button"
-                onClick={() => setShowAuditLog((v) => !v)}
-                className={`${actionButtonClass} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
-              >
-                {showAuditLog ? "ซ่อน Log" : "Audit Log"}
-              </button>
-              <Link
-                href={`/supervisor/review/${documentId}/versions`}
-                className={`${actionButtonClass} border border-slate-200 bg-white text-center text-slate-700 hover:bg-slate-50`}
-              >
-                เปรียบเทียบเวอร์ชัน
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowRecountModal(true)}
-                disabled={!canRecount || actionLoading}
-                className={`${actionButtonClass} border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-40`}
-              >
-                ขอนับใหม่
-              </button>
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={!canApprove || actionLoading}
-                className={`${actionButtonClass} col-span-2 bg-green-600 font-semibold text-white hover:bg-green-700 disabled:opacity-40 sm:col-span-1`}
-              >
-                {actionLoading ? "กำลังดำเนินการ..." : "อนุมัติและปิดเอกสาร"}
-              </button>
-            </div>
-          </div>
+          <SupervisorNav />
         </div>
-      </header>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <DocumentStatusBadge status={document.status} compact />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAuditLog((v) => !v)}
+          >
+            {showAuditLog ? "ซ่อน Log" : "Audit Log"}
+          </Button>
+          <Link
+            href={`/supervisor/review/${documentId}/versions`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            เปรียบเทียบเวอร์ชัน
+          </Link>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+            onClick={() => setShowRecountModal(true)}
+            disabled={!canRecount || actionLoading}
+          >
+            ขอนับใหม่
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700"
+            onClick={handleApprove}
+            disabled={!canApprove || actionLoading}
+          >
+            {actionLoading ? "กำลังดำเนินการ..." : "อนุมัติและปิดเอกสาร"}
+          </Button>
+        </div>
+      }
+    >
+      {document.note && (
+        <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-900">
+          <AlertDescription>หมายเหตุเอกสาร: {document.note}</AlertDescription>
+        </Alert>
+      )}
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
-        )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-        {showAuditLog && (
-          <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:mb-6">
-            <h2 className="mb-3 text-base font-semibold text-slate-900 sm:text-lg">
-              Audit Log
-            </h2>
+      {showAuditLog && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Audit Log</CardTitle>
+          </CardHeader>
+          <CardContent>
             <AuditLogPanel logs={auditLogs} />
-          </section>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        <section>
-          <h2 className="mb-3 text-base font-semibold text-slate-900 sm:text-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
             รายการสินค้า ({reviewLines.length})
-          </h2>
-
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 md:space-y-0 md:p-0">
           <div className="flex flex-col gap-3 md:hidden">
             {reviewLines.map((line) => (
               <ReviewLineCard key={line.lineId} line={line} />
             ))}
           </div>
-
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+          <div className="hidden md:block">
             <ReviewLineTable lines={reviewLines} />
           </div>
-        </section>
-      </main>
+        </CardContent>
+      </Card>
 
       <RecountRequestModal
         open={showRecountModal}
@@ -234,6 +243,6 @@ export default function SupervisorReviewPage() {
         onClose={() => setShowRecountModal(false)}
         onSubmit={handleRequestRecount}
       />
-    </div>
+    </PageShell>
   );
 }

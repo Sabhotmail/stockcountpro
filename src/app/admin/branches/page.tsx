@@ -1,9 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { LogoutButton, PageShell } from "@/components/PageShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { Branch } from "@/types/user";
 
 export default function AdminBranchesPage() {
@@ -16,7 +26,7 @@ export default function AdminBranchesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/branches");
+      const res = await fetch("/api/admin/branches", { credentials: "same-origin" });
       if (res.status === 401) {
         router.push("/login");
         return;
@@ -40,71 +50,81 @@ export default function AdminBranchesPage() {
   }, [loadBranches]);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     router.push("/login");
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-8">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-lg font-bold text-slate-900 sm:text-2xl">
-              จัดการสาขา
-            </h1>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-sm text-slate-500 hover:text-slate-700"
-            >
-              ออกจากระบบ
-            </button>
-          </div>
-          <div className="mt-4">
-            <AdminNav />
-          </div>
-        </div>
-      </header>
+    <PageShell
+      title="จัดการสาขา"
+      subtitle="รายการสาขาและรหัส Express Location"
+      actions={<LogoutButton onClick={handleLogout} />}
+      nav={<AdminNav />}
+    >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-slate-500">กำลังโหลด...</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {loading ? (
+        <p className="text-muted-foreground">กำลังโหลด...</p>
+      ) : (
+        <>
+          <div className="grid gap-4 md:hidden">
             {branches.map((branch) => (
-              <div
-                key={branch.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <p className="text-lg font-bold text-slate-900">{branch.code}</p>
-                <p className="mt-1 text-slate-600">{branch.name}</p>
-                {branch.expressLocationCode && (
-                  <p className="mt-2 text-sm text-slate-500">
-                    Express:{" "}
-                    <span className="font-mono">{branch.expressLocationCode}</span>
-                  </p>
-                )}
-                <p className="mt-3 font-mono text-xs text-slate-400">
-                  {branch.id}
-                </p>
-              </div>
+              <Card key={branch.id}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">{branch.code}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <p>{branch.name}</p>
+                  {branch.expressLocationCode && (
+                    <p className="text-muted-foreground">
+                      Express:{" "}
+                      <span className="font-mono">{branch.expressLocationCode}</span>
+                    </p>
+                  )}
+                  <p className="font-mono text-xs text-muted-foreground">{branch.id}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        )}
 
-        <p className="mt-4 text-sm text-slate-500">
-          Prototype — ยังไม่รองรับการแก้ไขสาขา{" "}
-          <Link href="/admin/users" className="text-blue-600">
-            กลับหน้าผู้ใช้
-          </Link>
-        </p>
-      </main>
-    </div>
+          <Card className="hidden md:block">
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>รหัส</TableHead>
+                    <TableHead>ชื่อสาขา</TableHead>
+                    <TableHead>Express Location</TableHead>
+                    <TableHead>ID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {branches.map((branch) => (
+                    <TableRow key={branch.id}>
+                      <TableCell className="font-semibold">{branch.code}</TableCell>
+                      <TableCell>{branch.name}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {branch.expressLocationCode ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {branch.id}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <p className="mt-4 text-sm text-muted-foreground">
+        ยังไม่รองรับการแก้ไขสาขาในระบบ — ดูรหัส Express ได้จากตารางด้านบน
+      </p>
+    </PageShell>
   );
 }

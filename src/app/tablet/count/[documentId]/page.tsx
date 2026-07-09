@@ -6,8 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountToast, type CountToastItem } from "@/components/CountToast";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
 import { toIsoInstant } from "@/lib/datetime";
+import { cn } from "@/lib/utils";
 import {
   convertPieceOverflowToCase,
   isEntryCounted,
@@ -587,17 +593,20 @@ export default function TabletCountPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">กำลังโหลดเอกสาร...</p>
+      <div className="flex min-h-screen items-center justify-center bg-muted/40">
+        <p className="text-muted-foreground">กำลังโหลดเอกสาร...</p>
       </div>
     );
   }
 
   if (!document) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100">
-        <p className="text-slate-500">ไม่พบเอกสาร</p>
-        <Link href="/tablet/documents" className="text-blue-600">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-muted/40">
+        <p className="text-muted-foreground">ไม่พบเอกสาร</p>
+        <Link
+          href="/tablet/documents"
+          className={buttonVariants({ variant: "link" })}
+        >
           กลับรายการเอกสาร
         </Link>
       </div>
@@ -605,21 +614,21 @@ export default function TabletCountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-24">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
+    <div className="min-h-screen bg-muted/40 pb-24">
+      <header className="sticky top-0 z-10 border-b bg-background px-6 py-4 shadow-sm">
         <div className="mx-auto max-w-4xl">
           <Link
             href="/tablet/documents"
-            className="text-sm text-blue-600 hover:underline"
+            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
           >
             ← กลับ
           </Link>
           <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold tracking-tight">
                 {document.documentNo}
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {document.branchCode}
                 {document.branchExpressLocationCode
                   ? ` (Express ${document.branchExpressLocationCode})`
@@ -631,22 +640,19 @@ export default function TabletCountPage() {
             </div>
             <Link
               href={`/tablet/count/${documentId}/summary`}
-              className={`rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 ${
-                !isEditable ? "pointer-events-none opacity-40" : ""
-              }`}
+              className={cn(
+                buttonVariants(),
+                "bg-green-600 hover:bg-green-700",
+                !isEditable && "pointer-events-none opacity-40",
+              )}
             >
               สรุปและส่งให้หัวหน้างาน
             </Link>
           </div>
 
-          <div className="mt-4">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <label
-                htmlFor="document-note"
-                className="text-sm font-medium text-slate-600"
-              >
-                หมายเหตุเอกสาร
-              </label>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="document-note">หมายเหตุเอกสาร</Label>
               <SyncStatusBadge status={noteSyncStatus} />
             </div>
             <textarea
@@ -656,7 +662,9 @@ export default function TabletCountPage() {
               value={documentNote}
               onChange={(e) => updateDocumentNote(e.target.value)}
               placeholder="เพิ่มหมายเหตุสำหรับเอกสารนี้ (ถ้ามี)"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+              className={cn(
+                "w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
+              )}
             />
           </div>
         </div>
@@ -664,55 +672,57 @@ export default function TabletCountPage() {
 
       <main className="mx-auto max-w-4xl px-6 py-4">
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-slate-600">
-                ค้นหารหัสสินค้า
-              </span>
-              <input
-                type="text"
-                value={codeFilter}
-                onChange={(e) => setCodeFilter(e.target.value)}
-                placeholder="เช่น P001"
-                className="rounded-lg border border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-slate-600">
-                ค้นหาชื่อสินค้า
-              </span>
-              <input
-                type="text"
-                value={nameFilter}
-                onChange={(e) => setNameFilter(e.target.value)}
-                placeholder="เช่น น้ำดื่ม"
-                className="rounded-lg border border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-500">
-              แสดง {filteredLines.length} จาก {lines.length} รายการ
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowUncountedOnly((v) => !v)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                showUncountedOnly
-                  ? "bg-orange-100 text-orange-700"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
-            </button>
-          </div>
-        </div>
+        <Card className="mb-4">
+          <CardContent className="pt-6">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="code-filter">ค้นหารหัสสินค้า</Label>
+                <Input
+                  id="code-filter"
+                  type="text"
+                  value={codeFilter}
+                  onChange={(e) => setCodeFilter(e.target.value)}
+                  placeholder="เช่น P001"
+                  className="h-10 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name-filter">ค้นหาชื่อสินค้า</Label>
+                <Input
+                  id="name-filter"
+                  type="text"
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  placeholder="เช่น น้ำดื่ม"
+                  className="h-10 text-base"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                แสดง {filteredLines.length} จาก {lines.length} รายการ
+              </p>
+              <Button
+                type="button"
+                variant={showUncountedOnly ? "secondary" : "outline"}
+                size="sm"
+                className={
+                  showUncountedOnly
+                    ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                    : undefined
+                }
+                onClick={() => setShowUncountedOnly((v) => !v)}
+              >
+                {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex flex-col gap-3">
           {filteredLines.map((line) => (
@@ -750,7 +760,7 @@ export default function TabletCountPage() {
           ))}
 
           {filteredLines.length === 0 && (
-            <p className="py-12 text-center text-slate-500">
+            <p className="py-12 text-center text-muted-foreground">
               ไม่พบสินค้าที่ตรงกับตัวกรอง
             </p>
           )}
