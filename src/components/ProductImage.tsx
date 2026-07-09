@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { getProductImageCandidates } from "@/lib/product-image";
+import { cn } from "@/lib/utils";
 
 function Placeholder({
   alt,
@@ -15,7 +16,7 @@ function Placeholder({
     return (
       <div
         aria-label={alt}
-        className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-500"
+        className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-input bg-muted text-xs text-muted-foreground"
       >
         รูปภาพ
       </div>
@@ -25,9 +26,55 @@ function Placeholder({
   return (
     <div
       aria-label={alt}
-      className="flex h-40 w-full items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+      className="flex h-40 w-full items-center justify-center rounded-xl bg-muted text-muted-foreground"
     >
       No Image
+    </div>
+  );
+}
+
+function ProductImageInner({
+  candidates,
+  alt,
+  compact,
+}: {
+  candidates: string[];
+  alt: string;
+  compact?: boolean;
+}) {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [exhausted, setExhausted] = useState(false);
+
+  const currentSrc = candidates[candidateIndex];
+
+  if (!currentSrc || exhausted) {
+    return <Placeholder alt={alt} compact={compact} />;
+  }
+
+  const frameClass = compact
+    ? "relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-input bg-muted/40"
+    : "relative h-40 w-full overflow-hidden rounded-xl bg-muted/40";
+
+  const imageClass = cn("object-contain", compact ? "p-1" : "p-4");
+
+  return (
+    <div className={frameClass}>
+      <Image
+        key={currentSrc}
+        src={currentSrc}
+        alt={alt}
+        fill
+        className={imageClass}
+        unoptimized
+        onError={() => {
+          if (candidateIndex < candidates.length - 1) {
+            setCandidateIndex((index) => index + 1);
+            return;
+          }
+
+          setExhausted(true);
+        }}
+      />
     </div>
   );
 }
@@ -49,46 +96,12 @@ export function ProductImage({
     return [];
   }, [src, productCode]);
 
-  const [candidateIndex, setCandidateIndex] = useState(0);
-  const [exhausted, setExhausted] = useState(false);
-
-  useEffect(() => {
-    setCandidateIndex(0);
-    setExhausted(false);
-  }, [candidates]);
-
-  const currentSrc = candidates[candidateIndex];
-
-  if (!currentSrc || exhausted) {
-    return <Placeholder alt={alt} compact={compact} />;
-  }
-
-  const frameClass = compact
-    ? "relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-    : "relative h-40 w-full overflow-hidden rounded-xl bg-slate-50";
-
-  const imageClass = compact
-    ? "object-contain p-1"
-    : "object-contain p-4";
-
   return (
-    <div className={frameClass}>
-      <Image
-        key={currentSrc}
-        src={currentSrc}
-        alt={alt}
-        fill
-        className={imageClass}
-        unoptimized
-        onError={() => {
-          if (candidateIndex < candidates.length - 1) {
-            setCandidateIndex((index) => index + 1);
-            return;
-          }
-
-          setExhausted(true);
-        }}
-      />
-    </div>
+    <ProductImageInner
+      key={candidates.join("|") || "empty"}
+      candidates={candidates}
+      alt={alt}
+      compact={compact}
+    />
   );
 }

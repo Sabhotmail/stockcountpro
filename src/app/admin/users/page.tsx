@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRole, type Branch, type User } from "@/types/user";
 
 const roleLabels: Record<UserRole, string> = {
@@ -54,12 +54,18 @@ function isAdminOrHq(role: UserRole) {
   return role === UserRole.ADMIN || role === UserRole.HQ;
 }
 
+type StatusFilter = "all" | "active" | "disabled";
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
 
   const handleAuthRedirect = useCallback(
     (status: number) => {
@@ -113,6 +119,41 @@ export default function AdminUsersPage() {
       cancelled = true;
     };
   }, [loadBranches, loadUsers]);
+
+  const branchById = useMemo(() => {
+    const map = new Map<string, Branch>();
+    for (const branch of branches) {
+      map.set(branch.id, branch);
+    }
+    return map;
+  }, [branches]);
+
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return users.filter((user) => {
+      if (roleFilter !== "all" && user.role !== roleFilter) return false;
+      if (statusFilter === "active" && !user.isActive) return false;
+      if (statusFilter === "disabled" && user.isActive) return false;
+      if (branchFilter !== "all" && !user.branchIds.includes(branchFilter)) {
+        return false;
+      }
+
+      if (!query) return true;
+
+      const branchText = user.branchIds
+        .map((id) => branchById.get(id)?.code ?? id)
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        user.name.toLowerCase().includes(query) ||
+        user.username.toLowerCase().includes(query) ||
+        roleLabels[user.role].toLowerCase().includes(query) ||
+        branchText.includes(query)
+      );
+    });
+  }, [branchById, branchFilter, roleFilter, searchQuery, statusFilter, users]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
@@ -398,77 +439,165 @@ export default function AdminUsersPage() {
       {loading ? (
         <p className="text-muted-foreground">กำลังโหลด...</p>
       ) : (
-        <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>บทบาท</TableHead>
-                  <TableHead>สาขา</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">การทำงาน</TableHead>
-                  <TableHead>ID</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell className="font-mono">{user.username}</TableCell>
-                    <TableCell>{roleLabels[user.role]}</TableCell>
-                    <TableCell>{user.branchIds.length} สาขา</TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          user.isActive ? "text-emerald-700" : "text-slate-500"
-                        }
-                      >
-                        {user.isActive ? "Active" : "Disabled"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => openEdit(user)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => openReset(user)}
-                        >
-                          Reset password
-                        </Button>
-                        <Button
-                          variant={user.isActive ? "destructive" : "secondary"}
-                          size="xs"
-                          onClick={() => openStatusConfirm(user)}
-                        >
-                          {user.isActive ? "Disable" : "Enable"}
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {user.id}
-                    </TableCell>
+        <>
+          <Card className="mb-4">
+            <CardContent className="grid gap-4 pt-6 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2 md:col-span-2 xl:col-span-2">
+                <Label htmlFor="user-search">ค้นหา</Label>
+                <Input
+                  id="user-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ชื่อ, username, บทบาท, รหัสสาขา"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="role-filter">บทบาท</Label>
+                <select
+                  id="role-filter"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={roleFilter}
+                  onChange={(e) =>
+                    setRoleFilter(e.target.value as UserRole | "all")
+                  }
+                >
+                  <option value="all">ทั้งหมด</option>
+                  {roleOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {roleLabels[role]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="branch-filter">สาขา</Label>
+                <select
+                  id="branch-filter"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                >
+                  <option value="all">ทั้งหมด</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.code} — {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-2 md:col-span-2 xl:col-span-4">
+                <Label>สถานะ</Label>
+                <Tabs
+                  value={statusFilter}
+                  onValueChange={(value: string | number | null) =>
+                    setStatusFilter((value ?? "all") as StatusFilter)
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger value="all">ทั้งหมด</TabsTrigger>
+                    <TabsTrigger value="active">Active</TabsTrigger>
+                    <TabsTrigger value="disabled">Disabled</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </CardContent>
+          </Card>
+
+          <p className="mb-3 text-sm text-muted-foreground">
+            แสดง {filteredUsers.length} จาก {users.length} ผู้ใช้
+          </p>
+
+          <Card>
+            <CardContent className="overflow-x-auto p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>บทบาท</TableHead>
+                    <TableHead>สาขา</TableHead>
+                    <TableHead>สถานะ</TableHead>
+                    <TableHead className="text-right">การทำงาน</TableHead>
+                    <TableHead>ID</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-10 text-center text-muted-foreground"
+                      >
+                        ไม่พบผู้ใช้ที่ตรงกับตัวกรอง
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell className="font-mono">{user.username}</TableCell>
+                        <TableCell>{roleLabels[user.role]}</TableCell>
+                        <TableCell>
+                          {user.branchIds.length === 0
+                            ? "—"
+                            : user.branchIds
+                                .map((id) => branchById.get(id)?.code ?? id)
+                                .join(", ")}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={
+                              user.isActive
+                                ? "text-emerald-700"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {user.isActive ? "Active" : "Disabled"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => openEdit(user)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => openReset(user)}
+                            >
+                              Reset password
+                            </Button>
+                            <Button
+                              variant={user.isActive ? "destructive" : "secondary"}
+                              size="xs"
+                              onClick={() => openStatusConfirm(user)}
+                            >
+                              {user.isActive ? "Disable" : "Enable"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {user.id}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <p className="mt-4 text-sm text-muted-foreground">
-        Prototype — ยังไม่รองรับการแก้ไขผู้ใช้{" "}
-        <Link href="/supervisor/documents" className="text-primary underline">
-          ไปหน้า Supervisor
-        </Link>
+        ใช้ตัวกรด้านบนเพื่อค้นหาผู้ใช้ตามชื่อ, username, บทบาท หรือสาขา
       </p>
 
       {/* Create */}
