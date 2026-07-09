@@ -9,17 +9,33 @@ import {
   validateQuantities,
 } from "@/lib/unit-converter";
 import { countCountedLines } from "@/services/count-document.service";
+import {
+  acquireOrRenewLineLock,
+  assertCallerHoldsActiveLock,
+} from "@/services/count-line-lock.service";
 import { logAutoSave } from "@/services/audit-log.service";
+import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
   VersionStatus,
   type BatchSaveEntryItem,
   type BatchSaveEntryResponse,
   type CountEntry,
+  type SaveEntryErrorResponse,
   type SaveEntryPayload,
   type SaveEntryResponse,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
+
+async function enrichEntryWithUserName(
+  entry: NonNullable<
+    Awaited<ReturnType<typeof prisma.countEntry.findUnique>>
+  >,
+): Promise<CountEntry> {
+  const mapped = mapCountEntry(entry);
+  const user = await getUserById(entry.updatedBy);
+  return { ...mapped, updatedByName: user?.name ?? entry.updatedBy };
+}
 
 async function applyEntrySave(
   session: MockSession,
@@ -27,7 +43,7 @@ async function applyEntrySave(
   versionId: string,
   lineId: string,
   payload: SaveEntryPayload,
-): Promise<SaveEntryResponse | { error: string }> {
+): Promise<SaveEntryResponse | SaveEntryErrorResponse | { error: string }> {
   const access = await getDocumentForSession(session, documentId);
   if (!access.ok) return { error: access.error };
 
@@ -50,6 +66,15 @@ async function applyEntrySave(
   });
   if (!line) return { error: "Line not found" };
 
+  const lockCheck = await assertCallerHoldsActiveLock(
+    session,
+    documentId,
+    lineId,
+  );
+  if ("error" in lockCheck) {
+    return lockCheck;
+  }
+
   const validationError = validateQuantities(
     {
       allowCase: line.allowCase,
@@ -63,6 +88,22 @@ async function applyEntrySave(
   if (validationError) return { error: validationError };
 
   const existing = await prisma.countEntry.findUnique({ where: { lineId } });
+
+  if (existing) {
+    if (
+      payload.baseRevision === undefined ||
+      existing.revision !== payload.baseRevision
+    ) {
+      const entry = await enrichEntryWithUserName(existing);
+      const name = entry.updatedByName ?? existing.updatedBy;
+      return {
+        error: "CONFLICT",
+        message: `รายการนี้ถูกแก้ไขโดย ${name} แล้ว`,
+        entry,
+      };
+    }
+  }
+
   let qtyCase =
     payload.qtyCase !== undefined ? payload.qtyCase : (existing?.qtyCase ?? null);
   const qtyPack =
@@ -131,7 +172,10 @@ async function applyEntrySave(
     lineId,
   );
 
-  return { status: "SAVED", entry: mapCountEntry(saved) };
+  await acquireOrRenewLineLock(session, documentId, lineId);
+
+  const entry = await enrichEntryWithUserName(saved);
+  return { status: "SAVED", entry };
 }
 
 export async function saveEntry(
@@ -140,7 +184,7 @@ export async function saveEntry(
   versionId: string,
   lineId: string,
   payload: SaveEntryPayload,
-): Promise<SaveEntryResponse | { error: string }> {
+): Promise<SaveEntryResponse | SaveEntryErrorResponse | { error: string }> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }
@@ -153,7 +197,9 @@ export async function saveEntriesBatch(
   documentId: string,
   versionId: string,
   items: BatchSaveEntryItem[],
-): Promise<BatchSaveEntryResponse | { error: string }> {
+): Promise<
+  BatchSaveEntryResponse | SaveEntryErrorResponse | { error: string }
+> {
   if (!canMutateCount(session.role)) {
     return { error: "Access denied" };
   }

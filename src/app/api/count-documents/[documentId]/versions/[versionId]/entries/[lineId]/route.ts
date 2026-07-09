@@ -21,6 +21,9 @@ export async function PATCH(
   const result = await saveEntry(session, documentId, versionId, lineId, payload);
 
   if ("error" in result) {
+    if (result.error === "CONFLICT" || result.error === "LOCKED") {
+      return NextResponse.json(result, { status: 409 });
+    }
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
