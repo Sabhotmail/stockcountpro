@@ -46,6 +46,7 @@ export interface CountEntry {
   revision: number;
   updatedAt: string;
   updatedBy: string;
+  updatedByName?: string;
 }
 
 export interface CountVersion {
@@ -82,6 +83,27 @@ export interface CountDocumentDetail extends CountDocument {
   version: CountVersion | null;
   lines: ProductLine[];
   entries: CountEntry[];
+}
+
+export interface LineLockInfo {
+  lineId: string;
+  lockedByUserId: string;
+  lockedByUserName: string;
+  expiresAt: string;
+}
+
+export interface CountDocumentWithLocksResponse {
+  document: CountDocumentDetail;
+  locks: LineLockInfo[];
+}
+
+export type SaveEntryErrorCode = "CONFLICT" | "LOCKED";
+
+export interface SaveEntryErrorResponse {
+  error: SaveEntryErrorCode;
+  message: string;
+  entry?: CountEntry;
+  lockedByUserName?: string;
 }
 
 export interface CountDocumentListItem extends CountDocument {

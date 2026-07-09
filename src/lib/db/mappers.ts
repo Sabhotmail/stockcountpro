@@ -3,6 +3,7 @@ import type {
   Branch as PrismaBranch,
   CountDocument as PrismaCountDocument,
   CountEntry as PrismaCountEntry,
+  CountLineLock as PrismaCountLineLock,
   CountVersion as PrismaCountVersion,
   EntrySnapshot as PrismaEntrySnapshot,
   FinalCountEntry as PrismaFinalCountEntry,
@@ -19,6 +20,7 @@ import {
   type CountDocument,
   type CountEntry,
   type CountVersion,
+  type LineLockInfo,
   type ProductLine,
   type RecountRequestRecord,
 } from "@/types/count";
@@ -86,6 +88,15 @@ export function mapProductLine(line: PrismaProductLine): ProductLine {
     allowPack: line.allowPack,
     allowPiece: line.allowPiece,
     expectedQty: line.expectedQty ?? undefined,
+  };
+}
+
+export function mapLineLock(lock: PrismaCountLineLock): LineLockInfo {
+  return {
+    lineId: lock.lineId,
+    lockedByUserId: lock.lockedByUserId,
+    lockedByUserName: lock.lockedByUserName,
+    expiresAt: toIso(lock.expiresAt),
   };
 }
 
