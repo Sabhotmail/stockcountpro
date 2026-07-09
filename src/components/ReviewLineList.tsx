@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatExpectedQtyForSupervisor } from "@/lib/express-expected-qty";
 import type { ReviewLineItem } from "@/types/count";
 
 function differenceClass(difference: number | null): string {
@@ -39,7 +40,9 @@ export function ReviewLineCard({ line }: { line: ReviewLineItem }) {
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-muted-foreground">คาดหวัง</dt>
-            <dd className="font-medium">{line.expectedQty}</dd>
+            <dd className="font-medium">
+              {formatExpectedQtyForSupervisor(line.expectedQty)}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">นับได้</dt>
@@ -82,7 +85,9 @@ export function ReviewLineTable({ lines }: { lines: ReviewLineItem[] }) {
               {line.productCode}
             </TableCell>
             <TableCell>{line.productName}</TableCell>
-            <TableCell className="text-right">{line.expectedQty}</TableCell>
+            <TableCell className="text-right text-muted-foreground">
+              {formatExpectedQtyForSupervisor(line.expectedQty)}
+            </TableCell>
             <TableCell className="text-right">
               {line.totalBaseQty ?? "—"}
             </TableCell>

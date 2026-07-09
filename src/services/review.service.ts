@@ -19,6 +19,7 @@ import {
 } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
+import { hasComparableExpectedQty } from "@/lib/express-expected-qty";
 import {
   getAuditLogsByDocument,
   logApproveVersion,
@@ -134,7 +135,8 @@ export async function getReviewDetail(
   const reviewLines: ReviewLineItem[] = lines.map((line) => {
     const entry = entries.find((item) => item.lineId === line.lineId);
     const totalBaseQty = entry?.totalBaseQty ?? null;
-    const expectedQty = line.expectedQty ?? 0;
+    const rawExpected = line.expectedQty ?? null;
+    const expectedQty = hasComparableExpectedQty(rawExpected) ? rawExpected : null;
     const isCounted = entry
       ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
       : false;
@@ -147,7 +149,9 @@ export async function getReviewDetail(
       expectedQty,
       totalBaseQty,
       difference:
-        totalBaseQty !== null ? totalBaseQty - expectedQty : null,
+        expectedQty !== null && totalBaseQty !== null
+          ? totalBaseQty - expectedQty
+          : null,
       versionNo: versionRow?.versionNo ?? doc.currentVersionNo,
       isCounted,
     };

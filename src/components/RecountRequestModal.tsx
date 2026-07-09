@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatExpectedQtyForSupervisor } from "@/lib/express-expected-qty";
 import type { ReviewLineItem } from "@/types/count";
 
 interface RecountRequestModalProps {
@@ -110,7 +111,7 @@ export function RecountRequestModal({
                         {line.productCode} — {line.productName}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        คาดหวัง {line.expectedQty} · นับได้{" "}
+                        คาดหวัง {formatExpectedQtyForSupervisor(line.expectedQty)} · นับได้{" "}
                         {line.totalBaseQty ?? "—"} · ต่าง{" "}
                         {line.difference ?? "—"}
                       </p>

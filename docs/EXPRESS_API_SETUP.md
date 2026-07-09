@@ -65,5 +65,5 @@ Rules:
 | `ProductName` | `productName` |
 | `CaseQty` / `PieceQty` | `qtyCase` / `qtyPiece` |
 | `CaseUnitFactor` | `caseRatio` |
-| `TransactionValue` | `expectedQty` (supervisor only) |
+| `TransactionValue` | `expectedQty` (supervisor only); `-1` = ยังไม่ตรวจนับใน Express → เก็บเป็น `null` |
 | `CountDate` | `documentDate` |

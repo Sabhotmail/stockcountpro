@@ -176,7 +176,7 @@ export interface ReviewLineItem {
   lineNo: number;
   productCode: string;
   productName: string;
-  expectedQty: number;
+  expectedQty: number | null;
   totalBaseQty: number | null;
   difference: number | null;
   versionNo: number;
