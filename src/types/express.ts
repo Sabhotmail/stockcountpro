@@ -32,3 +32,23 @@ export interface ExpressCountDateResponse {
   message?: string;
   stockCountData?: ExpressStockCountLine[];
 }
+
+export interface ExpressLocationItem {
+  LocationCode: string;
+  LocationName?: string;
+  [key: string]: unknown;
+}
+
+export interface ExpressLocationsResponse {
+  success: boolean;
+  message?: string;
+  locations?: ExpressLocationItem[];
+  data?: ExpressLocationItem[];
+  stockCountLocations?: ExpressLocationItem[];
+}
+
+export interface ExpressCountDateByLocationsResponse {
+  success: boolean;
+  message?: string;
+  stockCountData?: ExpressStockCountLine[];
+}
