@@ -28,6 +28,7 @@ async function main() {
         code: branch.code,
         name: branch.name,
         expressLocationPrefix: branch.expressLocationPrefix,
+        isActive: branch.isActive,
       },
     });
   }

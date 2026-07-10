@@ -41,6 +41,7 @@ export function mapBranch(branch: PrismaBranch): Branch {
     code: branch.code,
     name: branch.name,
     expressLocationPrefix: branch.expressLocationPrefix ?? null,
+    isActive: branch.isActive,
   };
 }
 

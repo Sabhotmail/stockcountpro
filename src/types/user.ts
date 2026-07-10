@@ -13,6 +13,7 @@ export interface Branch {
   code: string;
   name: string;
   expressLocationPrefix: string | null;
+  isActive: boolean;
 }
 
 export interface User {

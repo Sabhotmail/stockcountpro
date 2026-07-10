@@ -53,6 +53,7 @@ model Branch {
   code                  String           @unique
   name                  String
   expressLocationPrefix String?          @unique
+  isActive              Boolean          @default(true)
   users                 UserBranch[]
   documents             CountDocument[]
   auditLogs             AuditLog[]

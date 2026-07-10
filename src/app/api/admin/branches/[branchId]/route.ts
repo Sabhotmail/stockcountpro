@@ -24,11 +24,30 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { expressLocationPrefix } = body as {
+  const record = body as Record<string, unknown>;
+
+  if ("code" in record) {
+    return NextResponse.json(
+      { error: "Branch code cannot be changed" },
+      { status: 400 },
+    );
+  }
+
+  const { name, expressLocationPrefix, isActive } = record as {
+    name?: unknown;
     expressLocationPrefix?: unknown;
+    isActive?: unknown;
   };
 
+  if (name !== undefined && typeof name !== "string") {
+    return NextResponse.json(
+      { error: "name must be a string" },
+      { status: 400 },
+    );
+  }
+
   if (
+    expressLocationPrefix !== undefined &&
     expressLocationPrefix !== null &&
     typeof expressLocationPrefix !== "string"
   ) {
@@ -38,9 +57,30 @@ export async function PATCH(
     );
   }
 
+  if (isActive !== undefined && typeof isActive !== "boolean") {
+    return NextResponse.json(
+      { error: "isActive must be a boolean" },
+      { status: 400 },
+    );
+  }
+
+  if (
+    name === undefined &&
+    expressLocationPrefix === undefined &&
+    isActive === undefined
+  ) {
+    return NextResponse.json(
+      { error: "At least one field is required" },
+      { status: 400 },
+    );
+  }
+
   const result = await updateBranchForAdmin(session, branchId, {
-    expressLocationPrefix:
-      expressLocationPrefix === undefined ? null : expressLocationPrefix,
+    ...(name !== undefined ? { name } : {}),
+    ...(expressLocationPrefix !== undefined
+      ? { expressLocationPrefix }
+      : {}),
+    ...(isActive !== undefined ? { isActive } : {}),
   });
 
   if ("error" in result) {

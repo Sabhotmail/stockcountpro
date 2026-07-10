@@ -119,6 +119,7 @@ function buildPrefixBranchLookup(branches: Branch[]): Map<string, Branch> {
 
 async function loadBranchesForExpressLookup(): Promise<Branch[]> {
   const branches = await prisma.branch.findMany({
+    where: { isActive: true },
     orderBy: { code: "asc" },
   });
   return branches.map(mapBranch);

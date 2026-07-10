@@ -128,6 +128,11 @@ export default function AdminUsersPage() {
     return map;
   }, [branches]);
 
+  const activeBranches = useMemo(
+    () => branches.filter((branch) => branch.isActive),
+    [branches],
+  );
+
   const filteredUsers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -483,6 +488,7 @@ export default function AdminUsersPage() {
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.code} — {branch.name}
+                      {!branch.isActive ? " (Disabled)" : ""}
                     </option>
                   ))}
                 </select>
@@ -659,7 +665,7 @@ export default function AdminUsersPage() {
                 <Label>Branches</Label>
                 <div className="max-h-40 overflow-auto rounded-md border border-input p-2">
                   <div className="grid gap-2">
-                    {branches.map((b) => {
+                    {activeBranches.map((b) => {
                       const checked = createBranchIds.includes(b.id);
                       return (
                         <label key={b.id} className="flex items-center gap-2 text-sm">
@@ -675,6 +681,11 @@ export default function AdminUsersPage() {
                         </label>
                       );
                     })}
+                    {activeBranches.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        ไม่มีสาขาที่เปิดใช้งาน
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -792,7 +803,7 @@ export default function AdminUsersPage() {
                 <Label>Branches</Label>
                 <div className="max-h-40 overflow-auto rounded-md border border-input p-2">
                   <div className="grid gap-2">
-                    {branches.map((b) => {
+                    {activeBranches.map((b) => {
                       const checked = editBranchIds.includes(b.id);
                       return (
                         <label key={b.id} className="flex items-center gap-2 text-sm">
@@ -808,6 +819,18 @@ export default function AdminUsersPage() {
                         </label>
                       );
                     })}
+                    {activeBranches.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        ไม่มีสาขาที่เปิดใช้งาน
+                      </p>
+                    )}
+                    {editBranchIds.some(
+                      (id) => !activeBranches.some((b) => b.id === id),
+                    ) && (
+                      <p className="text-xs text-amber-700">
+                        ผู้ใช้นี้ยังผูกกับสาขาที่ถูกปิดใช้งานอยู่ (ยังคงสิทธิ์เดิมจนกว่าจะบันทึกใหม่โดยเอาออก)
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
