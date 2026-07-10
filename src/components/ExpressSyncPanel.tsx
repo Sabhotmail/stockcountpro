@@ -243,7 +243,9 @@ export function ExpressSyncPanel({
         <div className="rounded-lg border">
           {locations.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {loadingLocations ? "กำลังโหลดคลัง..." : "ไม่พบคลังสำหรับวันที่นี้"}
+              {loadingLocations
+                ? "กำลังโหลดคลัง..."
+                : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
             </p>
           ) : (
             <div className="divide-y">

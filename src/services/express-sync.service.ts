@@ -328,7 +328,7 @@ function buildLocationPreviews(
 ): ExpressSyncLocationPreview[] {
   return locations
     .map((item) => buildLocationPreview(item, branches, hubs, session))
-    .filter((item) => item.locationCode.length > 0)
+    .filter((item) => item.locationCode.length > 0 && item.accessible)
     .sort((a, b) => a.locationCode.localeCompare(b.locationCode));
 }
 
