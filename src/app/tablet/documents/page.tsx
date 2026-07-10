@@ -3,30 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { ExpressSyncPanel } from "@/components/ExpressSyncPanel";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { todayDateKeyBangkok } from "@/lib/datetime";
-import type { ExpressSyncBranchResult } from "@/services/express-sync.service";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
@@ -37,12 +25,6 @@ export default function TabletDocumentsPage() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [syncResults, setSyncResults] = useState<ExpressSyncBranchResult[] | null>(
-    null,
-  );
-  const [countDate, setCountDate] = useState(todayDateKeyBangkok());
-  const [syncing, setSyncing] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
 
   async function loadDocuments() {
@@ -105,50 +87,6 @@ export default function TabletDocumentsPage() {
     });
   }, [documents, filter]);
 
-  async function handleSync() {
-    setSyncing(true);
-    setError(null);
-    setSyncMessage(null);
-    setSyncResults(null);
-
-    try {
-      const res = await fetch("/api/express/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ date: countDate }),
-      });
-
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Sync failed");
-
-      const created = data.results.filter(
-        (item: ExpressSyncBranchResult) => item.status === "created",
-      ).length;
-      const updated = data.results.filter(
-        (item: ExpressSyncBranchResult) => item.status === "updated",
-      ).length;
-      const skipped = data.results.filter(
-        (item: ExpressSyncBranchResult) => item.status === "skipped",
-      ).length;
-
-      setSyncResults(data.results);
-      setSyncMessage(
-        `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
-      );
-      await loadDocuments();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function handleOpen(doc: CountDocumentListItem) {
     if (
       doc.status === DocumentStatus.IMPORTED ||
@@ -184,84 +122,7 @@ export default function TabletDocumentsPage() {
       subtitle="Tablet — รายการเอกสาร"
       actions={<LogoutButton onClick={handleLogout} />}
     >
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Sync ใบตรวจนับจาก Express</CardTitle>
-          <CardDescription>
-            ดึงใบตรวจนับของสาขาที่คุณมีสิทธิ์เข้าถึง — เอกสารที่เริ่มนับแล้วจะไม่ถูกทับ
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="grid w-full max-w-xs gap-2">
-            <Label htmlFor="count-date">วันที่ตรวจนับ</Label>
-            <Input
-              id="count-date"
-              type="date"
-              value={countDate}
-              onChange={(event) => setCountDate(event.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing || loading}
-            size="lg"
-          >
-            {syncing ? "กำลัง Sync..." : "Sync จาก Express"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {syncMessage && (
-        <Alert className="mb-4 border-green-200 bg-green-50 text-green-800">
-          <AlertDescription>{syncMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      {syncResults && syncResults.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-base">ผลลัพธ์ Sync รายสาขา</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>สาขา</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">รายการ</TableHead>
-                  <TableHead>หมายเหตุ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {syncResults.map((item) => (
-                  <TableRow key={`${item.branchCode}-${item.status}-${item.reason ?? ""}`}>
-                    <TableCell>
-                      {item.branchName
-                        ? `${item.branchCode} · ${item.branchName}`
-                        : item.branchCode}
-                    </TableCell>
-                    <TableCell>
-                      {item.status === "created"
-                        ? "สร้างใหม่"
-                        : item.status === "updated"
-                          ? "อัปเดต"
-                          : "ข้าม"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.lineCount ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {item.reason ??
-                        (item.documentNo ? `เอกสาร ${item.documentNo}` : "—")}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <ExpressSyncPanel onSynced={() => void loadDocuments()} />
 
       <Tabs
         value={filter}
