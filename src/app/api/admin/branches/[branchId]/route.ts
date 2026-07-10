@@ -24,27 +24,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { expressLocationCodes } = body as { expressLocationCodes?: unknown };
-  if (!Array.isArray(expressLocationCodes)) {
-    return NextResponse.json(
-      { error: "expressLocationCodes must be an array of strings" },
-      { status: 400 },
-    );
-  }
+  const { expressLocationPrefix } = body as {
+    expressLocationPrefix?: unknown;
+  };
 
   if (
-    !expressLocationCodes.every(
-      (item) => typeof item === "string",
-    )
+    expressLocationPrefix !== null &&
+    typeof expressLocationPrefix !== "string"
   ) {
     return NextResponse.json(
-      { error: "expressLocationCodes must be an array of strings" },
+      { error: "expressLocationPrefix must be a string or null" },
       { status: 400 },
     );
   }
 
   const result = await updateBranchForAdmin(session, branchId, {
-    expressLocationCodes,
+    expressLocationPrefix:
+      expressLocationPrefix === undefined ? null : expressLocationPrefix,
   });
 
   if ("error" in result) {

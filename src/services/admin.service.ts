@@ -1,7 +1,7 @@
 import { mapBranch } from "@/lib/db/mappers";
 import {
-  normalizeExpressLocationCodes,
-  validateExpressLocationCode,
+  normalizeExpressLocationPrefix,
+  validateExpressLocationPrefix,
 } from "@/lib/express-location";
 import { prisma } from "@/lib/prisma";
 import {
@@ -15,7 +15,7 @@ import { UserRole } from "@/types/user";
 import { Prisma } from "@prisma/client";
 
 export type UpdateAdminBranchInput = {
-  expressLocationCodes: string[];
+  expressLocationPrefix: string | null;
 };
 
 export function canAccessAdmin(session: MockSession): boolean {
@@ -44,16 +44,9 @@ export async function updateBranchForAdmin(
 ): Promise<Branch | { error: string }> {
   if (!canAccessAdmin(session)) return { error: "Access denied" };
 
-  if (!Array.isArray(input.expressLocationCodes)) {
-    return { error: "expressLocationCodes must be an array" };
-  }
-
-  const expressLocationCodes = normalizeExpressLocationCodes(
-    input.expressLocationCodes,
-  );
-
-  for (const code of expressLocationCodes) {
-    const formatError = validateExpressLocationCode(code);
+  const prefix = normalizeExpressLocationPrefix(input.expressLocationPrefix);
+  if (prefix) {
+    const formatError = validateExpressLocationPrefix(prefix);
     if (formatError) return { error: formatError };
   }
 
@@ -63,47 +56,33 @@ export async function updateBranchForAdmin(
   });
   if (!existingBranch) return { error: "Branch not found" };
 
-  if (expressLocationCodes.length > 0) {
-    const conflicts = await prisma.branchExpressLocation.findMany({
+  if (prefix) {
+    const conflict = await prisma.branch.findFirst({
       where: {
-        locationCode: { in: expressLocationCodes },
-        branchId: { not: branchId },
+        expressLocationPrefix: prefix,
+        id: { not: branchId },
       },
-      select: { locationCode: true },
+      select: { code: true },
     });
-
-    if (conflicts.length > 0) {
+    if (conflict) {
       return {
-        error: `Express location code "${conflicts[0].locationCode}" is already used by another branch`,
+        error: `Prefix "${prefix}" is already used by branch ${conflict.code}`,
       };
     }
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.branchExpressLocation.deleteMany({ where: { branchId } });
-
-      if (expressLocationCodes.length > 0) {
-        await tx.branchExpressLocation.createMany({
-          data: expressLocationCodes.map((locationCode) => ({
-            branchId,
-            locationCode,
-          })),
-        });
-      }
-    });
-
-    const branch = await prisma.branch.findUniqueOrThrow({
+    const branch = await prisma.branch.update({
       where: { id: branchId },
+      data: { expressLocationPrefix: prefix },
     });
-
     return mapBranch(branch);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return { error: "Express location code is already used by another branch" };
+      return { error: "Express location prefix is already used by another branch" };
     }
     throw error;
   }
