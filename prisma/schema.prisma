@@ -49,22 +49,13 @@ enum AuditAction {
 }
 
 model Branch {
-  id               String                  @id
-  code             String                  @unique
-  name             String
-  expressLocations BranchExpressLocation[]
-  users            UserBranch[]
-  documents        CountDocument[]
-  auditLogs        AuditLog[]
-}
-
-model BranchExpressLocation {
-  id           String @id @default(cuid())
-  branchId     String
-  locationCode String @unique
-  branch       Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
-
-  @@index([branchId])
+  id                    String           @id
+  code                  String           @unique
+  name                  String
+  expressLocationPrefix String?          @unique
+  users                 UserBranch[]
+  documents             CountDocument[]
+  auditLogs             AuditLog[]
 }
 
 model User {

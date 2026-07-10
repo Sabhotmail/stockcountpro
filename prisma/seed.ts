@@ -17,7 +17,6 @@ async function main() {
   await prisma.countDocument.deleteMany();
   await prisma.userBranch.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.branchExpressLocation.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.countLineLock.deleteMany();
   await prisma.appSetting.deleteMany();
@@ -28,11 +27,7 @@ async function main() {
         id: branch.id,
         code: branch.code,
         name: branch.name,
-        expressLocations: {
-          create: branch.expressLocationCodes.map((locationCode) => ({
-            locationCode,
-          })),
-        },
+        expressLocationPrefix: branch.expressLocationPrefix,
       },
     });
   }

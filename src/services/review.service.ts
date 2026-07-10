@@ -44,7 +44,6 @@ import type { MockSession } from "@/types/user";
 async function getBranch(branchId: string) {
   const branch = await prisma.branch.findUnique({
     where: { id: branchId },
-    include: { expressLocations: { orderBy: { locationCode: "asc" } } },
   });
   return branch ? mapBranch(branch) : null;
 }

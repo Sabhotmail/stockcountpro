@@ -18,10 +18,6 @@ export type UpdateAdminBranchInput = {
   expressLocationCodes: string[];
 };
 
-const branchInclude = {
-  expressLocations: { orderBy: { locationCode: "asc" as const } },
-};
-
 export function canAccessAdmin(session: MockSession): boolean {
   return session.role === UserRole.ADMIN || session.role === UserRole.HQ;
 }
@@ -36,7 +32,6 @@ export async function listBranchesForAdmin(session: MockSession) {
 
   const branches = await prisma.branch.findMany({
     orderBy: { code: "asc" },
-    include: branchInclude,
   });
 
   return branches.map(mapBranch);
@@ -100,7 +95,6 @@ export async function updateBranchForAdmin(
 
     const branch = await prisma.branch.findUniqueOrThrow({
       where: { id: branchId },
-      include: branchInclude,
     });
 
     return mapBranch(branch);
