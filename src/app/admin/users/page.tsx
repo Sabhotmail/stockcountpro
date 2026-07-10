@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserRole, type Branch, type User } from "@/types/user";
+import { UserRole, type Branch, type Hub, type User } from "@/types/user";
 
 const roleLabels: Record<UserRole, string> = {
   [UserRole.ADMIN]: "Admin",
@@ -60,6 +60,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [hubs, setHubs] = useState<Hub[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,19 +107,31 @@ export default function AdminUsersPage() {
     }
   }, [handleAuthRedirect]);
 
+  const loadHubs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/hubs", { credentials: "same-origin" });
+      if (handleAuthRedirect(res.status)) return;
+      if (!res.ok) throw new Error("Failed to load hubs");
+      const data = await res.json();
+      setHubs(data.hubs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Load failed");
+    }
+  }, [handleAuthRedirect]);
+
   useEffect(() => {
     let cancelled = false;
     async function loadAll() {
       setLoading(true);
       setError(null);
-      await Promise.all([loadUsers(), loadBranches()]);
+      await Promise.all([loadUsers(), loadBranches(), loadHubs()]);
       if (!cancelled) setLoading(false);
     }
     loadAll();
     return () => {
       cancelled = true;
     };
-  }, [loadBranches, loadUsers]);
+  }, [loadBranches, loadHubs, loadUsers]);
 
   const branchById = useMemo(() => {
     const map = new Map<string, Branch>();
@@ -127,6 +140,19 @@ export default function AdminUsersPage() {
     }
     return map;
   }, [branches]);
+
+  const hubById = useMemo(() => {
+    const map = new Map<string, Hub>();
+    for (const hub of hubs) {
+      map.set(hub.id, hub);
+    }
+    return map;
+  }, [hubs]);
+
+  const activeHubs = useMemo(
+    () => hubs.filter((hub) => hub.isActive),
+    [hubs],
+  );
 
   const activeBranches = useMemo(
     () => branches.filter((branch) => branch.isActive),
@@ -172,6 +198,7 @@ export default function AdminUsersPage() {
   const [createUsername, setCreateUsername] = useState("");
   const [createRole, setCreateRole] = useState<UserRole>(UserRole.STAFF);
   const [createBranchIds, setCreateBranchIds] = useState<string[]>([]);
+  const [createHubIds, setCreateHubIds] = useState<string[]>([]);
   const [createPasswordMode, setCreatePasswordMode] = useState<PasswordMode>("generate");
   const [createPassword, setCreatePassword] = useState("");
   const [createPasswordConfirm, setCreatePasswordConfirm] = useState("");
@@ -183,6 +210,7 @@ export default function AdminUsersPage() {
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<UserRole>(UserRole.STAFF);
   const [editBranchIds, setEditBranchIds] = useState<string[]>([]);
+  const [editHubIds, setEditHubIds] = useState<string[]>([]);
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -203,10 +231,16 @@ export default function AdminUsersPage() {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copyOk, setCopyOk] = useState(false);
 
+  function toggleId(list: string[], id: string) {
+    return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+  }
+
   function toggleBranch(list: string[], branchId: string) {
-    return list.includes(branchId)
-      ? list.filter((id) => id !== branchId)
-      : [...list, branchId];
+    return toggleId(list, branchId);
+  }
+
+  function toggleHub(list: string[], hubId: string) {
+    return toggleId(list, hubId);
   }
 
   function openCreate() {
@@ -215,6 +249,7 @@ export default function AdminUsersPage() {
     setCreateUsername("");
     setCreateRole(UserRole.STAFF);
     setCreateBranchIds([]);
+    setCreateHubIds([]);
     setCreatePasswordMode("generate");
     setCreatePassword("");
     setCreatePasswordConfirm("");
@@ -227,6 +262,7 @@ export default function AdminUsersPage() {
     setEditName(user.name);
     setEditRole(user.role);
     setEditBranchIds(user.branchIds);
+    setEditHubIds(user.hubIds);
     setEditOpen(true);
   }
 
@@ -266,6 +302,9 @@ export default function AdminUsersPage() {
     if (!isAdminOrHq(createRole) && createBranchIds.length === 0) {
       return setCreateError("กรุณาเลือกสาขาอย่างน้อย 1 สาขา");
     }
+    if (!isAdminOrHq(createRole) && createHubIds.length === 0) {
+      return setCreateError("กรุณาเลือก Hub อย่างน้อย 1 Hub");
+    }
 
     if (createPasswordMode === "set") {
       if (!createPassword) return setCreateError("กรุณากรอกรหัสผ่าน");
@@ -285,6 +324,7 @@ export default function AdminUsersPage() {
           username,
           role: createRole,
           branchIds: isAdminOrHq(createRole) ? [] : createBranchIds,
+          hubIds: isAdminOrHq(createRole) ? [] : createHubIds,
           passwordMode: createPasswordMode,
           password: createPasswordMode === "set" ? createPassword : undefined,
         }),
@@ -321,6 +361,9 @@ export default function AdminUsersPage() {
     if (!isAdminOrHq(editRole) && editBranchIds.length === 0) {
       return setEditError("กรุณาเลือกสาขาอย่างน้อย 1 สาขา");
     }
+    if (!isAdminOrHq(editRole) && editHubIds.length === 0) {
+      return setEditError("กรุณาเลือก Hub อย่างน้อย 1 Hub");
+    }
 
     setEditBusy(true);
     try {
@@ -332,6 +375,7 @@ export default function AdminUsersPage() {
           name,
           role: editRole,
           branchIds: isAdminOrHq(editRole) ? [] : editBranchIds,
+          hubIds: isAdminOrHq(editRole) ? [] : editHubIds,
         }),
       });
       if (handleAuthRedirect(res.status)) return;
@@ -691,6 +735,38 @@ export default function AdminUsersPage() {
               </div>
             )}
 
+            {!isAdminOrHq(createRole) && (
+              <div className="grid gap-2">
+                <Label>Hubs</Label>
+                <div className="max-h-40 overflow-auto rounded-md border border-input p-2">
+                  <div className="grid gap-2">
+                    {activeHubs.map((hub) => {
+                      const checked = createHubIds.includes(hub.id);
+                      const branch = branchById.get(hub.branchId);
+                      return (
+                        <label key={hub.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setCreateHubIds((prev) => toggleHub(prev, hub.id))
+                            }
+                          />
+                          <span className="font-medium">
+                            {branch?.code ?? hub.branchId} · Hub {hub.shortName ?? hub.code}
+                          </span>
+                          <span className="text-muted-foreground">{hub.name}</span>
+                        </label>
+                      );
+                    })}
+                    {activeHubs.length === 0 && (
+                      <p className="text-sm text-muted-foreground">ยังไม่มี Hub ที่เปิดใช้งาน</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label>Password mode</Label>
               <div className="flex flex-wrap gap-2">
@@ -830,6 +906,38 @@ export default function AdminUsersPage() {
                       <p className="text-xs text-amber-700">
                         ผู้ใช้นี้ยังผูกกับสาขาที่ถูกปิดใช้งานอยู่ (ยังคงสิทธิ์เดิมจนกว่าจะบันทึกใหม่โดยเอาออก)
                       </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isAdminOrHq(editRole) && (
+              <div className="grid gap-2">
+                <Label>Hubs</Label>
+                <div className="max-h-40 overflow-auto rounded-md border border-input p-2">
+                  <div className="grid gap-2">
+                    {activeHubs.map((hub) => {
+                      const checked = editHubIds.includes(hub.id);
+                      const branch = branchById.get(hub.branchId);
+                      return (
+                        <label key={hub.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setEditHubIds((prev) => toggleHub(prev, hub.id))
+                            }
+                          />
+                          <span className="font-medium">
+                            {branch?.code ?? hub.branchId} · Hub {hub.shortName ?? hub.code}
+                          </span>
+                          <span className="text-muted-foreground">{hub.name}</span>
+                        </label>
+                      );
+                    })}
+                    {activeHubs.length === 0 && (
+                      <p className="text-sm text-muted-foreground">ยังไม่มี Hub ที่เปิดใช้งาน</p>
                     )}
                   </div>
                 </div>

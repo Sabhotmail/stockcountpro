@@ -1,7 +1,7 @@
 # BKK3 Hub Model + Central HQ Accounting Locations
 
 **Date:** 2026-07-10  
-**Status:** Draft for review  
+**Status:** Approved — implemented 2026-07-10  
 **Goal:** Restructure StockCount Pro around a single branch **BKK3** (Express prefix `24`), with **Hubs** for operational counting and a **central HQ (accounting)** document for shared warehouses.
 
 ## Decisions (brainstorming)
@@ -12,34 +12,68 @@
 | Document split | **One document per Hub per day** |
 | User access | Users assigned to **Hub(s)** |
 | Location → Hub | Auto-parse: digit at position 3 = Hub code |
-| Central / HQ locations | Single bucket: **คลังกลาง HQ (บัญชี)** — not Hub-scoped |
+| Central / HQ locations | **Wonder / พิเศษ** (`*1` ท้าย) เท่านั้น — ไม่รวม G/D/F/Z แยก Hub |
+| G/D/F/Z per Hub | `24GA`, `24DA`, … → อยู่**ภายใต้เอกสาร Hub** นั้น (A=CHM, B=PNL) |
+| Active hubs (MVP) | **Hub 1 (CHM)** และ **Hub 2 (PNL)** เท่านั้น |
 | Central document | One **BKK3 central** document per day; only HQ/accounting roles can see & count |
 | Approach | Add `Hub` entity under Branch (Approach 1) |
 
-### Location classification (`24…`)
+### Location classification (`24…`) — ตามแบบออกแบบของผู้ใช้
 
-| Pattern | Example | Destination |
-|---------|---------|-------------|
-| `24` + **digit** + … | `2411`, `2425` | Hub `1` (CHM), Hub `2` (PNL) |
-| Explicit central list | `24C1`, `24F1`, `24G1`, `24R1`, `24Z1`, `24DA`, `24GA`, `24DB`, `24GB` | Central HQ (accounting) document |
-| Other `24*` not matching | — | Unmapped / not selectable until classified |
+**ใช้งานจริงตอนนี้: Hub 1 (CHM) และ Hub 2 (PNL) เท่านั้น**
 
-Hub digit mapping (Admin-configurable):
+#### กลุ่ม A — อยู่ภายใต้เอกสาร Hub (Staff ของ Hub นั้นนับ)
 
-| Hub code (char at index 2) | Name (seed) |
-|----------------------------|-------------|
-| `1` | เชียงใหม่ (CHM) |
-| `2` | พิษณุโลก (PNL) |
+| แพทเทิร์น | ตัวอย่าง | Hub |
+|----------|---------|-----|
+| `24` + **เลข Hub** + ลำดับคัน | `2411`, `2425` | 1=CHM, 2=PNL |
+| `24` + **G/D/F/Z** + **ตัวย่อ Hub** | `24GA`, `24DA`, `24FA`, `24ZA` | A → Hub 1 (CHM) |
+| | `24GB`, `24DB`, `24FB`, `24ZB` | B → Hub 2 (PNL) |
 
-Future hubs: add Hub row with code `3`, `4`, … — no code deploy required for new digit if Admin can create hubs.
+ตัวย่อ Hub (ตำแหน่งที่ 4) สำหรับ G/D/F/Z — อนาคตขยายได้:
+
+| ตัวย่อ | Hub | สถานะ MVP |
+|--------|-----|-----------|
+| A | 1 – CHM | ใช้งาน |
+| B | 2 – PNL | ใช้งาน |
+| C–I | 3–8 (SRB, UDN, …) | อนาคต — ยังไม่ map |
+
+#### กลุ่ม B — คลังกลาง HQ (บัญชี) — เอกสารกลาง BKK3 แยก 1 ฉบับ/วัน
+
+| รหัส | ความหมาย |
+|------|----------|
+| `24G1` | คลังดี Wonder |
+| `24D1` | คลังเสีย Wonder |
+| `24F1` | คลังแถม Wonder |
+| `24Z1` | คลังพัก Wonder |
+| `24R1` | Customer Receive |
+| `24S1` | Direct Ship ขาย |
+| `24C1` | ลด C/N |
+
+→ เฉพาะ **HQ / บัญชี** เห็นและ sync ได้
+
+#### กลุ่ม C — อนาคต / ยังไม่เปิด
+
+| แพทเทิร์น | ตัวอย่าง |
+|----------|---------|
+| Van Hub 3–8 | `2431`, `248B` |
+| G/D/F/Z + ตัวย่อ C–I | `24GC`, `24DI`, … |
+
+Hub digit mapping (Van — ตำแหน่งที่ 3):
+
+| Hub code | Name | MVP |
+|----------|------|-----|
+| `1` | เชียงใหม่ (CHM) | ใช้งาน |
+| `2` | พิษณุโลก (PNL) | ใช้งาน |
+| `3`–`8` | SRB, UDN, NKR, SRT, SKL, BKK1 | อนาคต |
 
 ## Architecture overview
 
 ```
 Branch BKK3 (prefix 24)
-├── Hub 1 CHM  → CountDocument (date + branchId + hubId)
-├── Hub 2 PNL  → CountDocument (date + branchId + hubId)
-└── Central HQ → CountDocument (date + branchId + hubId=null, isCentral=true)
+├── Hub 1 CHM  → เอกสารรวม: Van (241x) + G/D/F/Z ของ Hub A (24GA, 24DA, …)
+├── Hub 2 PNL  → เอกสารรวม: Van (242x) + G/D/F/Z ของ Hub B (24GB, 24DB, …)
+└── Central HQ → เอกสารกลาง: 24G1, 24D1, 24F1, 24Z1, 24R1, 24S1, 24C1
 ```
 
 Sync flow:
@@ -107,26 +141,34 @@ model UserHub {
 Config (Admin-editable later; seed constants for MVP):
 
 ```ts
-export const BKK3_CENTRAL_LOCATION_CODES = [
-  "24C1", "24F1", "24G1", "24R1", "24Z1",
-  "24DA", "24GA", "24DB", "24GB",
+export const BKK3_HQ_CENTRAL_LOCATION_CODES = [
+  "24G1", "24D1", "24F1", "24Z1",
+  "24R1", "24S1", "24C1",
 ] as const;
+
+// Hub suffix letter (pos 4) for G/D/F/Z types → Hub code
+export const HUB_SUFFIX_TO_CODE: Record<string, string> = {
+  A: "1", // CHM
+  B: "2", // PNL
+  // C: "3", ... future
+};
 ```
 
-Parse helper:
+Parse helper (order matters):
 
 ```ts
-function classifyLocation(code: string, hubs: Hub[]): 
+function classifyLocation(code: string, hubs: Hub[]):
   | { kind: "hub"; hub: Hub }
   | { kind: "central" }
   | { kind: "unmapped" }
 ```
 
-Rules order:
+Rules:
 
-1. If code in central allowlist → `central`
-2. Else if `code[0..1]==branch.prefix` and `code[2]` is digit matching a Hub.code → `hub`
-3. Else → `unmapped`
+1. If code in `BKK3_HQ_CENTRAL_LOCATION_CODES` → `central`
+2. Else if `code[2]` in `GDFZ` and `code[3]` in `AB` and maps to active Hub → `hub`
+3. Else if `code[2]` is digit `1` or `2` matching active Hub → `hub` (Van)
+4. Else → `unmapped`
 
 ## Permissions
 
@@ -171,10 +213,10 @@ Exact SUPERVISOR scope: **assigned hubs only** unless Admin (same as staff for M
 ## Verification plan
 
 1. Seed BKK3 prefix `24`, Hub `1`/`2`.
-2. Load locations for `2026-07-10` → `2411` selectable for CHM staff; `24G1` only for HQ.
-3. Sync CHM vans → one CHM document; sync central codes → one HQ central document.
-4. PNL staff cannot open CHM document.
-5. Add Hub `3` in Admin → `243x` maps without code change.
+2. Load locations → `2411`, `24GA` selectable for CHM staff; `24G1` only for HQ.
+3. Sync CHM (`2411` + `24GA`) → **หนึ่งเอกสาร Hub CHM**; sync `24G1` → เอกสารกลาง HQ.
+4. PNL staff ไม่เปิดเอกสาร CHM.
+5. เพิ่ม Hub `3` ใน Admin + ตัวย่อ `C` → `243x`, `24GC` map ได้โดยไม่แก้โค้ด parse
 
 ## Open points (defaults chosen)
 

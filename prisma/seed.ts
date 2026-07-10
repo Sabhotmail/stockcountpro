@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
-import { mockBranches } from "../src/mock/branches";
+import { mockBranches, mockHubs } from "../src/mock/branches";
 import { DEFAULT_SEED_PASSWORD, ADMIN_SEED_PASSWORD, mockUsers } from "../src/mock/users";
 
 const prisma = new PrismaClient();
@@ -15,8 +15,10 @@ async function main() {
   await prisma.countVersion.deleteMany();
   await prisma.productLine.deleteMany();
   await prisma.countDocument.deleteMany();
+  await prisma.userHub.deleteMany();
   await prisma.userBranch.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.hub.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.countLineLock.deleteMany();
   await prisma.appSetting.deleteMany();
@@ -29,6 +31,20 @@ async function main() {
         name: branch.name,
         expressLocationPrefix: branch.expressLocationPrefix,
         isActive: branch.isActive,
+      },
+    });
+  }
+
+  for (const hub of mockHubs) {
+    await prisma.hub.create({
+      data: {
+        id: hub.id,
+        branchId: hub.branchId,
+        code: hub.code,
+        name: hub.name,
+        shortName: hub.shortName,
+        suffixLetter: hub.suffixLetter,
+        isActive: hub.isActive,
       },
     });
   }
@@ -48,6 +64,9 @@ async function main() {
         isActive: true,
         branches: {
           create: user.branchIds.map((branchId) => ({ branchId })),
+        },
+        hubs: {
+          create: user.hubIds.map((hubId) => ({ hubId })),
         },
       },
     });

@@ -1,4 +1,4 @@
-import { mapBranch } from "@/lib/db/mappers";
+import { mapBranch, mapHub } from "@/lib/db/mappers";
 import {
   normalizeExpressLocationPrefix,
   validateExpressLocationPrefix,
@@ -10,7 +10,7 @@ import {
 } from "@/services/audit-log.service";
 import { listUsers } from "@/services/user.service";
 import type { AuditLog } from "@/types/audit";
-import type { Branch, MockSession } from "@/types/user";
+import type { Branch, Hub, MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 import { Prisma } from "@prisma/client";
 
@@ -238,6 +238,141 @@ export async function listAuditLogsForAdmin(
   const result = await listAllAuditLogs(session);
   if ("error" in result) return result;
   return result;
+}
+
+export type CreateAdminHubInput = {
+  branchId: string;
+  code: string;
+  name: string;
+  shortName?: string | null;
+  suffixLetter?: string | null;
+};
+
+export type UpdateAdminHubInput = {
+  name?: string;
+  shortName?: string | null;
+  suffixLetter?: string | null;
+  isActive?: boolean;
+};
+
+export async function listHubsForAdmin(
+  session: MockSession,
+  branchId?: string | null,
+): Promise<Hub[] | { error: string }> {
+  if (!canAccessAdmin(session)) return { error: "Access denied" };
+
+  const hubs = await prisma.hub.findMany({
+    where: branchId ? { branchId } : undefined,
+    orderBy: [{ branchId: "asc" }, { code: "asc" }],
+  });
+
+  return hubs.map(mapHub);
+}
+
+export async function createHubForAdmin(
+  session: MockSession,
+  input: CreateAdminHubInput,
+): Promise<Hub | { error: string }> {
+  if (!canAccessAdmin(session)) return { error: "Access denied" };
+
+  const branch = await prisma.branch.findUnique({
+    where: { id: input.branchId },
+    select: { id: true },
+  });
+  if (!branch) return { error: "Branch not found" };
+
+  const code = input.code.trim();
+  if (!/^[1-9]$/.test(code)) {
+    return { error: "Hub code must be a single digit 1-9" };
+  }
+
+  const name = input.name.trim();
+  if (!name) return { error: "Hub name is required" };
+
+  const shortName = input.shortName?.trim() || null;
+  const suffixLetter = input.suffixLetter?.trim().toUpperCase() || null;
+  if (suffixLetter && !/^[A-Z]$/.test(suffixLetter)) {
+    return { error: "Suffix letter must be a single A-Z character" };
+  }
+
+  const id = `hub_${input.branchId}_${code}`;
+
+  try {
+    const hub = await prisma.hub.create({
+      data: {
+        id,
+        branchId: input.branchId,
+        code,
+        name,
+        shortName,
+        suffixLetter,
+        isActive: true,
+      },
+    });
+    return mapHub(hub);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return { error: "Hub code already exists for this branch" };
+    }
+    throw error;
+  }
+}
+
+export async function updateHubForAdmin(
+  session: MockSession,
+  hubId: string,
+  input: UpdateAdminHubInput,
+): Promise<Hub | { error: string }> {
+  if (!canAccessAdmin(session)) return { error: "Access denied" };
+
+  const existing = await prisma.hub.findUnique({ where: { id: hubId } });
+  if (!existing) return { error: "Hub not found" };
+
+  const data: {
+    name?: string;
+    shortName?: string | null;
+    suffixLetter?: string | null;
+    isActive?: boolean;
+  } = {};
+
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) return { error: "Hub name is required" };
+    data.name = name;
+  }
+
+  if (input.shortName !== undefined) {
+    data.shortName = input.shortName?.trim() || null;
+  }
+
+  if (input.suffixLetter !== undefined) {
+    const suffixLetter = input.suffixLetter?.trim().toUpperCase() || null;
+    if (suffixLetter && !/^[A-Z]$/.test(suffixLetter)) {
+      return { error: "Suffix letter must be a single A-Z character" };
+    }
+    data.suffixLetter = suffixLetter;
+  }
+
+  if (input.isActive !== undefined) {
+    if (typeof input.isActive !== "boolean") {
+      return { error: "isActive must be a boolean" };
+    }
+    data.isActive = input.isActive;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return { error: "At least one field is required" };
+  }
+
+  const hub = await prisma.hub.update({
+    where: { id: hubId },
+    data,
+  });
+
+  return mapHub(hub);
 }
 
 export async function getAdminDashboardCounts(session: MockSession) {

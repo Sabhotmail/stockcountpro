@@ -3,12 +3,13 @@ import {
   mapCountDocument,
   mapCountEntry,
   mapCountVersion,
+  mapHub,
   mapProductLine,
 } from "@/lib/db/mappers";
 import { getDocumentForSession } from "@/lib/document-access";
 import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
 import {
-  canAccessBranch,
+  canAccessDocument,
   canMutateCount,
   filterDocumentsForStaff,
 } from "@/lib/permissions";
@@ -28,7 +29,7 @@ import {
   type CountSummary,
   type CountSummaryLine,
 } from "@/types/count";
-import type { MockSession } from "@/types/user";
+import type { Branch, Hub, MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 
 async function getBranch(branchId: string) {
@@ -38,13 +39,23 @@ async function getBranch(branchId: string) {
   return branch ? mapBranch(branch) : null;
 }
 
+async function getHub(hubId: string | null): Promise<Hub | null> {
+  if (!hubId) return null;
+  const hub = await prisma.hub.findUnique({ where: { id: hubId } });
+  return hub ? mapHub(hub) : null;
+}
+
 async function enrichDocument(doc: CountDocument): Promise<CountDocumentListItem> {
   const branch = await getBranch(doc.branchId);
+  const hub = await getHub(doc.hubId);
   return {
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
     branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
+    hubCode: hub?.code ?? null,
+    hubName: hub?.name ?? null,
+    hubShortName: hub?.shortName ?? null,
   };
 }
 
@@ -74,7 +85,14 @@ export async function listDocumentsForUser(
   const filtered = documents
     .map(mapCountDocument)
     .filter((doc) => {
-      if (!canAccessBranch(session.role, session.branchIds, doc.branchId)) {
+      if (
+        !canAccessDocument(
+          session.role,
+          session.branchIds,
+          session.hubIds,
+          doc,
+        )
+      ) {
         return false;
       }
 
@@ -109,6 +127,7 @@ export async function getDocumentDetail(
 
   const doc = access.document;
   const branch = await getBranch(doc.branchId);
+  const hub = await getHub(doc.hubId);
   const versionRow = doc.currentVersionId
     ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
     : null;
@@ -144,6 +163,9 @@ export async function getDocumentDetail(
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
     branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
+    hubCode: hub?.code ?? null,
+    hubName: hub?.name ?? null,
+    hubShortName: hub?.shortName ?? null,
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries: enrichedEntries,

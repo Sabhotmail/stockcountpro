@@ -72,6 +72,8 @@ export interface CountDocument {
   documentNo: string;
   documentDate: string;
   branchId: string;
+  hubId: string | null;
+  isCentral: boolean;
   status: DocumentStatus;
   currentVersionId: string | null;
   currentVersionNo: number;
@@ -86,9 +88,21 @@ export interface CountDocumentDetail extends CountDocument {
   branchCode: string;
   branchName: string;
   branchExpressLocationPrefix: string | null;
+  hubCode: string | null;
+  hubName: string | null;
+  hubShortName: string | null;
   version: CountVersion | null;
   lines: ProductLine[];
   entries: CountEntry[];
+}
+
+export interface CountDocumentListItem extends CountDocument {
+  branchCode: string;
+  branchName: string;
+  branchExpressLocationPrefix: string | null;
+  hubCode: string | null;
+  hubName: string | null;
+  hubShortName: string | null;
 }
 
 export interface LineLockInfo {
@@ -110,12 +124,6 @@ export interface SaveEntryErrorResponse {
   message: string;
   entry?: CountEntry;
   lockedByUserName?: string;
-}
-
-export interface CountDocumentListItem extends CountDocument {
-  branchCode: string;
-  branchName: string;
-  branchExpressLocationPrefix: string | null;
 }
 
 export interface SaveEntryPayload {

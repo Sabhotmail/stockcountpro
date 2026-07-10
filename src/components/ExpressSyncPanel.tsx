@@ -25,7 +25,7 @@ import {
 import { todayDateKeyBangkok } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type {
-  ExpressSyncBranchResult,
+  ExpressSyncDocumentResult,
   ExpressSyncLocationPreview,
 } from "@/services/express-sync.service";
 
@@ -42,7 +42,7 @@ type PreviewResponse = {
 type SyncResponse = {
   date: string;
   expressLineCount: number;
-  results: ExpressSyncBranchResult[];
+  results: ExpressSyncDocumentResult[];
 };
 
 export function ExpressSyncPanel({
@@ -57,7 +57,7 @@ export function ExpressSyncPanel({
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [syncResults, setSyncResults] = useState<ExpressSyncBranchResult[] | null>(
+  const [syncResults, setSyncResults] = useState<ExpressSyncDocumentResult[] | null>(
     null,
   );
 
@@ -257,6 +257,13 @@ export function ExpressSyncPanel({
                     }`
                   : "ยังไม่ผูกสาขา";
 
+                const destinationLabel =
+                  location.classification === "central"
+                    ? "HQ กลาง"
+                    : location.classification === "hub"
+                      ? `Hub ${location.hubShortName ?? location.hubCode ?? ""}`
+                      : "ยังไม่ map";
+
                 return (
                   <label
                     key={location.locationCode}
@@ -286,6 +293,17 @@ export function ExpressSyncPanel({
                         >
                           {branchLabel}
                         </Badge>
+                        <Badge
+                          variant={
+                            location.classification === "central"
+                              ? "default"
+                              : location.classification === "hub"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {destinationLabel}
+                        </Badge>
                       </span>
                       {location.disabledReason && (
                         <span className="block text-sm text-muted-foreground">
@@ -302,24 +320,29 @@ export function ExpressSyncPanel({
 
         {syncResults && syncResults.length > 0 && (
           <div className="space-y-3">
-            <h3 className="font-medium">ผลลัพธ์ Sync รายสาขา</h3>
+            <h3 className="font-medium">ผลลัพธ์ Sync รายเอกสาร</h3>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>สาขา</TableHead>
+                  <TableHead>ปลายทาง</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">รายการ</TableHead>
                   <TableHead>หมายเหตุ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {syncResults.map((item) => (
-                  <TableRow key={`${item.branchCode}-${item.status}-${item.reason ?? ""}`}>
-                    <TableCell>
-                      {item.branchName
+                {syncResults.map((item) => {
+                  const destination = item.isCentral
+                    ? `${item.branchCode} · HQ กลาง`
+                    : item.hubShortName
+                      ? `${item.branchCode} · Hub ${item.hubShortName}`
+                      : item.branchName
                         ? `${item.branchCode} · ${item.branchName}`
-                        : item.branchCode}
-                    </TableCell>
+                        : item.branchCode;
+
+                  return (
+                  <TableRow key={`${item.branchCode}-${item.hubCode ?? "hq"}-${item.status}-${item.reason ?? ""}`}>
+                    <TableCell>{destination}</TableCell>
                     <TableCell>
                       {item.status === "created"
                         ? "สร้างใหม่"
@@ -335,7 +358,8 @@ export function ExpressSyncPanel({
                         (item.documentNo ? `เอกสาร ${item.documentNo}` : "—")}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

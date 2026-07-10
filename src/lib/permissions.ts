@@ -10,6 +10,44 @@ export function canAccessBranch(
   return userBranchIds.includes(branchId);
 }
 
+export function canAccessCentralDocuments(role: UserRole): boolean {
+  return role === UserRole.ADMIN || role === UserRole.HQ;
+}
+
+export function canAccessHub(
+  role: UserRole,
+  userHubIds: string[],
+  hubId: string,
+): boolean {
+  if (role === UserRole.ADMIN || role === UserRole.HQ) return true;
+  return userHubIds.includes(hubId);
+}
+
+export function canAccessDocument(
+  role: UserRole,
+  userBranchIds: string[],
+  userHubIds: string[],
+  document: {
+    branchId: string;
+    hubId: string | null;
+    isCentral: boolean;
+  },
+): boolean {
+  if (!canAccessBranch(role, userBranchIds, document.branchId)) {
+    return false;
+  }
+
+  if (document.isCentral) {
+    return canAccessCentralDocuments(role);
+  }
+
+  if (document.hubId) {
+    return canAccessHub(role, userHubIds, document.hubId);
+  }
+
+  return true;
+}
+
 export function canViewExpectedQty(role: UserRole): boolean {
   return (
     role === UserRole.ADMIN ||

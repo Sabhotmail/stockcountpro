@@ -5,7 +5,7 @@ import type { User } from "@/types/user";
 export async function getUserById(id: string): Promise<User | undefined> {
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { branches: true },
+    include: { branches: true, hubs: true },
   });
 
   return user ? mapUser(user) : undefined;
@@ -13,7 +13,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
 export async function listUsers(): Promise<User[]> {
   const users = await prisma.user.findMany({
-    include: { branches: true },
+    include: { branches: true, hubs: true },
     orderBy: { name: "asc" },
   });
 

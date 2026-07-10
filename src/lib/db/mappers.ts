@@ -2,6 +2,7 @@ import { toDateKeyBangkok, toIsoInstant } from "@/lib/datetime";
 import type {
   AuditLog as PrismaAuditLog,
   Branch as PrismaBranch,
+  Hub as PrismaHub,
   CountDocument as PrismaCountDocument,
   CountEntry as PrismaCountEntry,
   CountLineLock as PrismaCountLineLock,
@@ -25,7 +26,7 @@ import {
   type ProductLine,
   type RecountRequestRecord,
 } from "@/types/count";
-import { type Branch, type User, UserRole } from "@/types/user";
+import { type Branch, type Hub, type User, UserRole } from "@/types/user";
 
 function toIso(value: Date): string {
   return toIsoInstant(value);
@@ -45,7 +46,24 @@ export function mapBranch(branch: PrismaBranch): Branch {
   };
 }
 
-export function mapUser(user: PrismaUser & { branches: { branchId: string }[] }): User {
+export function mapHub(hub: PrismaHub): Hub {
+  return {
+    id: hub.id,
+    branchId: hub.branchId,
+    code: hub.code,
+    name: hub.name,
+    shortName: hub.shortName ?? null,
+    suffixLetter: hub.suffixLetter ?? null,
+    isActive: hub.isActive,
+  };
+}
+
+export function mapUser(
+  user: PrismaUser & {
+    branches: { branchId: string }[];
+    hubs?: { hubId: string }[];
+  },
+): User {
   return {
     id: user.id,
     username: user.username,
@@ -53,6 +71,7 @@ export function mapUser(user: PrismaUser & { branches: { branchId: string }[] })
     role: user.role as UserRole,
     isActive: user.isActive,
     branchIds: user.branches.map((item) => item.branchId),
+    hubIds: user.hubs?.map((item) => item.hubId) ?? [],
   };
 }
 
@@ -62,6 +81,8 @@ export function mapCountDocument(doc: PrismaCountDocument): CountDocument {
     documentNo: doc.documentNo,
     documentDate: toDateOnly(doc.documentDate),
     branchId: doc.branchId,
+    hubId: doc.hubId,
+    isCentral: doc.isCentral,
     status: doc.status as DocumentStatus,
     currentVersionId: doc.currentVersionId,
     currentVersionNo: doc.currentVersionNo,

@@ -1,7 +1,19 @@
 import { getDefaultProductImageUrl } from "@/lib/product-image";
-import { extractLocationPrefix } from "@/lib/express-location";
+import {
+  classifyLocationForBranch,
+  extractLocationPrefix,
+  type HubForClassify,
+  type LocationClassification,
+} from "@/lib/express-location";
+import { mapBranch, mapHub } from "@/lib/db/mappers";
 import { prisma } from "@/lib/prisma";
-import { canAccessBranch, canSyncExpress } from "@/lib/permissions";
+import {
+  canAccessBranch,
+  canAccessCentralDocuments,
+  canAccessDocument,
+  canAccessHub,
+  canSyncExpress,
+} from "@/lib/permissions";
 import { logExpressSync } from "@/services/audit-log.service";
 import {
   fetchExpressCountDateByLocations,
@@ -9,15 +21,18 @@ import {
 } from "@/services/express-api.service";
 import { DocumentStatus } from "@/types/count";
 import type { ExpressLocationItem, ExpressStockCountLine } from "@/types/express";
-import { mapBranch } from "@/lib/db/mappers";
-import type { Branch, MockSession } from "@/types/user";
+import type { Branch, Hub, MockSession } from "@/types/user";
 
 import { parseDateKeyBangkok } from "@/lib/datetime";
 import { mapExpressExpectedQty, mapExpressFieldQty } from "@/lib/express-expected-qty";
 
-export type ExpressSyncBranchResult = {
+export type ExpressSyncDocumentResult = {
   branchCode: string;
   branchName?: string;
+  hubCode?: string;
+  hubName?: string;
+  hubShortName?: string;
+  isCentral?: boolean;
   documentId?: string;
   documentNo?: string;
   lineCount?: number;
@@ -25,19 +40,27 @@ export type ExpressSyncBranchResult = {
   reason?: string;
 };
 
+/** @deprecated Use ExpressSyncDocumentResult */
+export type ExpressSyncBranchResult = ExpressSyncDocumentResult;
+
 export type ExpressSyncResult = {
   date: string;
   expressLineCount: number;
-  results: ExpressSyncBranchResult[];
+  results: ExpressSyncDocumentResult[];
 };
 
 export type ExpressSyncLocationPreview = {
   locationCode: string;
   locationName?: string | null;
   prefix: string | null;
+  classification: "hub" | "central" | "unmapped";
   mappedBranchId: string | null;
   mappedBranchCode: string | null;
   mappedBranchName: string | null;
+  hubId: string | null;
+  hubCode: string | null;
+  hubName: string | null;
+  hubShortName: string | null;
   accessible: boolean;
   selectable: boolean;
   disabledReason: string | null;
@@ -48,16 +71,46 @@ export type ExpressSyncPreviewResult = {
   locations: ExpressSyncLocationPreview[];
 };
 
+type DocumentDestination =
+  | { kind: "hub"; branch: Branch; hub: HubForClassify }
+  | { kind: "central"; branch: Branch };
+
+type DocumentGroupKey = string;
+
 function parseCountDate(value: string): Date | null {
   return parseDateKeyBangkok(value);
 }
 
-function buildDocumentId(branchId: string, countDate: string): string {
+function buildHubDocumentId(
+  branchId: string,
+  countDate: string,
+  hubCode: string,
+): string {
   const compact = countDate.replace(/-/g, "");
-  return `doc_${branchId}_${compact}`;
+  return `doc_${branchId}_${compact}_hub_${hubCode}`;
 }
 
-function buildDocumentNo(
+function buildCentralDocumentId(branchId: string, countDate: string): string {
+  const compact = countDate.replace(/-/g, "");
+  return `doc_${branchId}_${compact}_central`;
+}
+
+function buildHubDocumentNo(
+  branchCode: string,
+  hubShortName: string | null,
+  hubCode: string,
+  countDate: string,
+  expressDocumentNo?: string,
+): string {
+  if (expressDocumentNo?.trim()) {
+    return expressDocumentNo.trim();
+  }
+
+  const label = hubShortName ?? hubCode;
+  return `CNT-${branchCode}-${label}-${countDate.replace(/-/g, "")}`;
+}
+
+function buildCentralDocumentNo(
   branchCode: string,
   countDate: string,
   expressDocumentNo?: string,
@@ -66,7 +119,7 @@ function buildDocumentNo(
     return expressDocumentNo.trim();
   }
 
-  return `CNT-${branchCode}-${countDate.replace(/-/g, "")}`;
+  return `CNT-${branchCode}-HQ-${countDate.replace(/-/g, "")}`;
 }
 
 function mapExpressLineToProductLine(
@@ -125,6 +178,14 @@ async function loadBranchesForExpressLookup(): Promise<Branch[]> {
   return branches.map(mapBranch);
 }
 
+async function loadActiveHubs(): Promise<Hub[]> {
+  const hubs = await prisma.hub.findMany({
+    where: { isActive: true },
+    orderBy: [{ branchId: "asc" }, { code: "asc" }],
+  });
+  return hubs.map(mapHub);
+}
+
 function normalizeSelectedLocationCodes(locationCodes: string[]): string[] {
   const seen = new Set<string>();
   const normalized: string[] = [];
@@ -143,23 +204,101 @@ function normalizeExpressLocationCode(item: ExpressLocationItem): string {
   return String(item.LocationCode ?? "").trim().toUpperCase();
 }
 
+function classifyForActiveBranches(
+  locationCode: string,
+  branches: Branch[],
+  hubs: Hub[],
+): {
+  classification: LocationClassification;
+  branch: Branch | null;
+} {
+  const prefix = extractLocationPrefix(locationCode);
+  if (!prefix) {
+    return { classification: { kind: "unmapped" }, branch: null };
+  }
+
+  const branch = branches.find(
+    (item) => item.expressLocationPrefix?.trim().toUpperCase() === prefix,
+  );
+  if (!branch?.expressLocationPrefix) {
+    return { classification: { kind: "unmapped" }, branch: null };
+  }
+
+  const classification = classifyLocationForBranch(
+    locationCode,
+    branch.id,
+    branch.expressLocationPrefix,
+    hubs,
+  );
+
+  return { classification, branch };
+}
+
+function canAccessClassification(
+  session: MockSession,
+  branch: Branch,
+  classification: LocationClassification,
+): boolean {
+  if (!canAccessBranch(session.role, session.branchIds, branch.id)) {
+    return false;
+  }
+
+  if (classification.kind === "central") {
+    return canAccessCentralDocuments(session.role);
+  }
+
+  if (classification.kind === "hub") {
+    return canAccessHub(session.role, session.hubIds, classification.hub.id);
+  }
+
+  return false;
+}
+
 function buildLocationPreview(
   item: ExpressLocationItem,
-  branchByPrefix: Map<string, Branch>,
+  branches: Branch[],
+  hubs: Hub[],
   session: MockSession,
 ): ExpressSyncLocationPreview {
   const locationCode = normalizeExpressLocationCode(item);
   const prefix = extractLocationPrefix(locationCode);
-  const branch = prefix ? branchByPrefix.get(prefix) : undefined;
+  const { classification, branch } = classifyForActiveBranches(
+    locationCode,
+    branches,
+    hubs,
+  );
+
+  let hubId: string | null = null;
+  let hubCode: string | null = null;
+  let hubName: string | null = null;
+  let hubShortName: string | null = null;
+  let classificationKind: ExpressSyncLocationPreview["classification"] =
+    "unmapped";
+
+  if (classification.kind === "hub") {
+    classificationKind = "hub";
+    hubId = classification.hub.id;
+    hubCode = classification.hub.code;
+    hubName = classification.hub.name;
+    hubShortName = classification.hub.shortName;
+  } else if (classification.kind === "central") {
+    classificationKind = "central";
+  }
+
   const accessible = branch
-    ? canAccessBranch(session.role, session.branchIds, branch.id)
+    ? canAccessClassification(session, branch, classification)
     : false;
 
   let disabledReason: string | null = null;
   if (!branch) {
     disabledReason = "ยังไม่ตั้ง prefix สำหรับคลังนี้";
+  } else if (classification.kind === "unmapped") {
+    disabledReason = "ยังไม่ได้กำหนด Hub/HQ สำหรับคลังนี้";
   } else if (!accessible) {
-    disabledReason = "ไม่มีสิทธิ์สาขา";
+    disabledReason =
+      classification.kind === "central"
+        ? "คลังกลาง HQ — เฉพาะบัญชี/HQ"
+        : "ไม่มีสิทธิ์ Hub นี้";
   }
 
   return {
@@ -167,11 +306,16 @@ function buildLocationPreview(
     locationName:
       typeof item.LocationName === "string" ? item.LocationName : null,
     prefix,
+    classification: classificationKind,
     mappedBranchId: branch?.id ?? null,
     mappedBranchCode: branch?.code ?? null,
     mappedBranchName: branch?.name ?? null,
+    hubId,
+    hubCode,
+    hubName,
+    hubShortName,
     accessible,
-    selectable: Boolean(branch && accessible),
+    selectable: Boolean(branch && classification.kind !== "unmapped" && accessible),
     disabledReason,
   };
 }
@@ -179,61 +323,45 @@ function buildLocationPreview(
 function buildLocationPreviews(
   locations: ExpressLocationItem[],
   branches: Branch[],
+  hubs: Hub[],
   session: MockSession,
 ): ExpressSyncLocationPreview[] {
-  const branchByPrefix = buildPrefixBranchLookup(branches);
-
   return locations
-    .map((item) => buildLocationPreview(item, branchByPrefix, session))
+    .map((item) => buildLocationPreview(item, branches, hubs, session))
     .filter((item) => item.locationCode.length > 0)
     .sort((a, b) => a.locationCode.localeCompare(b.locationCode));
 }
 
-function aggregateExpressLinesByBranch(
-  groups: Map<string, ExpressStockCountLine[]>,
-  branchByPrefix: Map<string, Branch>,
-  session: MockSession,
-): {
-  linesByBranchId: Map<string, { branch: Branch; lines: ExpressStockCountLine[] }>;
-  skipped: ExpressSyncBranchResult[];
-} {
-  const linesByBranchId = new Map<
-    string,
-    { branch: Branch; lines: ExpressStockCountLine[] }
-  >();
-  const skipped: ExpressSyncBranchResult[] = [];
-
-  for (const [locationCode, lines] of groups) {
-    const branch = resolveBranchByLocationCode(locationCode, branchByPrefix);
-    if (!branch) {
-      skipped.push({
-        branchCode: locationCode,
-        status: "skipped",
-        reason: `ไม่พบสาขาในระบบสำหรับ Express LocationCode "${locationCode}"`,
-        lineCount: lines.length,
-      });
-      continue;
-    }
-
-    if (!canAccessBranch(session.role, session.branchIds, branch.id)) {
-      continue;
-    }
-
-    const bucket = linesByBranchId.get(branch.id) ?? { branch, lines: [] };
-    bucket.lines.push(...lines);
-    linesByBranchId.set(branch.id, bucket);
+function getDocumentGroupKey(destination: DocumentDestination): DocumentGroupKey {
+  if (destination.kind === "central") {
+    return `${destination.branch.id}|central`;
   }
 
-  return { linesByBranchId, skipped };
+  return `${destination.branch.id}|hub:${destination.hub.id}`;
 }
 
-function resolveBranchByLocationCode(
+function resolveDestination(
   locationCode: string,
-  branchByPrefix: Map<string, Branch>,
-): Branch | undefined {
-  const prefix = extractLocationPrefix(locationCode);
-  if (!prefix) return undefined;
-  return branchByPrefix.get(prefix);
+  branches: Branch[],
+  hubs: Hub[],
+): DocumentDestination | null {
+  const { classification, branch } = classifyForActiveBranches(
+    locationCode,
+    branches,
+    hubs,
+  );
+
+  if (!branch) return null;
+
+  if (classification.kind === "hub") {
+    return { kind: "hub", branch, hub: classification.hub };
+  }
+
+  if (classification.kind === "central") {
+    return { kind: "central", branch };
+  }
+
+  return null;
 }
 
 function groupExpressLinesByLocation(
@@ -253,15 +381,77 @@ function groupExpressLinesByLocation(
   return groups;
 }
 
+function aggregateExpressLinesByDocument(
+  groups: Map<string, ExpressStockCountLine[]>,
+  branches: Branch[],
+  hubs: Hub[],
+  session: MockSession,
+): {
+  linesByDestination: Map<
+    DocumentGroupKey,
+    { destination: DocumentDestination; lines: ExpressStockCountLine[] }
+  >;
+  skipped: ExpressSyncDocumentResult[];
+} {
+  const linesByDestination = new Map<
+    DocumentGroupKey,
+    { destination: DocumentDestination; lines: ExpressStockCountLine[] }
+  >();
+  const skipped: ExpressSyncDocumentResult[] = [];
+
+  for (const [locationCode, lines] of groups) {
+    const destination = resolveDestination(locationCode, branches, hubs);
+    if (!destination) {
+      skipped.push({
+        branchCode: locationCode,
+        status: "skipped",
+        reason: `ไม่สามารถจัดกลุ่มคลัง "${locationCode}" ได้`,
+        lineCount: lines.length,
+      });
+      continue;
+    }
+
+    if (!canAccessClassification(session, destination.branch, 
+      destination.kind === "central"
+        ? { kind: "central", branchId: destination.branch.id }
+        : { kind: "hub", hub: destination.hub },
+    )) {
+      continue;
+    }
+
+    const key = getDocumentGroupKey(destination);
+    const bucket = linesByDestination.get(key) ?? { destination, lines: [] };
+    bucket.lines.push(...lines);
+    linesByDestination.set(key, bucket);
+  }
+
+  return { linesByDestination, skipped };
+}
+
 async function upsertImportedDocument(
-  branchId: string,
-  branchCode: string,
+  destination: DocumentDestination,
   countDate: Date,
   countDateKey: string,
   lines: ExpressStockCountLine[],
-): Promise<ExpressSyncBranchResult> {
-  const documentId = buildDocumentId(branchId, countDateKey);
-  const documentNo = buildDocumentNo(branchCode, countDateKey, lines[0]?.DocumentNumber);
+): Promise<ExpressSyncDocumentResult> {
+  const branch = destination.branch;
+  const isCentral = destination.kind === "central";
+  const hub = destination.kind === "hub" ? destination.hub : null;
+
+  const documentId = isCentral
+    ? buildCentralDocumentId(branch.id, countDateKey)
+    : buildHubDocumentId(branch.id, countDateKey, hub!.code);
+
+  const documentNo = isCentral
+    ? buildCentralDocumentNo(branch.code, countDateKey, lines[0]?.DocumentNumber)
+    : buildHubDocumentNo(
+        branch.code,
+        hub!.shortName,
+        hub!.code,
+        countDateKey,
+        lines[0]?.DocumentNumber,
+      );
+
   const productLines = lines.map((line, index) =>
     mapExpressLineToProductLine(line, documentId, index + 1),
   );
@@ -273,7 +463,12 @@ async function upsertImportedDocument(
 
   if (existing && existing.status !== DocumentStatus.IMPORTED) {
     return {
-      branchCode,
+      branchCode: branch.code,
+      branchName: branch.name,
+      hubCode: hub?.code,
+      hubName: hub?.name,
+      hubShortName: hub?.shortName ?? undefined,
+      isCentral,
       documentId,
       documentNo: existing.documentNo,
       lineCount: existing.totalLines,
@@ -290,6 +485,8 @@ async function upsertImportedDocument(
         data: {
           documentNo,
           documentDate: countDate,
+          hubId: hub?.id ?? null,
+          isCentral,
           totalLines: productLines.length,
           countedLines: 0,
           note: null,
@@ -302,7 +499,9 @@ async function upsertImportedDocument(
           id: documentId,
           documentNo,
           documentDate: countDate,
-          branchId,
+          branchId: branch.id,
+          hubId: hub?.id ?? null,
+          isCentral,
           status: DocumentStatus.IMPORTED,
           currentVersionId: null,
           currentVersionNo: 0,
@@ -321,7 +520,12 @@ async function upsertImportedDocument(
   });
 
   return {
-    branchCode,
+    branchCode: branch.code,
+    branchName: branch.name,
+    hubCode: hub?.code,
+    hubName: hub?.name,
+    hubShortName: hub?.shortName ?? undefined,
+    isCentral,
     documentId,
     documentNo,
     lineCount: productLines.length,
@@ -348,16 +552,19 @@ export async function syncExpressCountDate(
     return { error: "locations are required" };
   }
 
-  // Validate selection against active branch prefixes only.
-  // Do not re-call Express locations-by-countdate here — that endpoint can 404
-  // intermittently and is already used by the preview/load step in the UI.
   const branches = await loadBranchesForExpressLookup();
-  const branchByPrefix = buildPrefixBranchLookup(branches);
+  const hubs = await loadActiveHubs();
+
   const invalidLocationCodes = selectedLocationCodes.filter((code) => {
-    const prefix = extractLocationPrefix(code);
-    const branch = prefix ? branchByPrefix.get(prefix) : undefined;
-    if (!branch) return true;
-    return !canAccessBranch(session.role, session.branchIds, branch.id);
+    const destination = resolveDestination(code, branches, hubs);
+    if (!destination) return true;
+    return !canAccessClassification(
+      session,
+      destination.branch,
+      destination.kind === "central"
+        ? { kind: "central", branchId: destination.branch.id }
+        : { kind: "hub", hub: destination.hub },
+    );
   });
 
   if (invalidLocationCodes.length > 0) {
@@ -385,27 +592,15 @@ export async function syncExpressCountDate(
       selectedLocationSet.has(line.LocationCode?.trim().toUpperCase()),
     ),
   );
-  const { linesByBranchId, skipped: skippedResults } = aggregateExpressLinesByBranch(
-    groups,
-    branchByPrefix,
-    session,
-  );
+  const { linesByDestination, skipped: skippedResults } =
+    aggregateExpressLinesByDocument(groups, branches, hubs, session);
 
-  const results: ExpressSyncBranchResult[] = [...skippedResults];
+  const results: ExpressSyncDocumentResult[] = [...skippedResults];
 
-  for (const { branch, lines } of linesByBranchId.values()) {
-    const result = await upsertImportedDocument(
-      branch.id,
-      branch.code,
-      parsedDate,
-      countDate,
-      lines,
+  for (const { destination, lines } of linesByDestination.values()) {
+    results.push(
+      await upsertImportedDocument(destination, parsedDate, countDate, lines),
     );
-
-    results.push({
-      ...result,
-      branchName: branch.name,
-    });
   }
 
   if (results.length === 0) {
@@ -449,7 +644,13 @@ export async function previewExpressCountDate(
   }
 
   const branches = await loadBranchesForExpressLookup();
-  const locations = buildLocationPreviews(expressResult.locations, branches, session);
+  const hubs = await loadActiveHubs();
+  const locations = buildLocationPreviews(
+    expressResult.locations,
+    branches,
+    hubs,
+    session,
+  );
 
   return {
     date: countDate,

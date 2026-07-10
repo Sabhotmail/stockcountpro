@@ -3,6 +3,7 @@ import {
   mapCountDocument,
   mapCountEntry,
   mapCountVersion,
+  mapHub,
   mapProductLine,
   mapRecountRequest,
 } from "@/lib/db/mappers";
@@ -13,7 +14,7 @@ import {
   snapshotFinalCountEntries,
 } from "@/lib/entry-snapshot";
 import {
-  canAccessBranch,
+  canAccessDocument,
   canSupervise,
   filterDocumentsForSupervisor,
 } from "@/lib/permissions";
@@ -48,10 +49,17 @@ async function getBranch(branchId: string) {
   return branch ? mapBranch(branch) : null;
 }
 
+async function getHub(hubId: string | null) {
+  if (!hubId) return null;
+  const hub = await prisma.hub.findUnique({ where: { id: hubId } });
+  return hub ? mapHub(hub) : null;
+}
+
 async function enrichSupervisorDocument(
   doc: CountDocument,
 ): Promise<SupervisorDocumentListItem> {
   const branch = await getBranch(doc.branchId);
+  const hub = await getHub(doc.hubId);
   const version = doc.currentVersionId
     ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
     : null;
@@ -64,6 +72,9 @@ async function enrichSupervisorDocument(
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
     branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
+    hubCode: hub?.code ?? null,
+    hubName: hub?.name ?? null,
+    hubShortName: hub?.shortName ?? null,
     countedLines: await countCountedLines(doc.id, doc.currentVersionId),
     submittedBy: version?.submittedBy ?? null,
     submittedByName: submitter?.name ?? null,
@@ -84,7 +95,12 @@ export async function listSupervisorDocuments(
     .map(mapCountDocument)
     .filter((doc) => {
       if (!filterDocumentsForSupervisor(doc.status)) return false;
-      return canAccessBranch(session.role, session.branchIds, doc.branchId);
+      return canAccessDocument(
+        session.role,
+        session.branchIds,
+        session.hubIds,
+        doc,
+      );
     });
 
   const result: SupervisorDocumentListItem[] = [];
@@ -116,6 +132,7 @@ export async function getReviewDetail(
   }
 
   const branch = await getBranch(doc.branchId);
+  const hub = await getHub(doc.hubId);
   const versionRow = doc.currentVersionId
     ? await prisma.countVersion.findUnique({ where: { id: doc.currentVersionId } })
     : null;
@@ -161,6 +178,9 @@ export async function getReviewDetail(
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
     branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
+    hubCode: hub?.code ?? null,
+    hubName: hub?.name ?? null,
+    hubShortName: hub?.shortName ?? null,
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries,

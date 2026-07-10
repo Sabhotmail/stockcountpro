@@ -13,7 +13,7 @@ export async function authenticateUser(
 
   const user = await prisma.user.findUnique({
     where: { username: normalizedUsername },
-    include: { branches: true },
+    include: { branches: true, hubs: true },
   });
 
   if (!user || !user.isActive) {
@@ -30,5 +30,6 @@ export async function authenticateUser(
     userName: user.name,
     role: user.role as UserRole,
     branchIds: user.branches.map((branch) => branch.branchId),
+    hubIds: user.hubs.map((hub) => hub.hubId),
   };
 }

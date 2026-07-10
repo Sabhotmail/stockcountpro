@@ -16,6 +16,16 @@ export interface Branch {
   isActive: boolean;
 }
 
+export interface Hub {
+  id: string;
+  branchId: string;
+  code: string;
+  name: string;
+  shortName: string | null;
+  suffixLetter: string | null;
+  isActive: boolean;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -23,6 +33,7 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   branchIds: string[];
+  hubIds: string[];
 }
 
 export interface MockSession {
@@ -30,4 +41,5 @@ export interface MockSession {
   userName: string;
   role: UserRole;
   branchIds: string[];
+  hubIds: string[];
 }

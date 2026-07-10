@@ -13,6 +13,7 @@ export type CreateAdminUserInput = {
   username: string;
   role: UserRole;
   branchIds: string[];
+  hubIds: string[];
   passwordMode: PasswordMode;
   password?: string;
 };
@@ -21,6 +22,7 @@ export type UpdateAdminUserInput = {
   name?: string;
   role?: UserRole;
   branchIds?: string[];
+  hubIds?: string[];
   isActive?: boolean;
 };
 
@@ -77,10 +79,26 @@ async function setUserBranchesTx(tx: Prisma.TransactionClient, userId: string, b
   }
 }
 
+function ensureHubRule(role: UserRole, hubIds: string[]): { error: string } | undefined {
+  if (isRoleAdminOrHq(role)) return undefined;
+  if (!hubIds.length) return { error: "At least one hub is required" };
+  return undefined;
+}
+
+async function setUserHubsTx(tx: Prisma.TransactionClient, userId: string, hubIds: string[]) {
+  await tx.userHub.deleteMany({ where: { userId } });
+  if (hubIds.length) {
+    await tx.userHub.createMany({
+      data: hubIds.map((hubId) => ({ userId, hubId })),
+      skipDuplicates: true,
+    });
+  }
+}
+
 async function getUserForAdminMutation(userId: string) {
   return prisma.user.findUnique({
     where: { id: userId },
-    include: { branches: true },
+    include: { branches: true, hubs: true },
   });
 }
 
@@ -97,8 +115,11 @@ export async function createUserForAdmin(
   if (!username) return { error: "Username is required" };
 
   const branchIds = Array.from(new Set(input.branchIds ?? [])).filter(Boolean);
+  const hubIds = Array.from(new Set(input.hubIds ?? [])).filter(Boolean);
   const branchRuleError = ensureBranchRule(input.role, branchIds);
   if (branchRuleError) return branchRuleError;
+  const hubRuleError = ensureHubRule(input.role, hubIds);
+  if (hubRuleError) return hubRuleError;
 
   let plainPassword: string | undefined;
   if (input.passwordMode === "set") {
@@ -125,8 +146,11 @@ export async function createUserForAdmin(
         branches: {
           create: branchIds.map((branchId) => ({ branchId })),
         },
+        hubs: {
+          create: hubIds.map((hubId) => ({ hubId })),
+        },
       },
-      include: { branches: true },
+      include: { branches: true, hubs: true },
     });
 
     const mapped = mapUser(user);
@@ -161,9 +185,14 @@ export async function updateUserForAdmin(
   const nextBranchIds = input.branchIds
     ? Array.from(new Set(input.branchIds)).filter(Boolean)
     : existing.branches.map((b) => b.branchId);
+  const nextHubIds = input.hubIds
+    ? Array.from(new Set(input.hubIds)).filter(Boolean)
+    : existing.hubs.map((h) => h.hubId);
 
   const branchRuleError = ensureBranchRule(nextRole, nextBranchIds);
   if (branchRuleError) return branchRuleError;
+  const hubRuleError = ensureHubRule(nextRole, nextHubIds);
+  if (hubRuleError) return hubRuleError;
 
   const nextName = input.name !== undefined ? input.name.trim() : undefined;
   if (input.name !== undefined && !nextName) return { error: "Name is required" };
@@ -173,6 +202,9 @@ export async function updateUserForAdmin(
       if (input.branchIds) {
         await setUserBranchesTx(tx, userId, nextBranchIds);
       }
+      if (input.hubIds) {
+        await setUserHubsTx(tx, userId, nextHubIds);
+      }
 
       return tx.user.update({
         where: { id: userId },
@@ -181,7 +213,7 @@ export async function updateUserForAdmin(
           role: input.role,
           isActive: input.isActive,
         },
-        include: { branches: true },
+        include: { branches: true, hubs: true },
       });
     });
 

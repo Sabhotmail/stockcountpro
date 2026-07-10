@@ -55,8 +55,24 @@ model Branch {
   expressLocationPrefix String?          @unique
   isActive              Boolean          @default(true)
   users                 UserBranch[]
+  hubs                  Hub[]
   documents             CountDocument[]
   auditLogs             AuditLog[]
+}
+
+model Hub {
+  id           String          @id
+  branchId     String
+  code         String
+  name         String
+  shortName    String?
+  suffixLetter String?
+  isActive     Boolean         @default(true)
+  branch       Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  users        UserHub[]
+  documents    CountDocument[]
+
+  @@unique([branchId, code])
 }
 
 model User {
@@ -67,6 +83,7 @@ model User {
   role         UserRole
   isActive     Boolean      @default(true)
   branches     UserBranch[]
+  hubs         UserHub[]
 }
 
 model UserBranch {
@@ -78,11 +95,22 @@ model UserBranch {
   @@id([userId, branchId])
 }
 
+model UserHub {
+  userId String
+  hubId  String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hub    Hub  @relation(fields: [hubId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hubId])
+}
+
 model CountDocument {
   id               String           @id
   documentNo       String
   documentDate     DateTime         @db.Date
   branchId         String
+  hubId            String?
+  isCentral        Boolean          @default(false)
   status           DocumentStatus
   currentVersionId String?
   currentVersionNo Int              @default(0)
@@ -92,12 +120,15 @@ model CountDocument {
   createdAt        DateTime
   updatedAt        DateTime
   branch           Branch           @relation(fields: [branchId], references: [id])
+  hub              Hub?             @relation(fields: [hubId], references: [id])
   versions         CountVersion[]
   productLines     ProductLine[]
   recountRequests  RecountRequest[]
   auditLogs        AuditLog[]
   finalEntries     FinalCountEntry[]
   lineLocks        CountLineLock[]
+
+  @@index([branchId, documentDate, hubId])
 }
 
 model ProductLine {

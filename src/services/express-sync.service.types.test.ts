@@ -13,6 +13,7 @@ const session: MockSession = {
   userName: "Tester",
   role: UserRole.STAFF,
   branchIds: ["branch_1"],
+  hubIds: ["hub_1"],
 };
 
 async function assertPreviewContract() {

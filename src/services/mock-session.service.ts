@@ -15,7 +15,19 @@ export async function getServerSession(): Promise<MockSession | null> {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  return verifySessionToken(token);
+  const session = await verifySessionToken(token);
+  if (!session) return null;
+
+  const user = await getUserById(session.userId);
+  if (!user || !user.isActive) return null;
+
+  return {
+    ...session,
+    userName: user.name,
+    role: user.role,
+    branchIds: user.branchIds,
+    hubIds: user.hubIds,
+  };
 }
 
 export async function buildSessionFromUserId(
@@ -29,6 +41,7 @@ export async function buildSessionFromUserId(
     userName: user.name,
     role: user.role,
     branchIds: user.branchIds,
+    hubIds: user.hubIds,
   };
 }
 

@@ -26,11 +26,16 @@ function parseSessionPayload(payload: Record<string, unknown>): MockSession | nu
     return null;
   }
 
+  const hubIds = Array.isArray(payload.hubIds)
+    ? payload.hubIds.filter((id): id is string => typeof id === "string")
+    : [];
+
   return {
     userId: payload.userId,
     userName: payload.userName,
     role: payload.role as UserRole,
     branchIds: payload.branchIds,
+    hubIds,
   };
 }
 
@@ -40,6 +45,7 @@ export async function createSessionToken(session: MockSession): Promise<string> 
     userName: session.userName,
     role: session.role,
     branchIds: session.branchIds,
+    hubIds: session.hubIds,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

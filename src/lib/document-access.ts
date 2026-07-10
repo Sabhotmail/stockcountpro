@@ -1,5 +1,5 @@
 import { mapCountDocument } from "@/lib/db/mappers";
-import { canAccessBranch } from "@/lib/permissions";
+import { canAccessDocument } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { CountDocument } from "@/types/count";
 import type { MockSession } from "@/types/user";
@@ -20,9 +20,17 @@ export async function getDocumentForSession(
     return { ok: false, error: "Document not found", status: 404 };
   }
 
-  if (!canAccessBranch(session.role, session.branchIds, documentRow.branchId)) {
+  const document = mapCountDocument(documentRow);
+  if (
+    !canAccessDocument(
+      session.role,
+      session.branchIds,
+      session.hubIds,
+      document,
+    )
+  ) {
     return { ok: false, error: "Access denied", status: 403 };
   }
 
-  return { ok: true, document: mapCountDocument(documentRow) };
+  return { ok: true, document };
 }
