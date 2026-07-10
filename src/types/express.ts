@@ -42,6 +42,8 @@ export interface ExpressLocationItem {
 export interface ExpressLocationsResponse {
   success: boolean;
   message?: string;
+  /** Actual Express field for locations-by-countdate */
+  locationData?: ExpressLocationItem[];
   locations?: ExpressLocationItem[];
   data?: ExpressLocationItem[];
   stockCountLocations?: ExpressLocationItem[];

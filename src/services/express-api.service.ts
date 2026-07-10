@@ -115,6 +115,7 @@ function normalizeLocationList(
   data: ExpressLocationsResponse,
 ): ExpressLocationItem[] {
   return (
+    data.locationData ??
     data.locations ??
     data.stockCountLocations ??
     data.data ??
