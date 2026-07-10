@@ -221,12 +221,17 @@ export async function logExpressSync(
     created: number;
     updated: number;
     skipped: number;
+    locations?: string[];
   },
 ): Promise<AuditLog> {
+  const selectedLocations = summary.locations?.length
+    ? `; locations=${summary.locations.join(",")}`
+    : "";
+
   return createAuditLog({
     action: AuditAction.IMPORT_FROM_EXPRESS,
     userId,
     userName,
-    detail: `date=${countDate}; lines=${summary.expressLineCount}; created=${summary.created}; updated=${summary.updated}; skipped=${summary.skipped}`,
+    detail: `date=${countDate}; lines=${summary.expressLineCount}; created=${summary.created}; updated=${summary.updated}; skipped=${summary.skipped}${selectedLocations}`,
   });
 }

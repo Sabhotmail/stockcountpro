@@ -1,10 +1,14 @@
 import { getDefaultProductImageUrl } from "@/lib/product-image";
+import { extractLocationPrefix } from "@/lib/express-location";
 import { prisma } from "@/lib/prisma";
 import { canAccessBranch, canSyncExpress } from "@/lib/permissions";
 import { logExpressSync } from "@/services/audit-log.service";
-import { fetchExpressCountDate } from "@/services/express-api.service";
+import {
+  fetchExpressCountDateByLocations,
+  fetchExpressLocationsByCountDate,
+} from "@/services/express-api.service";
 import { DocumentStatus } from "@/types/count";
-import type { ExpressStockCountLine } from "@/types/express";
+import type { ExpressLocationItem, ExpressStockCountLine } from "@/types/express";
 import { mapBranch } from "@/lib/db/mappers";
 import type { Branch, MockSession } from "@/types/user";
 
@@ -25,6 +29,23 @@ export type ExpressSyncResult = {
   date: string;
   expressLineCount: number;
   results: ExpressSyncBranchResult[];
+};
+
+export type ExpressSyncLocationPreview = {
+  locationCode: string;
+  locationName?: string | null;
+  prefix: string | null;
+  mappedBranchId: string | null;
+  mappedBranchCode: string | null;
+  mappedBranchName: string | null;
+  accessible: boolean;
+  selectable: boolean;
+  disabledReason: string | null;
+};
+
+export type ExpressSyncPreviewResult = {
+  date: string;
+  locations: ExpressSyncLocationPreview[];
 };
 
 function parseCountDate(value: string): Date | null {
@@ -83,17 +104,13 @@ function mapExpressLineToProductLine(
   };
 }
 
-function buildExpressBranchLookup(branches: Branch[]): Map<string, Branch> {
+function buildPrefixBranchLookup(branches: Branch[]): Map<string, Branch> {
   const lookup = new Map<string, Branch>();
 
   for (const branch of branches) {
-    lookup.set(branch.code.toUpperCase(), branch);
-
-    for (const expressCode of branch.expressLocationCodes) {
-      const normalized = expressCode.trim().toUpperCase();
-      if (normalized) {
-        lookup.set(normalized, branch);
-      }
+    const prefix = branch.expressLocationPrefix?.trim().toUpperCase();
+    if (prefix) {
+      lookup.set(prefix, branch);
     }
   }
 
@@ -101,13 +118,79 @@ function buildExpressBranchLookup(branches: Branch[]): Map<string, Branch> {
 }
 
 async function loadBranchesForExpressLookup(): Promise<Branch[]> {
-  const branches = await prisma.branch.findMany();
+  const branches = await prisma.branch.findMany({
+    orderBy: { code: "asc" },
+  });
   return branches.map(mapBranch);
+}
+
+function normalizeSelectedLocationCodes(locationCodes: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const code of locationCodes) {
+    const value = code.trim().toUpperCase();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    normalized.push(value);
+  }
+
+  return normalized;
+}
+
+function normalizeExpressLocationCode(item: ExpressLocationItem): string {
+  return String(item.LocationCode ?? "").trim().toUpperCase();
+}
+
+function buildLocationPreview(
+  item: ExpressLocationItem,
+  branchByPrefix: Map<string, Branch>,
+  session: MockSession,
+): ExpressSyncLocationPreview {
+  const locationCode = normalizeExpressLocationCode(item);
+  const prefix = extractLocationPrefix(locationCode);
+  const branch = prefix ? branchByPrefix.get(prefix) : undefined;
+  const accessible = branch
+    ? canAccessBranch(session.role, session.branchIds, branch.id)
+    : false;
+
+  let disabledReason: string | null = null;
+  if (!branch) {
+    disabledReason = "ยังไม่ตั้ง prefix สำหรับคลังนี้";
+  } else if (!accessible) {
+    disabledReason = "ไม่มีสิทธิ์สาขา";
+  }
+
+  return {
+    locationCode,
+    locationName:
+      typeof item.LocationName === "string" ? item.LocationName : null,
+    prefix,
+    mappedBranchId: branch?.id ?? null,
+    mappedBranchCode: branch?.code ?? null,
+    mappedBranchName: branch?.name ?? null,
+    accessible,
+    selectable: Boolean(branch && accessible),
+    disabledReason,
+  };
+}
+
+function buildLocationPreviews(
+  locations: ExpressLocationItem[],
+  branches: Branch[],
+  session: MockSession,
+): ExpressSyncLocationPreview[] {
+  const branchByPrefix = buildPrefixBranchLookup(branches);
+
+  return locations
+    .map((item) => buildLocationPreview(item, branchByPrefix, session))
+    .filter((item) => item.locationCode.length > 0)
+    .sort((a, b) => a.locationCode.localeCompare(b.locationCode));
 }
 
 function aggregateExpressLinesByBranch(
   groups: Map<string, ExpressStockCountLine[]>,
-  branchByLocationCode: Map<string, Branch>,
+  branchByPrefix: Map<string, Branch>,
   session: MockSession,
 ): {
   linesByBranchId: Map<string, { branch: Branch; lines: ExpressStockCountLine[] }>;
@@ -120,7 +203,7 @@ function aggregateExpressLinesByBranch(
   const skipped: ExpressSyncBranchResult[] = [];
 
   for (const [locationCode, lines] of groups) {
-    const branch = resolveBranchByLocationCode(locationCode, branchByLocationCode);
+    const branch = resolveBranchByLocationCode(locationCode, branchByPrefix);
     if (!branch) {
       skipped.push({
         branchCode: locationCode,
@@ -145,9 +228,11 @@ function aggregateExpressLinesByBranch(
 
 function resolveBranchByLocationCode(
   locationCode: string,
-  branchByLocationCode: Map<string, Branch>,
+  branchByPrefix: Map<string, Branch>,
 ): Branch | undefined {
-  return branchByLocationCode.get(locationCode);
+  const prefix = extractLocationPrefix(locationCode);
+  if (!prefix) return undefined;
+  return branchByPrefix.get(prefix);
 }
 
 function groupExpressLinesByLocation(
@@ -246,6 +331,7 @@ async function upsertImportedDocument(
 export async function syncExpressCountDate(
   session: MockSession,
   countDate: string,
+  locationCodes: string[],
 ): Promise<ExpressSyncResult | { error: string }> {
   if (!canSyncExpress(session.role)) {
     return { error: "Access denied" };
@@ -256,7 +342,34 @@ export async function syncExpressCountDate(
     return { error: "Invalid date format. Use yyyy-MM-dd" };
   }
 
-  const expressResult = await fetchExpressCountDate(countDate);
+  const selectedLocationCodes = normalizeSelectedLocationCodes(locationCodes);
+  if (selectedLocationCodes.length === 0) {
+    return { error: "locations are required" };
+  }
+
+  const locationResult = await fetchExpressLocationsByCountDate(countDate);
+  if ("error" in locationResult) {
+    return { error: locationResult.error };
+  }
+
+  const branches = await loadBranchesForExpressLookup();
+  const branchByPrefix = buildPrefixBranchLookup(branches);
+  const previews = buildLocationPreviews(locationResult.locations, branches, session);
+  const previewByCode = new Map(previews.map((item) => [item.locationCode, item]));
+  const invalidLocationCodes = selectedLocationCodes.filter(
+    (code) => !previewByCode.get(code)?.selectable,
+  );
+
+  if (invalidLocationCodes.length > 0) {
+    return {
+      error: `ไม่สามารถ sync คลังที่เลือกได้: ${invalidLocationCodes.join(", ")}`,
+    };
+  }
+
+  const expressResult = await fetchExpressCountDateByLocations(
+    countDate,
+    selectedLocationCodes,
+  );
   if ("error" in expressResult) {
     return { error: expressResult.error };
   }
@@ -266,12 +379,15 @@ export async function syncExpressCountDate(
   }
 
   const expressLines = expressResult.stockCountData ?? [];
-  const groups = groupExpressLinesByLocation(expressLines);
-  const branches = await loadBranchesForExpressLookup();
-  const branchByLocationCode = buildExpressBranchLookup(branches);
+  const selectedLocationSet = new Set(selectedLocationCodes);
+  const groups = groupExpressLinesByLocation(
+    expressLines.filter((line) =>
+      selectedLocationSet.has(line.LocationCode?.trim().toUpperCase()),
+    ),
+  );
   const { linesByBranchId, skipped: skippedResults } = aggregateExpressLinesByBranch(
     groups,
-    branchByLocationCode,
+    branchByPrefix,
     session,
   );
 
@@ -305,6 +421,7 @@ export async function syncExpressCountDate(
     created,
     updated,
     skipped: skippedCount,
+    locations: selectedLocationCodes,
   });
 
   return {
@@ -317,52 +434,25 @@ export async function syncExpressCountDate(
 export async function previewExpressCountDate(
   session: MockSession,
   countDate: string,
-) {
+): Promise<ExpressSyncPreviewResult | { error: string }> {
   if (!canSyncExpress(session.role)) {
-    return { error: "Access denied" } as const;
+    return { error: "Access denied" };
   }
 
   if (!parseCountDate(countDate)) {
-    return { error: "Invalid date format. Use yyyy-MM-dd" } as const;
+    return { error: "Invalid date format. Use yyyy-MM-dd" };
   }
 
-  const expressResult = await fetchExpressCountDate(countDate);
+  const expressResult = await fetchExpressLocationsByCountDate(countDate);
   if ("error" in expressResult) {
-    return { error: expressResult.error } as const;
+    return { error: expressResult.error };
   }
 
-  if (!expressResult.success) {
-    return {
-      error: expressResult.message ?? "Express API returned failure",
-    } as const;
-  }
-
-  const lines = expressResult.stockCountData ?? [];
-  const groups = groupExpressLinesByLocation(lines);
   const branches = await loadBranchesForExpressLookup();
-  const branchByLocationCode = buildExpressBranchLookup(branches);
-  const { linesByBranchId } = aggregateExpressLinesByBranch(
-    groups,
-    branchByLocationCode,
-    session,
-  );
-
-  const locations = Array.from(linesByBranchId.values())
-    .map(({ branch, lines }) => ({
-      branchCode: branch.code,
-      expressLocationCodes: branch.expressLocationCodes,
-      lineCount: lines.length,
-    }))
-    .sort((a, b) => a.branchCode.localeCompare(b.branchCode));
-
-  if (locations.length === 0) {
-    return { error: "ไม่พบข้อมูลใบตรวจนับสำหรับสาขาของคุณในวันที่นี้" } as const;
-  }
+  const locations = buildLocationPreviews(expressResult.locations, branches, session);
 
   return {
     date: countDate,
-    expressLineCount: locations.reduce((sum, item) => sum + item.lineCount, 0),
-    locationCount: locations.length,
     locations,
   };
 }

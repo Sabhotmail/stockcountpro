@@ -38,12 +38,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as { date?: string };
+  const body = (await request.json()) as {
+    date?: string;
+    locations?: unknown;
+  };
   if (!body.date) {
     return NextResponse.json({ error: "date is required" }, { status: 400 });
   }
 
-  const result = await syncExpressCountDate(session, body.date);
+  if (
+    !Array.isArray(body.locations) ||
+    !body.locations.every((item) => typeof item === "string")
+  ) {
+    return NextResponse.json(
+      { error: "locations must be an array of strings" },
+      { status: 400 },
+    );
+  }
+
+  const result = await syncExpressCountDate(session, body.date, body.locations);
   if ("error" in result) {
     const message = result.error ?? "Sync failed";
     const status =

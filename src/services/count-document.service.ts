@@ -44,7 +44,7 @@ async function enrichDocument(doc: CountDocument): Promise<CountDocumentListItem
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
-    branchExpressLocationCodes: branch?.expressLocationCodes ?? [],
+    branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
   };
 }
 
@@ -143,7 +143,7 @@ export async function getDocumentDetail(
     ...doc,
     branchCode: branch?.code ?? "",
     branchName: branch?.name ?? "",
-    branchExpressLocationCodes: branch?.expressLocationCodes ?? [],
+    branchExpressLocationPrefix: branch?.expressLocationPrefix ?? null,
     version: versionRow ? mapCountVersion(versionRow) : null,
     lines,
     entries: enrichedEntries,

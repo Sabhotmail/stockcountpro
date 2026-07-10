@@ -788,8 +788,8 @@ export default function TabletCountPage() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {document.branchCode}
-                {document.branchExpressLocationCodes.length > 0
-                  ? ` (Express ${document.branchExpressLocationCodes.join(", ")})`
+                {document.branchExpressLocationPrefix
+                  ? ` (Express prefix ${document.branchExpressLocationPrefix})`
                   : ""}{" "}
                 · วันที่ {document.documentDate} · เวอร์ชัน{" "}
                 {document.currentVersionNo} · นับแล้ว {countedSummary.counted}/

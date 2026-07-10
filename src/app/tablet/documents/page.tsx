@@ -294,8 +294,8 @@ export default function TabletDocumentsPage() {
                 <CardTitle>{doc.documentNo}</CardTitle>
                 <CardDescription>
                   {doc.documentDate} · {doc.branchCode} {doc.branchName}
-                  {doc.branchExpressLocationCodes.length > 0
-                    ? ` · Express ${doc.branchExpressLocationCodes.join(", ")}`
+                  {doc.branchExpressLocationPrefix
+                    ? ` · Express prefix ${doc.branchExpressLocationPrefix}`
                     : ""}
                 </CardDescription>
               </div>
