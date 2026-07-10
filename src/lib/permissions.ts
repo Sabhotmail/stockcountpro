@@ -97,6 +97,8 @@ export function canMutateCount(role: UserRole): boolean {
   return (
     role === UserRole.STAFF ||
     role === UserRole.COUNTER ||
+    role === UserRole.SUPERVISOR ||
+    role === UserRole.BRANCH_MANAGER ||
     role === UserRole.ADMIN ||
     role === UserRole.HQ
   );
@@ -107,6 +109,7 @@ export function canSyncExpress(role: UserRole): boolean {
   return (
     role === UserRole.STAFF ||
     role === UserRole.COUNTER ||
+    role === UserRole.SUPERVISOR ||
     role === UserRole.BRANCH_MANAGER ||
     role === UserRole.ADMIN ||
     role === UserRole.HQ

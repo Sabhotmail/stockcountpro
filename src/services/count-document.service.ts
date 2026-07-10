@@ -105,6 +105,13 @@ export async function listDocumentsForUser(
         return filterDocumentsForStaff(doc.status);
       }
 
+      if (
+        session.role === UserRole.SUPERVISOR ||
+        session.role === UserRole.BRANCH_MANAGER
+      ) {
+        return filterDocumentsForStaff(doc.status);
+      }
+
       return true;
     });
 
