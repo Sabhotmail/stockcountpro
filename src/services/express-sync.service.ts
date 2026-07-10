@@ -348,18 +348,17 @@ export async function syncExpressCountDate(
     return { error: "locations are required" };
   }
 
-  const locationResult = await fetchExpressLocationsByCountDate(countDate);
-  if ("error" in locationResult) {
-    return { error: locationResult.error };
-  }
-
+  // Validate selection against active branch prefixes only.
+  // Do not re-call Express locations-by-countdate here — that endpoint can 404
+  // intermittently and is already used by the preview/load step in the UI.
   const branches = await loadBranchesForExpressLookup();
   const branchByPrefix = buildPrefixBranchLookup(branches);
-  const previews = buildLocationPreviews(locationResult.locations, branches, session);
-  const previewByCode = new Map(previews.map((item) => [item.locationCode, item]));
-  const invalidLocationCodes = selectedLocationCodes.filter(
-    (code) => !previewByCode.get(code)?.selectable,
-  );
+  const invalidLocationCodes = selectedLocationCodes.filter((code) => {
+    const prefix = extractLocationPrefix(code);
+    const branch = prefix ? branchByPrefix.get(prefix) : undefined;
+    if (!branch) return true;
+    return !canAccessBranch(session.role, session.branchIds, branch.id);
+  });
 
   if (invalidLocationCodes.length > 0) {
     return {

@@ -105,7 +105,7 @@ async function expressGet<T>(
   }
 
   if (!res.ok) {
-    return { error: `${errorLabel} failed (${res.status})` };
+    return { error: `${errorLabel} failed (${res.status}) for ${path}` };
   }
 
   return (await res.json()) as T;
@@ -164,6 +164,8 @@ export async function fetchExpressCountDateByLocations(
   countDate: string,
   locationCodes: string[],
 ): Promise<ExpressCountDateByLocationsResponse | { error: string }> {
+  // Express expects literal commas in the path, e.g. .../locations/32F1,32G1
+  // Do not encodeURIComponent the joined list (that turns "," into "%2C").
   const joined = locationCodes
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean)
@@ -171,7 +173,7 @@ export async function fetchExpressCountDateByLocations(
   if (!joined) return { error: "locations are required" };
 
   return expressGet<ExpressCountDateByLocationsResponse>(
-    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${encodeURIComponent(joined)}`,
+    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${joined}`,
     "Express countdate by locations",
   );
 }
