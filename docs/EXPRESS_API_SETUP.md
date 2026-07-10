@@ -27,7 +27,7 @@ Restart `npm run dev` after changing env.
 | # | Method | Express URL | Purpose |
 |---|--------|-------------|---------|
 | 1 | GET | `/api/stockcount/locations` | Master warehouse list (ISTAB) |
-| 2 | GET | `/api/stockcount/locations/countdate/{yyyy-MM-dd}` | Warehouses with stock-count data for a date |
+| 2 | GET | `/api/stockcount/locations/countdate/{yyyy-MM-dd}` | Warehouses with stock-count data for a date (`locationData[]`) |
 | 3 | GET | `/api/stockcount/countdate/{yyyy-MM-dd}/locations/{codes}` | Stock-count lines for date + comma-separated location codes |
 | — | GET | `/api/stockcount/countdate/{yyyy-MM-dd}` | Legacy full-day fetch (still available; sync no longer uses it) |
 
