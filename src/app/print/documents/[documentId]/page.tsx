@@ -47,8 +47,10 @@ function packLinesByHeight(
     signatureH: number;
     footerH: number;
   },
-): PrintDocumentLine[][] {
-  if (lines.length === 0) return [[]];
+): { pages: PrintDocumentLine[][]; signaturesOnLastPage: boolean } {
+  if (lines.length === 0) {
+    return { pages: [[]], signaturesOnLastPage: true };
+  }
 
   const sumHeights = (from: number, to: number) => {
     let total = 0;
@@ -68,13 +70,12 @@ function packLinesByHeight(
   let index = 0;
   let isFirst = true;
 
+  // Pack rows + summary only. Signatures attach later if they fit.
   while (index < lines.length) {
     const maxH = Math.max(budget(isFirst), mm(40));
-    const remainingH =
-      sumHeights(index, lines.length) + opts.summaryH + opts.signatureH;
+    const remainingRowsH = sumHeights(index, lines.length) + opts.summaryH;
 
-    // Remaining rows + summary + signatures fit → last page.
-    if (remainingH <= maxH) {
+    if (remainingRowsH <= maxH) {
       pages.push(lines.slice(index));
       break;
     }
@@ -84,11 +85,9 @@ function packLinesByHeight(
 
     while (index < lines.length) {
       const rowH = rowHeights[index] ?? mm(6);
-      const restWithSig =
-        sumHeights(index, lines.length) + opts.summaryH + opts.signatureH;
+      const restRowsH = sumHeights(index, lines.length) + opts.summaryH;
 
-      // Taking everything from here still fits on this page → last page.
-      if (chunk.length > 0 && used + restWithSig <= maxH) {
+      if (chunk.length > 0 && used + restRowsH <= maxH) {
         while (index < lines.length) {
           chunk.push(lines[index]!);
           index += 1;
@@ -97,15 +96,11 @@ function packLinesByHeight(
       }
 
       const isLastLine = index === lines.length - 1;
-      const need = isLastLine
-        ? rowH + opts.summaryH + opts.signatureH
-        : rowH;
+      const need = isLastLine ? rowH + opts.summaryH : rowH;
 
       if (chunk.length > 0 && used + need > maxH) break;
 
       if (chunk.length === 0 && need > maxH) {
-        // Single row cannot fit with signatures — place row alone; signatures
-        // will go on a following page only if we keep packing (handled below).
         chunk.push(lines[index]!);
         index += 1;
         break;
@@ -120,7 +115,14 @@ function packLinesByHeight(
     isFirst = false;
   }
 
-  return pages;
+  const lastPage = pages[pages.length - 1] ?? [];
+  const lastIsFirst = pages.length === 1;
+  const lastUsed =
+    sumHeights(lines.length - lastPage.length, lines.length) + opts.summaryH;
+  const signaturesOnLastPage =
+    lastUsed + opts.signatureH <= budget(lastIsFirst);
+
+  return { pages, signaturesOnLastPage };
 }
 
 export default function PrintDocumentPage() {
@@ -132,6 +134,7 @@ export default function PrintDocumentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pages, setPages] = useState<PrintDocumentLine[][] | null>(null);
+  const [signaturesOnLastPage, setSignaturesOnLastPage] = useState(true);
   const measureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -141,6 +144,7 @@ export default function PrintDocumentPage() {
       setLoading(true);
       setError(null);
       setPages(null);
+      setSignaturesOnLastPage(true);
       try {
         const res = await fetch(`/api/count-documents/${documentId}/print`, {
           credentials: "same-origin",
@@ -206,7 +210,8 @@ export default function PrintDocumentPage() {
           ROW_HEIGHT_PRINT_FACTOR,
       },
     );
-    setPages(packed);
+    setPages(packed.pages);
+    setSignaturesOnLastPage(packed.signaturesOnLastPage);
   }, [doc]);
 
   if (loading) {
@@ -240,7 +245,8 @@ export default function PrintDocumentPage() {
     : doc.isCentral
       ? "คลังกลาง HQ"
       : "—";
-  const totalPages = pages?.length ?? 0;
+  const totalPages =
+    (pages?.length ?? 0) + (signaturesOnLastPage ? 0 : 1);
 
   return (
     <div className="min-h-screen bg-neutral-200/80 print:bg-white">
@@ -358,17 +364,18 @@ export default function PrintDocumentPage() {
             const pageNo = pageIndex + 1;
             const isFirst = pageIndex === 0;
             const isLastLines = pageIndex === pages.length - 1;
+            const showSignatures = isLastLines && signaturesOnLastPage;
 
             return (
               <section
                 key={`page-${pageNo}`}
                 className={cn(
                   "print-page mx-auto mb-4 flex flex-col bg-white text-black shadow-md",
-                  "min-h-[297mm] w-[210mm] px-[12mm] py-[12mm]",
-                  "print:mb-0 print:min-h-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
+                  "w-[210mm] px-[12mm] py-[12mm]",
+                  "print:mb-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
                 )}
               >
-                <div className="min-h-0 flex-1">
+                <div>
                   {isFirst && (
                     <>
                       <DocumentHeader
@@ -391,7 +398,7 @@ export default function PrintDocumentPage() {
                     totalLines={doc.lines.length}
                   />
 
-                  {isLastLines && <SignatureBlock />}
+                  {showSignatures && <SignatureBlock />}
                 </div>
 
                 <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
@@ -400,6 +407,23 @@ export default function PrintDocumentPage() {
               </section>
             );
           })}
+
+          {!signaturesOnLastPage && (
+            <section
+              className={cn(
+                "print-page mx-auto mb-4 flex flex-col bg-white text-black shadow-md",
+                "w-[210mm] px-[12mm] py-[12mm]",
+                "print:mb-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
+              )}
+            >
+              <div>
+                <SignatureBlock />
+              </div>
+              <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
+                {totalPages}/{totalPages}
+              </p>
+            </section>
+          )}
         </div>
       )}
     </div>
@@ -546,23 +570,23 @@ function LinesTable({
 function SignatureBlock() {
   return (
     <>
-      <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
+      <p className="mt-2 text-[10.5px] leading-snug text-neutral-700">
         หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
         กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
       </p>
 
-      <section className="mt-4 border border-black px-3 py-3">
-        <p className="mb-4 text-center text-[13px] font-bold">
+      <section className="mt-3 border border-black px-2 py-2">
+        <p className="mb-3 text-center text-[12px] font-bold">
           ส่วนลงนามรับรอง
         </p>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <FormalSignature action="ตรวจนับโดย" role="พนักงานธุรการ" />
           <FormalSignature action="ร่วมตรวจโดย" role="พนักงานขายหน่วยรถ" />
           <FormalSignature action="อนุมัติโดย" role="ผู้อนุมัติผลตรวจสอบ" />
         </div>
       </section>
 
-      <footer className="mt-3 text-center text-[10px] text-neutral-500">
+      <footer className="mt-2 text-center text-[10px] text-neutral-500">
         พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
       </footer>
     </>
@@ -577,19 +601,19 @@ function FormalSignature({
   role: string;
 }) {
   return (
-    <div className="text-center text-[11px]">
-      <div className="mx-auto mb-0.5 h-8 w-36 border-b border-black" />
-      <p className="text-[10px] text-neutral-600">(ลงชื่อ)</p>
-      <p className="mt-3 font-medium">{action}</p>
-      <div className="mx-auto mt-1 h-4 w-40 border-b border-black" />
-      <p className="mt-1 text-[10px] text-neutral-700">({role})</p>
-      <div className="mt-3 flex items-end justify-center gap-1">
+    <div className="text-center text-[10.5px]">
+      <div className="mx-auto mb-0.5 h-6 w-32 border-b border-black" />
+      <p className="text-[9.5px] text-neutral-600">(ลงชื่อ)</p>
+      <p className="mt-2 font-medium">{action}</p>
+      <div className="mx-auto mt-1 h-3.5 w-36 border-b border-black" />
+      <p className="mt-1 text-[9.5px] text-neutral-700">({role})</p>
+      <div className="mt-2 flex items-end justify-center gap-1">
         <span>วันที่</span>
-        <span className="inline-block w-6 border-b border-black" />
+        <span className="inline-block w-5 border-b border-black" />
         <span>/</span>
-        <span className="inline-block w-6 border-b border-black" />
+        <span className="inline-block w-5 border-b border-black" />
         <span>/</span>
-        <span className="inline-block w-8 border-b border-black" />
+        <span className="inline-block w-7 border-b border-black" />
       </div>
     </div>
   );
