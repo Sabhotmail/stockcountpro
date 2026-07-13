@@ -16,11 +16,20 @@ function mm(value: number): number {
   return (value * 96) / 25.4;
 }
 
-/** @page margin (must match globals.css). */
-const PAGE_MARGIN_MM = 6;
-/** Usable content height inside A4 after @page margins. */
-const PAGE_INNER_PX = mm(297 - PAGE_MARGIN_MM * 2);
-/** Print content width (A4 − side margins). */
+/**
+ * Print margins — keep in sync with @page in globals.css.
+ * Use 12mm: many browsers/printers ignore tighter margins and overflow.
+ */
+const PAGE_MARGIN_MM = 12;
+/**
+ * Extra slack: screen row metrics are often shorter than print engine
+ * metrics, so in-app preview fits but physical/print-dialog pages spill.
+ */
+const PRINT_SAFETY_MM = 10;
+/** Inflate measured row heights for print vs screen font differences. */
+const ROW_HEIGHT_PRINT_FACTOR = 1.08;
+
+const PAGE_INNER_PX = mm(297 - PAGE_MARGIN_MM * 2 - PRINT_SAFETY_MM);
 const PAGE_CONTENT_WIDTH = `${210 - PAGE_MARGIN_MM * 2}mm`;
 
 function formatQty(value: number | null): string {
@@ -142,12 +151,22 @@ export default function PrintDocumentPage() {
 
     const packed = packLinesByHeight(
       doc.lines,
-      rowEls.map((el) => el.getBoundingClientRect().height),
+      rowEls.map(
+        (el) => el.getBoundingClientRect().height * ROW_HEIGHT_PRINT_FACTOR,
+      ),
       {
-        firstTopH: firstTop?.getBoundingClientRect().height ?? 0,
-        theadH: thead?.getBoundingClientRect().height ?? 0,
-        summaryH: summary?.getBoundingClientRect().height ?? 0,
-        footerH: footer?.getBoundingClientRect().height ?? 0,
+        firstTopH:
+          (firstTop?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
+        theadH:
+          (thead?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
+        summaryH:
+          (summary?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
+        footerH:
+          (footer?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
       },
     );
     setPages(packed);
@@ -304,12 +323,12 @@ export default function PrintDocumentPage() {
               <section
                 key={`page-${pageNo}`}
                 className={cn(
-                  "print-page mx-auto mb-4 flex flex-col overflow-hidden bg-white text-black shadow-md",
-                  "h-[285mm] w-[210mm] px-[6mm] py-[6mm]",
-                  "print:mb-0 print:h-[285mm] print:w-auto print:px-0 print:py-0 print:shadow-none",
+                  "print-page mx-auto mb-4 flex flex-col bg-white text-black shadow-md",
+                  "min-h-[297mm] w-[210mm] px-[12mm] py-[12mm]",
+                  "print:mb-0 print:min-h-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
                 )}
               >
-                <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="min-h-0 flex-1">
                   {isFirst && (
                     <>
                       <DocumentHeader
@@ -342,9 +361,9 @@ export default function PrintDocumentPage() {
 
           <section
             className={cn(
-              "print-page mx-auto mb-4 flex flex-col overflow-hidden bg-white text-black shadow-md",
-              "h-[285mm] w-[210mm] px-[6mm] py-[6mm]",
-              "print:mb-0 print:h-[285mm] print:w-auto print:px-0 print:py-0 print:shadow-none",
+              "print-page mx-auto mb-4 flex flex-col bg-white text-black shadow-md",
+              "min-h-[297mm] w-[210mm] px-[12mm] py-[12mm]",
+              "print:mb-0 print:min-h-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
             )}
           >
             <div className="min-h-0 flex-1">
