@@ -181,37 +181,37 @@ export default function PrintDocumentPage() {
           </tbody>
         </table>
 
-        <p className="mt-2 text-xs text-neutral-600">
+        <p className="mt-3 text-xs text-neutral-600">
           รวม {doc.lines.length} รายการ · จำนวนเป็นหน่วยชิ้นฐาน
         </p>
 
-        <section className="signature-block mt-10 break-inside-avoid text-sm">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-            <div className="text-center">
-              <p>
-                ตรวจนับโดย_________________วันที่___________
-              </p>
-              <p className="mt-1 text-xs text-neutral-700">(พนักงานธุรการ)</p>
-            </div>
-            <div className="text-center">
-              <p>
-                ร่วมตรวจโดย_________________วันที่___________
-              </p>
-              <p className="mt-1 text-xs text-neutral-700">
-                (พนักงานขายหน่วยรถ)
-              </p>
-            </div>
-          </div>
-          <div className="mt-10 flex justify-end">
-            <div className="w-full max-w-xs text-center sm:w-auto">
-              <p>อนุมัติโดย_________________วันที่___________</p>
-              <p className="mt-1 text-xs text-neutral-700">
-                (ผู้อนุมัติผลตรวจสอบ)
-              </p>
-            </div>
+        <section className="signature-block mt-14 break-inside-avoid border-t border-neutral-300 pt-10 text-sm">
+          <div className="grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2">
+            <SignatureBlock label="ตรวจนับโดย" role="พนักงานธุรการ" />
+            <SignatureBlock label="ร่วมตรวจโดย" role="พนักงานขายหน่วยรถ" />
+            <div className="hidden sm:block" aria-hidden />
+            <SignatureBlock label="อนุมัติโดย" role="ผู้อนุมัติผลตรวจสอบ" />
           </div>
         </section>
       </article>
+    </div>
+  );
+}
+
+function SignatureBlock({ label, role }: { label: string; role: string }) {
+  return (
+    <div className="mx-auto w-full max-w-[20rem]">
+      <div className="mb-8 flex h-14 items-end justify-center">
+        <div className="w-40 border-b border-neutral-400" />
+      </div>
+      <p className="mb-4 text-center text-xs text-neutral-500">ลงชื่อ</p>
+      <div className="flex items-end gap-2">
+        <span className="shrink-0 whitespace-nowrap">{label}</span>
+        <span className="mb-0.5 min-h-[1.25rem] min-w-[6rem] flex-1 border-b border-black" />
+        <span className="shrink-0 whitespace-nowrap">วันที่</span>
+        <span className="mb-0.5 min-h-[1.25rem] w-20 shrink-0 border-b border-black sm:w-24" />
+      </div>
+      <p className="mt-2 text-center text-xs text-neutral-600">({role})</p>
     </div>
   );
 }
