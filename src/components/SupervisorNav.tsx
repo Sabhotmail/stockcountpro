@@ -6,8 +6,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/supervisor/documents", label: "เอกสารรอตรวจ" },
-  { href: "/tablet/documents", label: "Tablet" },
+  { href: "/supervisor/documents", label: "เอกสารรอตรวจ / Approve", exact: true },
+  { href: "/tablet/documents", label: "Tablet / นับสต็อก", exact: false },
 ];
 
 export function SupervisorNav() {
@@ -16,10 +16,9 @@ export function SupervisorNav() {
   return (
     <nav className="flex flex-wrap gap-2">
       {links.map((link) => {
-        const active =
-          link.href === "/supervisor/documents"
-            ? pathname.startsWith("/supervisor")
-            : pathname.startsWith(link.href);
+        const active = link.exact
+          ? pathname === link.href
+          : pathname === link.href || pathname.startsWith(`${link.href}/`);
 
         return (
           <Link

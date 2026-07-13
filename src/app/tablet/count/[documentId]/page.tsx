@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant } from "@/lib/datetime";
+import { canSupervise } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   convertPieceOverflowToCase,
@@ -31,6 +32,7 @@ import {
   type ProductLine,
   type SyncStatus,
 } from "@/types/count";
+import { UserRole } from "@/types/user";
 
 const AUTO_SAVE_DELAY_MS = 1000;
 
@@ -144,6 +146,7 @@ export default function TabletCountPage() {
   const [nameFilter, setNameFilter] = useState("");
   const [showUncountedOnly, setShowUncountedOnly] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [locks, setLocks] = useState<Record<string, LineLockInfo>>({});
   const [conflictByLine, setConflictByLine] = useState<Record<string, string>>(
     {},
@@ -210,9 +213,12 @@ export default function TabletCountPage() {
       }
       if (!res.ok) return;
 
-      const data = (await res.json()) as { user?: { userId?: string } };
+      const data = (await res.json()) as {
+        user?: { userId?: string; role?: UserRole };
+      };
       if (!cancelled) {
         setCurrentUserId(data.user?.userId ?? null);
+        setRole(data.user?.role ?? null);
       }
     }
 
@@ -775,12 +781,22 @@ export default function TabletCountPage() {
     <div className="min-h-screen bg-muted/40 pb-24">
       <header className="sticky top-0 z-10 border-b bg-background px-6 py-4 shadow-sm">
         <div className="mx-auto max-w-4xl">
-          <Link
-            href="/tablet/documents"
-            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
-          >
-            ← กลับ
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/tablet/documents"
+              className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
+            >
+              ← กลับรายการ Tablet
+            </Link>
+            {role && canSupervise(role) && (
+              <Link
+                href="/supervisor/documents"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                ไปหน้า Approve
+              </Link>
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold tracking-tight">

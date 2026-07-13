@@ -112,10 +112,10 @@ export default function SupervisorVersionsPage() {
     <PageShell
       title="เปรียบเทียบเวอร์ชัน"
       nav={
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href={`/supervisor/review/${documentId}`}
-            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             ← กลับหน้าตรวจสอบ
           </Link>

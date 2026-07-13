@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { ExpressSyncPanel } from "@/components/ExpressSyncPanel";
 import { LogoutButton, PageShell } from "@/components/PageShell";
+import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { canSupervise } from "@/lib/permissions";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
+import { UserRole } from "@/types/user";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
 
@@ -27,6 +30,7 @@ export default function TabletDocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
 
   async function loadDocuments() {
     setLoading(true);
@@ -54,13 +58,22 @@ export default function TabletDocumentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/count-documents");
-        if (res.status === 401) {
+        const [docsRes, meRes] = await Promise.all([
+          fetch("/api/count-documents"),
+          fetch("/api/me", { credentials: "same-origin" }),
+        ]);
+        if (docsRes.status === 401 || meRes.status === 401) {
           router.push("/login");
           return;
         }
-        if (!res.ok) throw new Error("Failed to load documents");
-        const data = await res.json();
+        if (!docsRes.ok) throw new Error("Failed to load documents");
+        const data = await docsRes.json();
+        if (meRes.ok) {
+          const meData = (await meRes.json()) as { user?: { role?: UserRole } };
+          if (!cancelled && meData.user?.role) {
+            setRole(meData.user.role);
+          }
+        }
         if (!cancelled) setDocuments(data.documents);
       } catch (err) {
         if (!cancelled) {
@@ -76,6 +89,8 @@ export default function TabletDocumentsPage() {
       cancelled = true;
     };
   }, [router]);
+
+  const showSupervisorNav = role ? canSupervise(role) : false;
 
   const filtered = useMemo(() => {
     return documents.filter((doc) => {
@@ -154,6 +169,7 @@ export default function TabletDocumentsPage() {
     <PageShell
       title="เอกสารนับสต็อก"
       subtitle="Tablet — รายการเอกสาร"
+      nav={showSupervisorNav ? <SupervisorNav /> : undefined}
       actions={<LogoutButton onClick={handleLogout} />}
     >
       <ExpressSyncPanel onSynced={() => void loadDocuments()} />

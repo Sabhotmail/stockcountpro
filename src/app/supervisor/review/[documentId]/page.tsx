@@ -154,12 +154,12 @@ export default function SupervisorReviewPage() {
       title={document.documentNo}
       subtitle={subtitle}
       nav={
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/supervisor/documents"
-            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            ← กลับรายการ
+            ← กลับหน้ารายการ Approve
           </Link>
           <SupervisorNav />
         </div>
