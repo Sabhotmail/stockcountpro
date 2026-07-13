@@ -2,28 +2,45 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { type PrintDocumentPayload } from "@/types/count";
+import {
+  type PrintDocumentLine,
+  type PrintDocumentPayload,
+} from "@/types/count";
+
+/** Rows per printed page (A4 with header/footer). Tuned for ~12px table text. */
+const ROWS_FIRST_PAGE = 22;
+const ROWS_OTHER_PAGE = 32;
 
 function formatQty(value: number | null): string {
   if (value === null || value === undefined || value < 0) return "—";
   return value.toLocaleString("th-TH");
 }
 
+function chunkLines(lines: PrintDocumentLine[]): PrintDocumentLine[][] {
+  if (lines.length === 0) return [[]];
+  const pages: PrintDocumentLine[][] = [];
+  let index = 0;
+  const first = lines.slice(0, ROWS_FIRST_PAGE);
+  pages.push(first);
+  index = first.length;
+  while (index < lines.length) {
+    pages.push(lines.slice(index, index + ROWS_OTHER_PAGE));
+    index += ROWS_OTHER_PAGE;
+  }
+  return pages;
+}
+
 export default function PrintDocumentPage() {
   const params = useParams<{ documentId: string }>();
   const router = useRouter();
   const documentId = params.documentId;
-  const sheetRef = useRef<HTMLElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
 
   const [doc, setDoc] = useState<PrintDocumentPayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paging, setPaging] = useState(false);
-  const [pageTotal, setPageTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,44 +78,10 @@ export default function PrintDocumentPage() {
     };
   }, [documentId, router]);
 
-  useEffect(() => {
-    if (!doc || !sheetRef.current || !previewRef.current) return;
-
-    let cancelled = false;
-
-    async function paginate() {
-      setPaging(true);
-      try {
-        const { Previewer } = await import("pagedjs");
-        const previewer = new Previewer();
-        const source = sheetRef.current;
-        const target = previewRef.current;
-        if (!source || !target || cancelled) return;
-
-        target.innerHTML = "";
-        const flow = await previewer.preview(source.outerHTML, [], target);
-        if (cancelled) return;
-
-        source.classList.add("hidden");
-        setPageTotal(flow.total);
-      } catch (err) {
-        console.error("Paged.js preview failed", err);
-        // Fallback: keep original sheet visible; CSS @page may still help in some browsers
-        sheetRef.current?.classList.remove("hidden");
-      } finally {
-        if (!cancelled) setPaging(false);
-      }
-    }
-
-    const timer = window.setTimeout(() => {
-      void paginate();
-    }, 50);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [doc]);
+  const pages = useMemo(
+    () => (doc ? chunkLines(doc.lines) : []),
+    [doc],
+  );
 
   if (loading) {
     return (
@@ -131,22 +114,18 @@ export default function PrintDocumentPage() {
     : doc.isCentral
       ? "คลังกลาง HQ"
       : "—";
+  const totalPages = pages.length;
 
   return (
     <div className="min-h-screen bg-neutral-200/80 print:bg-white">
       <div className="no-print sticky top-0 z-10 border-b bg-background px-4 py-3 shadow-sm">
         <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            ตัวอย่างเอกสารทางการ — {doc.documentNo}
-            {pageTotal != null ? ` · ${pageTotal} หน้า` : ""}
+            ตัวอย่างเอกสารทางการ — {doc.documentNo} · {totalPages} หน้า
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => window.print()}
-              disabled={paging}
-            >
-              {paging ? "กำลังจัดหน้า..." : "พิมพ์"}
+            <Button type="button" onClick={() => window.print()}>
+              พิมพ์
             </Button>
             <Link
               href="/admin/documents"
@@ -158,156 +137,226 @@ export default function PrintDocumentPage() {
         </div>
       </div>
 
-      {paging && (
-        <p className="no-print py-6 text-center text-sm text-muted-foreground">
-          กำลังจัดเลขหน้า...
-        </p>
-      )}
+      <div className="mx-auto max-w-[210mm] py-4 print:max-w-none print:py-0">
+        {pages.map((rows, pageIndex) => {
+          const pageNo = pageIndex + 1;
+          const isFirst = pageIndex === 0;
+          const isLast = pageIndex === totalPages - 1;
 
-      <div ref={previewRef} className="print-preview mx-auto py-4" />
+          return (
+            <section
+              key={`page-${pageNo}`}
+              className={cn(
+                "print-page relative mx-auto mb-4 bg-white px-[14mm] py-[12mm] text-black shadow-md",
+                "print:mb-0 print:px-[12mm] print:py-[10mm] print:shadow-none",
+              )}
+            >
+              {isFirst ? (
+                <DocumentHeader
+                  documentNo={doc.documentNo}
+                  documentDate={doc.documentDate}
+                  locationCode={locationCode}
+                  locationName={locationName}
+                  hubLabel={hubLabel}
+                  versionNo={doc.currentVersionNo}
+                />
+              ) : (
+                <p className="mb-3 border-b border-black pb-2 text-[11px]">
+                  ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} · {doc.documentDate}{" "}
+                  · {locationCode} · หน้า {pageNo}/{totalPages}
+                </p>
+              )}
 
-      <article
-        ref={sheetRef}
-        className="print-sheet mx-auto my-6 w-full max-w-[210mm] bg-white px-[14mm] py-[12mm] text-black shadow-md print:my-0 print:max-w-none print:px-[12mm] print:py-[10mm] print:shadow-none"
-      >
-        <header className="text-center">
-          <p className="text-[13px] font-semibold tracking-wide">
-            ระบบตรวจนับสินค้าคงเหลือ
-          </p>
-          <h1 className="mt-2 text-[22px] font-bold tracking-tight underline decoration-2 underline-offset-4">
-            ใบตรวจนับสินค้าคงเหลือ
-          </h1>
-          <p className="mt-2 text-[12px] text-neutral-700">
-            StockCount Pro · เอกสารยืนยันผลการตรวจนับ
-          </p>
-        </header>
+              {isFirst && (
+                <p className="mt-4 mb-2 text-[12px] font-semibold">
+                  รายการสินค้าที่ตรวจนับ
+                </p>
+              )}
 
-        {/* Meta boxed table */}
-        <table className="mt-6 w-full border-collapse border border-black text-[12.5px]">
-          <tbody>
-            <tr>
-              <th className="w-[18%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                เลขที่เอกสาร
-              </th>
-              <td className="border border-black px-2 py-1.5 font-medium">
-                {doc.documentNo}
-              </td>
-              <th className="w-[14%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                วันที่นับ
-              </th>
-              <td className="border border-black px-2 py-1.5">{doc.documentDate}</td>
-            </tr>
-            <tr>
-              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                รหัสคลัง
-              </th>
-              <td className="border border-black px-2 py-1.5">{locationCode}</td>
-              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                ชื่อคลัง
-              </th>
-              <td className="border border-black px-2 py-1.5">{locationName}</td>
-            </tr>
-            <tr>
-              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                Hub / กลุ่ม
-              </th>
-              <td className="border border-black px-2 py-1.5">{hubLabel}</td>
-              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
-                เวอร์ชัน
-              </th>
-              <td className="border border-black px-2 py-1.5">
-                V{doc.currentVersionNo} · สถานะเสร็จสิ้น
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              <LinesTable
+                rows={rows}
+                showSummary={isLast}
+                totalLines={doc.lines.length}
+              />
 
-        <p className="mt-4 mb-2 text-[12px] font-semibold">
-          รายการสินค้าที่ตรวจนับ
-        </p>
+              {isLast && (
+                <>
+                  <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
+                    หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ
+                    StockCount Pro กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
+                  </p>
 
-        <table className="w-full border-collapse border border-black text-[12px]">
-          <thead>
-            <tr className="bg-neutral-100">
-              <th className="w-12 border border-black px-2 py-1.5 text-center font-semibold">
-                ลำดับ
-              </th>
-              <th className="w-24 border border-black px-2 py-1.5 text-left font-semibold">
-                รหัสสินค้า
-              </th>
-              <th className="border border-black px-2 py-1.5 text-left font-semibold">
-                ชื่อสินค้า
-              </th>
-              <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
-                ลัง
-              </th>
-              <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
-                ชิ้น
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {doc.lines.map((line) => (
-              <tr key={`${line.lineNo}-${line.productCode}`}>
-                <td className="border border-black px-2 py-1 text-center align-top">
-                  {line.lineNo}
-                </td>
-                <td className="border border-black px-2 py-1 align-top">
-                  {line.productCode}
-                </td>
-                <td className="border border-black px-2 py-1 align-top">
-                  {line.productName}
-                </td>
-                <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                  {formatQty(line.qtyCase)}
-                </td>
-                <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                  {formatQty(line.qtyPiece)}
-                </td>
-              </tr>
-            ))}
-            {/* Keep summary in tbody (not tfoot) so it prints only once on the last page */}
-            <tr className="bg-neutral-50">
-              <td
-                colSpan={5}
-                className="border border-black px-2 py-1.5 text-[11.5px]"
-              >
-                รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
-                <span className="ml-3 text-neutral-700">
-                  · หน่วยนับ: ลัง / ชิ้น
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  <section className="mt-6 border border-black px-3 py-4">
+                    <p className="mb-5 text-center text-[13px] font-bold">
+                      ส่วนลงนามรับรอง
+                    </p>
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                      <FormalSignature
+                        action="ตรวจนับโดย"
+                        role="พนักงานธุรการ"
+                      />
+                      <FormalSignature
+                        action="ร่วมตรวจโดย"
+                        role="พนักงานขายหน่วยรถ"
+                      />
+                      <FormalSignature
+                        action="อนุมัติโดย"
+                        role="ผู้อนุมัติผลตรวจสอบ"
+                      />
+                    </div>
+                  </section>
 
-        <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
-          หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
-          กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
-        </p>
+                  <footer className="mt-4 text-center text-[10px] text-neutral-500">
+                    พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+                  </footer>
+                </>
+              )}
 
-        <section className="mt-6 border border-black px-3 py-4">
-          <p className="mb-5 text-center text-[13px] font-bold">
-            ส่วนลงนามรับรอง
-          </p>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <FormalSignature action="ตรวจนับโดย" role="พนักงานธุรการ" />
-            <FormalSignature
-              action="ร่วมตรวจโดย"
-              role="พนักงานขายหน่วยรถ"
-            />
-            <FormalSignature
-              action="อนุมัติโดย"
-              role="ผู้อนุมัติผลตรวจสอบ"
-            />
-          </div>
-        </section>
-
-        <footer className="mt-4 text-center text-[10px] text-neutral-500">
-          พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
-        </footer>
-      </article>
+              <p className="pointer-events-none mt-6 text-center text-[11px] text-neutral-700 print:absolute print:bottom-[8mm] print:left-0 print:right-0 print:mt-0">
+                {pageNo}/{totalPages}
+              </p>
+            </section>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+function DocumentHeader({
+  documentNo,
+  documentDate,
+  locationCode,
+  locationName,
+  hubLabel,
+  versionNo,
+}: {
+  documentNo: string;
+  documentDate: string;
+  locationCode: string;
+  locationName: string;
+  hubLabel: string;
+  versionNo: number;
+}) {
+  return (
+    <>
+      <header className="text-center">
+        <p className="text-[13px] font-semibold tracking-wide">
+          ระบบตรวจนับสินค้าคงเหลือ
+        </p>
+        <h1 className="mt-2 text-[22px] font-bold tracking-tight underline decoration-2 underline-offset-4">
+          ใบตรวจนับสินค้าคงเหลือ
+        </h1>
+        <p className="mt-2 text-[12px] text-neutral-700">
+          StockCount Pro · เอกสารยืนยันผลการตรวจนับ
+        </p>
+      </header>
+
+      <table className="mt-6 w-full border-collapse border border-black text-[12.5px]">
+        <tbody>
+          <tr>
+            <th className="w-[18%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              เลขที่เอกสาร
+            </th>
+            <td className="border border-black px-2 py-1.5 font-medium">
+              {documentNo}
+            </td>
+            <th className="w-[14%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              วันที่นับ
+            </th>
+            <td className="border border-black px-2 py-1.5">{documentDate}</td>
+          </tr>
+          <tr>
+            <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              รหัสคลัง
+            </th>
+            <td className="border border-black px-2 py-1.5">{locationCode}</td>
+            <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              ชื่อคลัง
+            </th>
+            <td className="border border-black px-2 py-1.5">{locationName}</td>
+          </tr>
+          <tr>
+            <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              Hub / กลุ่ม
+            </th>
+            <td className="border border-black px-2 py-1.5">{hubLabel}</td>
+            <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+              เวอร์ชัน
+            </th>
+            <td className="border border-black px-2 py-1.5">
+              V{versionNo} · สถานะเสร็จสิ้น
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function LinesTable({
+  rows,
+  showSummary,
+  totalLines,
+}: {
+  rows: PrintDocumentLine[];
+  showSummary: boolean;
+  totalLines: number;
+}) {
+  return (
+    <table className="w-full border-collapse border border-black text-[12px]">
+      <thead>
+        <tr className="bg-neutral-100">
+          <th className="w-12 border border-black px-2 py-1.5 text-center font-semibold">
+            ลำดับ
+          </th>
+          <th className="w-24 border border-black px-2 py-1.5 text-left font-semibold">
+            รหัสสินค้า
+          </th>
+          <th className="border border-black px-2 py-1.5 text-left font-semibold">
+            ชื่อสินค้า
+          </th>
+          <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
+            ลัง
+          </th>
+          <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
+            ชิ้น
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((line) => (
+          <tr key={`${line.lineNo}-${line.productCode}`}>
+            <td className="border border-black px-2 py-1 text-center align-top">
+              {line.lineNo}
+            </td>
+            <td className="border border-black px-2 py-1 align-top">
+              {line.productCode}
+            </td>
+            <td className="border border-black px-2 py-1 align-top">
+              {line.productName}
+            </td>
+            <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
+              {formatQty(line.qtyCase)}
+            </td>
+            <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
+              {formatQty(line.qtyPiece)}
+            </td>
+          </tr>
+        ))}
+        {showSummary && (
+          <tr className="bg-neutral-50">
+            <td
+              colSpan={5}
+              className="border border-black px-2 py-1.5 text-[11.5px]"
+            >
+              รวมทั้งสิ้น <strong>{totalLines}</strong> รายการ
+              <span className="ml-3 text-neutral-700">· หน่วยนับ: ลัง / ชิ้น</span>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 
