@@ -43,7 +43,7 @@ export default function AdminSettingsPage() {
           return;
         }
         if (res.status === 403) {
-          router.push("/tablet/documents");
+          router.push("/admin/documents");
           return;
         }
         if (!res.ok) throw new Error("โหลดการตั้งค่าไม่สำเร็จ");

@@ -6,7 +6,7 @@ import { canAccessAdmin } from "@/lib/permissions";
 import { UserRole } from "@/types/user";
 
 export function SupervisorNav() {
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [showHqArea, setShowHqArea] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -17,10 +17,10 @@ export function SupervisorNav() {
         if (!res.ok) return;
         const data = (await res.json()) as { user?: { role?: UserRole } };
         if (!cancelled && data.user?.role) {
-          setShowAdmin(canAccessAdmin(data.user.role));
+          setShowHqArea(canAccessAdmin(data.user.role));
         }
       } catch {
-        // nav still works without Admin group
+        // nav still works without HQ group
       }
     }
 
@@ -31,13 +31,13 @@ export function SupervisorNav() {
   }, []);
 
   const groups: AppNavGroup[] = [
-    ...(showAdmin
+    ...(showHqArea
       ? [
           {
-            label: "Admin",
+            label: "ประวัติ",
             items: [
               { href: "/admin/documents", label: "เอกสาร / ประวัติ" },
-              { href: "/admin/users", label: "หน้า Admin" },
+              { href: "/admin/audit-logs", label: "Audit Log" },
             ],
           } satisfies AppNavGroup,
         ]

@@ -4,7 +4,7 @@ import {
   LINE_LOCK_TTL_MIN_SECONDS,
 } from "@/lib/count-collab-constants";
 import { prisma } from "@/lib/prisma";
-import { canAccessAdmin } from "@/services/admin.service";
+import { canManageSystem } from "@/services/admin.service";
 import type { MockSession } from "@/types/user";
 
 const SETTINGS_ID = "default";
@@ -55,7 +55,7 @@ function mapAppSettings(row: {
 export async function getAppSettingsForAdmin(
   session: MockSession,
 ): Promise<AppSettings | { error: string }> {
-  if (!canAccessAdmin(session)) {
+  if (!canManageSystem(session)) {
     return { error: "Access denied" };
   }
 
@@ -78,7 +78,7 @@ export async function updateAppSettingsForAdmin(
   session: MockSession,
   input: { lineLockTtlSeconds: number },
 ): Promise<AppSettings | { error: string }> {
-  if (!canAccessAdmin(session)) {
+  if (!canManageSystem(session)) {
     return { error: "Access denied" };
   }
 

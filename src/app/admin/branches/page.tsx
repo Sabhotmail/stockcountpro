@@ -88,7 +88,7 @@ export default function AdminBranchesPage() {
         return;
       }
       if (res.status === 403) {
-        router.push("/tablet/documents");
+        router.push("/admin/documents");
         return;
       }
       if (!res.ok) throw new Error("Failed to load branches");
@@ -153,7 +153,7 @@ export default function AdminBranchesPage() {
         return;
       }
       if (res.status === 403) {
-        router.push("/tablet/documents");
+        router.push("/admin/documents");
         return;
       }
 
@@ -196,7 +196,7 @@ export default function AdminBranchesPage() {
         return;
       }
       if (res.status === 403) {
-        router.push("/tablet/documents");
+        router.push("/admin/documents");
         return;
       }
 
@@ -238,7 +238,7 @@ export default function AdminBranchesPage() {
         return;
       }
       if (res.status === 403) {
-        router.push("/tablet/documents");
+        router.push("/admin/documents");
         return;
       }
 

@@ -104,6 +104,11 @@ export function canAccessAdmin(role: UserRole): boolean {
   return role === UserRole.ADMIN || role === UserRole.HQ;
 }
 
+/** System config: users, branches, hubs, app settings — Admin only (not HQ). */
+export function canManageSystem(role: UserRole): boolean {
+  return role === UserRole.ADMIN;
+}
+
 export function canMutateCount(role: UserRole): boolean {
   if (isReadOnlyRole(role)) return false;
   return (

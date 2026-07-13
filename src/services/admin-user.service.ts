@@ -1,6 +1,6 @@
 import { mapUser } from "@/lib/db/mappers";
 import { hashPassword } from "@/lib/auth/password";
-import { canAccessAdmin } from "@/lib/permissions";
+import { canManageSystem } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { MockSession, User, UserRole } from "@/types/user";
 import { randomInt, randomUUID } from "node:crypto";
@@ -40,7 +40,7 @@ function isRoleAdminOrHq(role: UserRole): boolean {
 }
 
 function enforceAdminAccess(session: MockSession): { error: string } | undefined {
-  if (!canAccessAdmin(session.role)) return { error: "Access denied" };
+  if (!canManageSystem(session.role)) return { error: "Access denied" };
   return undefined;
 }
 

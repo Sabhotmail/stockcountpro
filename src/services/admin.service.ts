@@ -33,6 +33,11 @@ export function canAccessAdmin(session: MockSession): boolean {
   return session.role === UserRole.ADMIN || session.role === UserRole.HQ;
 }
 
+/** Users / branches / hubs / settings — Admin only. */
+export function canManageSystem(session: MockSession): boolean {
+  return session.role === UserRole.ADMIN;
+}
+
 function normalizeBranchCode(value: string): string | null {
   const trimmed = value.trim().toUpperCase();
   return trimmed.length > 0 ? trimmed : null;
@@ -78,12 +83,12 @@ async function assertPrefixAvailable(
 }
 
 export async function listUsersForAdmin(session: MockSession) {
-  if (!canAccessAdmin(session)) return { error: "Access denied" as const };
+  if (!canManageSystem(session)) return { error: "Access denied" as const };
   return listUsers();
 }
 
 export async function listBranchesForAdmin(session: MockSession) {
-  if (!canAccessAdmin(session)) return { error: "Access denied" as const };
+  if (!canManageSystem(session)) return { error: "Access denied" as const };
 
   const branches = await prisma.branch.findMany({
     orderBy: { code: "asc" },
@@ -96,7 +101,7 @@ export async function createBranchForAdmin(
   session: MockSession,
   input: CreateAdminBranchInput,
 ): Promise<Branch | { error: string }> {
-  if (!canAccessAdmin(session)) return { error: "Access denied" };
+  if (!canManageSystem(session)) return { error: "Access denied" };
 
   const code = normalizeBranchCode(input.code);
   if (!code) return { error: "Branch code is required" };
@@ -164,7 +169,7 @@ export async function updateBranchForAdmin(
   branchId: string,
   input: UpdateAdminBranchInput,
 ): Promise<Branch | { error: string }> {
-  if (!canAccessAdmin(session)) return { error: "Access denied" };
+  if (!canManageSystem(session)) return { error: "Access denied" };
 
   const hasName = input.name !== undefined;
   const hasPrefix = input.expressLocationPrefix !== undefined;
@@ -444,7 +449,7 @@ export async function listHubsForAdmin(
   session: MockSession,
   branchId?: string | null,
 ): Promise<Hub[] | { error: string }> {
-  if (!canAccessAdmin(session)) return { error: "Access denied" };
+  if (!canManageSystem(session)) return { error: "Access denied" };
 
   const hubs = await prisma.hub.findMany({
     where: branchId ? { branchId } : undefined,
@@ -458,7 +463,7 @@ export async function createHubForAdmin(
   session: MockSession,
   input: CreateAdminHubInput,
 ): Promise<Hub | { error: string }> {
-  if (!canAccessAdmin(session)) return { error: "Access denied" };
+  if (!canManageSystem(session)) return { error: "Access denied" };
 
   const branch = await prisma.branch.findUnique({
     where: { id: input.branchId },
@@ -511,7 +516,7 @@ export async function updateHubForAdmin(
   hubId: string,
   input: UpdateAdminHubInput,
 ): Promise<Hub | { error: string }> {
-  if (!canAccessAdmin(session)) return { error: "Access denied" };
+  if (!canManageSystem(session)) return { error: "Access denied" };
 
   const existing = await prisma.hub.findUnique({ where: { id: hubId } });
   if (!existing) return { error: "Hub not found" };
@@ -561,7 +566,7 @@ export async function updateHubForAdmin(
 }
 
 export async function getAdminDashboardCounts(session: MockSession) {
-  if (!canAccessAdmin(session)) return { error: "Access denied" as const };
+  if (!canManageSystem(session)) return { error: "Access denied" as const };
 
   const [users, branches, documents, auditLogs] = await Promise.all([
     prisma.user.count(),

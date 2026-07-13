@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-13  
 **Status:** Implemented  
-**Goal:** Make Admin/HQ navigation scannable and consistent across Admin, Tablet, and Approve.
+**Roles:** HQ keeps documents/audit/tablet/approve. **ตั้งค่าระบบ (ผู้ใช้/สาขา/Hub/ตั้งค่า) = Admin only.**
 
 ## Changes
 

@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
         return true;
       }
       if (status === 403) {
-        router.push("/tablet/documents");
+        router.push("/admin/documents");
         return true;
       }
       return false;
