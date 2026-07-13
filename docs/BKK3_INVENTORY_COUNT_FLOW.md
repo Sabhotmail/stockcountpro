@@ -93,7 +93,7 @@ flowchart TD
 |------|------------|
 | STAFF / COUNTER | นับในเอกสาร Hub ที่ได้รับสิทธิ์ |
 | SUPERVISOR / BRANCH_MANAGER | นับได้เช่นกัน (รองรับกรณีคนไม่พอ) |
-| HQ / ADMIN | นับเอกสารที่เข้าถึงได้ รวมคลังกลาง |
+| HQ / ADMIN | นับเอกสารที่เข้าถึงได้ รวมคลังกลาง; ดูประวัติได้ที่ Admin → เอกสาร |
 
 หลังนับ:
 
@@ -170,6 +170,6 @@ flowchart LR
 | เอกสาร | เนื้อหา |
 |--------|---------|
 | `docs/superpowers/specs/2026-07-10-bkk3-hub-model-design.md` | Hub / คลังกลาง HQ |
-| `docs/superpowers/specs/2026-07-13-per-location-documents-design.md` | 1 คลัง = 1 เอกสาร |
+| `docs/superpowers/specs/2026-07-13-hq-document-history-design.md` | HQ/Admin ดูประวัติเอกสาร |
 | `docs/EXPRESS_API_SETUP.md` | การตั้งค่า Express API |
 | `docs/INVENTORY_COUNT_PRD.md` | PRD ภาพรวมระบบนับสต็อก |

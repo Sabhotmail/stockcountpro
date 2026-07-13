@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAuditLogsForAdmin } from "@/services/admin.service";
+import { listCountDocumentsForAdmin } from "@/services/admin.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function GET(request: Request) {
@@ -9,15 +9,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const result = await listAuditLogsForAdmin(session, {
-    documentId: searchParams.get("documentId"),
+  const result = await listCountDocumentsForAdmin(session, {
     q: searchParams.get("q"),
     documentDate: searchParams.get("documentDate"),
+    status: searchParams.get("status"),
   });
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 403 });
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({ documents: result });
 }

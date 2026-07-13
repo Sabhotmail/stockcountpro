@@ -1,8 +1,10 @@
-import { mapBranch, mapHub } from "@/lib/db/mappers";
+import { mapAuditLog, mapBranch, mapCountDocument, mapHub } from "@/lib/db/mappers";
+import { getDocumentForSession } from "@/lib/document-access";
 import {
   normalizeExpressLocationPrefix,
   validateExpressLocationPrefix,
 } from "@/lib/express-location";
+import { canAccessDocument } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
   getAuditLogsByDocument,
@@ -10,6 +12,7 @@ import {
 } from "@/services/audit-log.service";
 import { listUsers } from "@/services/user.service";
 import type { AuditLog } from "@/types/audit";
+import type { CountDocumentListItem } from "@/types/count";
 import type { Branch, Hub, MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 import { Prisma } from "@prisma/client";
@@ -227,17 +230,199 @@ export async function updateBranchForAdmin(
 
 export async function listAuditLogsForAdmin(
   session: MockSession,
-  documentId?: string | null,
-): Promise<AuditLog[] | { error: string }> {
+  filters: {
+    documentId?: string | null;
+    q?: string | null;
+    documentDate?: string | null;
+  } = {},
+): Promise<{ logs: AuditLog[]; truncated: boolean } | { error: string }> {
   if (!canAccessAdmin(session)) return { error: "Access denied" };
 
+  const documentId = filters.documentId?.trim() || null;
+  const q = filters.q?.trim() || null;
+  const documentDate = filters.documentDate?.trim() || null;
+
   if (documentId) {
-    return getAuditLogsByDocument(documentId);
+    return {
+      logs: await getAuditLogsByDocument(documentId),
+      truncated: false,
+    };
   }
 
-  const result = await listAllAuditLogs(session);
-  if ("error" in result) return result;
+  if (!q && !documentDate) {
+    const result = await listAllAuditLogs(session);
+    if ("error" in result) return result;
+    const capped = result.slice(0, 500);
+    return {
+      logs: capped,
+      truncated: result.length > capped.length,
+    };
+  }
+
+  const documents = await prisma.countDocument.findMany({
+    select: {
+      id: true,
+      documentNo: true,
+      locationCode: true,
+      documentDate: true,
+    },
+  });
+
+  const qLower = q?.toLowerCase() ?? null;
+  const matchedIds = documents
+    .filter((doc) => {
+      if (documentDate) {
+        const iso = doc.documentDate.toISOString().slice(0, 10);
+        if (iso !== documentDate) return false;
+      }
+      if (!qLower) return true;
+      const no = doc.documentNo.toLowerCase();
+      const loc = (doc.locationCode ?? "").toLowerCase();
+      return no.includes(qLower) || loc.includes(qLower);
+    })
+    .map((doc) => doc.id);
+
+  if (matchedIds.length === 0) {
+    return { logs: [], truncated: false };
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    where: { documentId: { in: matchedIds } },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+
+  const totalMatching = await prisma.auditLog.count({
+    where: { documentId: { in: matchedIds } },
+  });
+
+  return {
+    logs: logs.map(mapAuditLog),
+    truncated: totalMatching > logs.length,
+  };
+}
+
+export type AdminDocumentListFilters = {
+  q?: string | null;
+  documentDate?: string | null;
+  status?: string | null;
+};
+
+async function enrichAdminDocumentListItem(
+  docId: string,
+): Promise<CountDocumentListItem | null> {
+  const row = await prisma.countDocument.findUnique({
+    where: { id: docId },
+    include: { branch: true, hub: true },
+  });
+  if (!row) return null;
+
+  const doc = mapCountDocument(row);
+  return {
+    ...doc,
+    branchCode: row.branch.code,
+    branchName: row.branch.name,
+    branchExpressLocationPrefix: row.branch.expressLocationPrefix,
+    hubCode: row.hub?.code ?? null,
+    hubName: row.hub?.name ?? null,
+    hubShortName: row.hub?.shortName ?? null,
+  };
+}
+
+export async function listCountDocumentsForAdmin(
+  session: MockSession,
+  filters: AdminDocumentListFilters = {},
+): Promise<CountDocumentListItem[] | { error: string }> {
+  if (!canAccessAdmin(session)) return { error: "Access denied" };
+
+  const q = filters.q?.trim().toLowerCase() || null;
+  const documentDate = filters.documentDate?.trim() || null;
+  const status = filters.status?.trim() || null;
+
+  const rows = await prisma.countDocument.findMany({
+    include: { branch: true, hub: true },
+    orderBy: [{ documentDate: "desc" }, { documentNo: "asc" }],
+  });
+
+  const result: CountDocumentListItem[] = [];
+  for (const row of rows) {
+    const doc = mapCountDocument(row);
+    if (
+      !canAccessDocument(
+        session.role,
+        session.branchIds,
+        session.hubIds,
+        doc,
+      )
+    ) {
+      continue;
+    }
+    if (status && doc.status !== status) continue;
+    if (documentDate && doc.documentDate !== documentDate) continue;
+    if (q) {
+      const haystack = [
+        doc.documentNo,
+        doc.locationCode ?? "",
+        doc.locationName ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(q)) continue;
+    }
+
+    result.push({
+      ...doc,
+      branchCode: row.branch.code,
+      branchName: row.branch.name,
+      branchExpressLocationPrefix: row.branch.expressLocationPrefix,
+      hubCode: row.hub?.code ?? null,
+      hubName: row.hub?.name ?? null,
+      hubShortName: row.hub?.shortName ?? null,
+    });
+  }
+
   return result;
+}
+
+export type AdminDocumentHistory = {
+  document: CountDocumentListItem;
+  auditLogs: AuditLog[];
+  latestRecountReason: string | null;
+};
+
+export async function getCountDocumentHistoryForAdmin(
+  session: MockSession,
+  documentId: string,
+): Promise<AdminDocumentHistory | { error: string; status: 403 | 404 }> {
+  if (!canAccessAdmin(session)) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { error: access.error, status: access.status };
+  }
+
+  const document = await enrichAdminDocumentListItem(documentId);
+  if (!document) {
+    return { error: "Document not found", status: 404 };
+  }
+
+  const latestRecount = await prisma.recountRequest.findFirst({
+    where: { documentId },
+    orderBy: { requestedAt: "desc" },
+    include: { items: { take: 1 } },
+  });
+
+  const latestRecountReason =
+    latestRecount?.items[0]?.reason?.trim() ||
+    null;
+
+  return {
+    document,
+    auditLogs: await getAuditLogsByDocument(documentId),
+    latestRecountReason,
+  };
 }
 
 export type CreateAdminHubInput = {

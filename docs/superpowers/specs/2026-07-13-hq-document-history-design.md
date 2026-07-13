@@ -1,7 +1,7 @@
 # HQ Document History (Admin)
 
 **Date:** 2026-07-13  
-**Status:** Pending user review (UX revised)  
+**Status:** Implemented  
 **Goal:** Let **HQ / Admin** find any count document quickly and understand **what happened** (timeline + version compare) without raw IDs or jumping into Approve workflows.
 
 ## Decisions
