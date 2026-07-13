@@ -288,7 +288,7 @@ export default function PrintDocumentPage() {
             รายการสินค้าที่ตรวจนับ
           </p>
         </div>
-        <table className="w-full border-collapse border border-black text-[11.5px] leading-snug">
+        <table className="w-full border-separate border-spacing-0 border border-black text-[11.5px] leading-snug">
           <thead>
             <tr data-m="thead" className="bg-neutral-100">
               <th className="w-12 border border-black px-1.5 py-1 text-center font-semibold">
@@ -487,7 +487,7 @@ function LinesTable({
   totalLines: number;
 }) {
   return (
-    <table className="w-full border-collapse border border-black text-[11.5px] leading-snug">
+    <table className="w-full border-separate border-spacing-0 border border-black text-[11.5px] leading-snug">
       <thead>
         <tr className="bg-neutral-100">
           <th className="w-12 border border-black px-1.5 py-1 text-center font-semibold">
