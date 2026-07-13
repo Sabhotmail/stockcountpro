@@ -152,8 +152,6 @@ body {
     overflow: visible !important;
     break-after: page;
     page-break-after: always;
-    break-inside: avoid;
-    page-break-inside: avoid;
     display: flex;
     flex-direction: column;
   }
