@@ -225,13 +225,23 @@ export default function AdminDocumentsPage() {
                   V{doc.currentVersionNo || "—"} · {doc.countedLines}/
                   {doc.totalLines} รายการ
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col gap-2">
                   <Link
                     href={`/admin/documents/${doc.id}`}
                     className={cn(buttonVariants(), "w-full")}
                   >
                     ดูประวัติ
                   </Link>
+                  {doc.status === DocumentStatus.COMPLETED && (
+                    <Link
+                      href={`/print/documents/${doc.id}`}
+                      className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      พิมพ์เอกสาร
+                    </Link>
+                  )}
                 </CardFooter>
               </Card>
             ))}
@@ -273,13 +283,29 @@ export default function AdminDocumentsPage() {
                         {doc.countedLines}/{doc.totalLines}
                       </TableCell>
                       <TableCell>
-                        <Link
-                          href={`/admin/documents/${doc.id}`}
-                          className={buttonVariants({ size: "sm" })}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ดูประวัติ
-                        </Link>
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/admin/documents/${doc.id}`}
+                            className={buttonVariants({ size: "sm" })}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            ดูประวัติ
+                          </Link>
+                          {doc.status === DocumentStatus.COMPLETED && (
+                            <Link
+                              href={`/print/documents/${doc.id}`}
+                              className={buttonVariants({
+                                size: "sm",
+                                variant: "outline",
+                              })}
+                              onClick={(e) => e.stopPropagation()}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              พิมพ์
+                            </Link>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -80,7 +80,7 @@ export default function SupervisorReviewPage() {
         const data = await res.json();
         throw new Error(data.error ?? "Approve failed");
       }
-      router.push("/supervisor/documents");
+      router.push(`/print/documents/${documentId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Approve failed");
     } finally {

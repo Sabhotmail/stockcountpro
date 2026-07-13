@@ -132,3 +132,18 @@ body {
     @apply font-sans;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  .print-sheet {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 12mm !important;
+    box-shadow: none !important;
+  }
+}

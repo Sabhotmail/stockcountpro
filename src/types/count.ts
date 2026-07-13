@@ -245,3 +245,25 @@ export interface VersionCompareResult {
   toVersion: CountVersion;
   lines: VersionCompareLine[];
 }
+
+export interface PrintDocumentLine {
+  lineNo: number;
+  productCode: string;
+  productName: string;
+  totalBaseQty: number | null;
+}
+
+export interface PrintDocumentPayload {
+  documentId: string;
+  documentNo: string;
+  documentDate: string;
+  locationCode: string | null;
+  locationName: string | null;
+  branchCode: string;
+  branchName: string;
+  hubShortName: string | null;
+  isCentral: boolean;
+  currentVersionNo: number;
+  status: DocumentStatus;
+  lines: PrintDocumentLine[];
+}

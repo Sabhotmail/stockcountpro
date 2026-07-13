@@ -16,10 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { AuditLog } from "@/types/audit";
-import type {
-  CountDocumentListItem,
-  CountVersion,
-  VersionCompareResult,
+import {
+  DocumentStatus,
+  type CountDocumentListItem,
+  type CountVersion,
+  type VersionCompareResult,
 } from "@/types/count";
 
 const selectClassName = cn(
@@ -196,6 +197,16 @@ export default function AdminDocumentHistoryPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <DocumentStatusBadge status={document.status} compact />
+          {document.status === DocumentStatus.COMPLETED && (
+            <Link
+              href={`/print/documents/${documentId}`}
+              className={buttonVariants({ size: "sm" })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              พิมพ์เอกสาร
+            </Link>
+          )}
           <LogoutButton onClick={handleLogout} />
         </div>
       }

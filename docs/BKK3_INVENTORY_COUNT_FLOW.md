@@ -105,7 +105,7 @@ flowchart TD
 | การกระทำ | ผล |
 |----------|-----|
 | ขอให้นับใหม่ | นับใหม่**ทั้งเอกสาร** (เหตุผลเดียว) → สร้าง DRAFT ใหม่โดยคัดลอกจำนวนที่ส่งมาก่อนเป็นจุดเริ่มต้น → กดเริ่มนับบน Tablet (สถานะกลับเป็นกำลังนับ) → แก้ไขแล้วส่งใหม่ |
-| Approve | ปิดงานเอกสารใน StockCount Pro |
+| Approve | ปิดงานเอกสารใน StockCount Pro → พิมพ์ใบตรวจนับได้ (ลายเซ็นท้ายใบ) |
 
 ### 3.5 กลับ Express / รายงาน (ยังไม่ในระบบ)
 
@@ -170,6 +170,6 @@ flowchart LR
 | เอกสาร | เนื้อหา |
 |--------|---------|
 | `docs/superpowers/specs/2026-07-10-bkk3-hub-model-design.md` | Hub / คลังกลาง HQ |
-| `docs/superpowers/specs/2026-07-13-hq-document-history-design.md` | HQ/Admin ดูประวัติเอกสาร |
+| `docs/superpowers/specs/2026-07-13-print-completed-document-design.md` | พิมพ์เอกสารเสร็จ + ลายเซ็น |
 | `docs/EXPRESS_API_SETUP.md` | การตั้งค่า Express API |
 | `docs/INVENTORY_COUNT_PRD.md` | PRD ภาพรวมระบบนับสต็อก |
