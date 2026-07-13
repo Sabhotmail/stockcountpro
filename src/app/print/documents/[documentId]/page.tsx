@@ -71,32 +71,30 @@ export default function PrintDocumentPage() {
         <Alert variant="destructive">
           <AlertDescription>{error ?? "ไม่พบเอกสาร"}</AlertDescription>
         </Alert>
-        <Link href="/admin/documents" className={buttonVariants({ variant: "outline" })}>
+        <Link
+          href="/admin/documents"
+          className={buttonVariants({ variant: "outline" })}
+        >
           กลับ
         </Link>
       </div>
     );
   }
 
-  const location =
-    `${doc.locationCode ?? doc.branchCode}` +
-    (doc.locationName
-      ? ` · ${doc.locationName}`
-      : doc.branchName
-        ? ` · ${doc.branchName}`
-        : "");
+  const locationCode = doc.locationCode ?? doc.branchCode;
+  const locationName = doc.locationName ?? doc.branchName;
   const hubLabel = doc.hubShortName
     ? `Hub ${doc.hubShortName}`
     : doc.isCentral
-      ? "HQ กลาง"
+      ? "คลังกลาง HQ"
       : "—";
 
   return (
-    <div className="min-h-screen bg-muted/40">
-      <div className="no-print sticky top-0 z-10 border-b bg-background px-4 py-3">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2">
+    <div className="min-h-screen bg-neutral-200/80 print:bg-white">
+      <div className="no-print sticky top-0 z-10 border-b bg-background px-4 py-3 shadow-sm">
+        <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            พิมพ์เอกสารตรวจนับ — {doc.documentNo}
+            ตัวอย่างเอกสารทางการ — {doc.documentNo}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => window.print()}>
@@ -112,51 +110,77 @@ export default function PrintDocumentPage() {
         </div>
       </div>
 
-      <article className="print-sheet mx-auto my-6 max-w-4xl bg-white p-8 text-black shadow-sm print:my-0 print:max-w-none print:p-0 print:shadow-none">
-        <header className="border-b border-black pb-4">
-          <h1 className="text-center text-xl font-bold">ใบตรวจนับสินค้าคงเหลือ</h1>
-          <p className="mt-1 text-center text-sm">StockCount Pro</p>
-          <dl className="mt-4 grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="inline text-neutral-600">เลขเอกสาร: </dt>
-              <dd className="inline font-medium">{doc.documentNo}</dd>
-            </div>
-            <div>
-              <dt className="inline text-neutral-600">วันที่: </dt>
-              <dd className="inline font-medium">{doc.documentDate}</dd>
-            </div>
-            <div>
-              <dt className="inline text-neutral-600">คลัง: </dt>
-              <dd className="inline font-medium">{location}</dd>
-            </div>
-            <div>
-              <dt className="inline text-neutral-600">Hub: </dt>
-              <dd className="inline font-medium">{hubLabel}</dd>
-            </div>
-            <div>
-              <dt className="inline text-neutral-600">เวอร์ชัน: </dt>
-              <dd className="inline font-medium">V{doc.currentVersionNo}</dd>
-            </div>
-            <div>
-              <dt className="inline text-neutral-600">สถานะ: </dt>
-              <dd className="inline font-medium">เสร็จสิ้น</dd>
-            </div>
-          </dl>
+      <article className="print-sheet mx-auto my-6 w-full max-w-[210mm] bg-white px-[14mm] py-[12mm] text-black shadow-md print:my-0 print:max-w-none print:px-[12mm] print:py-[10mm] print:shadow-none">
+        {/* Formal header */}
+        <header className="text-center">
+          <p className="text-[13px] font-semibold tracking-wide">
+            ระบบตรวจนับสินค้าคงเหลือ
+          </p>
+          <h1 className="mt-2 text-[22px] font-bold tracking-tight underline decoration-2 underline-offset-4">
+            ใบตรวจนับสินค้าคงเหลือ
+          </h1>
+          <p className="mt-2 text-[12px] text-neutral-700">
+            StockCount Pro · เอกสารยืนยันผลการตรวจนับ
+          </p>
         </header>
 
-        <table className="mt-4 w-full border-collapse text-sm">
-          <thead>
+        {/* Meta boxed table */}
+        <table className="mt-6 w-full border-collapse border border-black text-[12.5px]">
+          <tbody>
             <tr>
-              <th className="border border-black px-2 py-1.5 text-left font-semibold">
+              <th className="w-[18%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                เลขที่เอกสาร
+              </th>
+              <td className="border border-black px-2 py-1.5 font-medium">
+                {doc.documentNo}
+              </td>
+              <th className="w-[14%] border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                วันที่นับ
+              </th>
+              <td className="border border-black px-2 py-1.5">{doc.documentDate}</td>
+            </tr>
+            <tr>
+              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                รหัสคลัง
+              </th>
+              <td className="border border-black px-2 py-1.5">{locationCode}</td>
+              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                ชื่อคลัง
+              </th>
+              <td className="border border-black px-2 py-1.5">{locationName}</td>
+            </tr>
+            <tr>
+              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                Hub / กลุ่ม
+              </th>
+              <td className="border border-black px-2 py-1.5">{hubLabel}</td>
+              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-semibold">
+                เวอร์ชัน
+              </th>
+              <td className="border border-black px-2 py-1.5">
+                V{doc.currentVersionNo} · สถานะเสร็จสิ้น
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p className="mt-4 mb-2 text-[12px] font-semibold">
+          รายการสินค้าที่ตรวจนับ
+        </p>
+
+        <table className="w-full border-collapse border border-black text-[12px]">
+          <thead>
+            <tr className="bg-neutral-100">
+              <th className="w-14 border border-black px-2 py-1.5 text-center font-semibold">
                 ลำดับ
               </th>
-              <th className="border border-black px-2 py-1.5 text-left font-semibold">
+              <th className="w-28 border border-black px-2 py-1.5 text-left font-semibold">
                 รหัสสินค้า
               </th>
               <th className="border border-black px-2 py-1.5 text-left font-semibold">
                 ชื่อสินค้า
               </th>
-              <th className="border border-black px-2 py-1.5 text-right font-semibold">
+              <th className="w-28 border border-black px-2 py-1.5 text-right font-semibold">
                 จำนวนที่นับ
               </th>
             </tr>
@@ -164,7 +188,7 @@ export default function PrintDocumentPage() {
           <tbody>
             {doc.lines.map((line) => (
               <tr key={`${line.lineNo}-${line.productCode}`}>
-                <td className="border border-black px-2 py-1 align-top">
+                <td className="border border-black px-2 py-1 text-center align-top">
                   {line.lineNo}
                 </td>
                 <td className="border border-black px-2 py-1 align-top">
@@ -181,37 +205,76 @@ export default function PrintDocumentPage() {
           </tbody>
         </table>
 
-        <p className="mt-3 text-xs text-neutral-600">
-          รวม {doc.lines.length} รายการ · จำนวนเป็นหน่วยชิ้นฐาน
+        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2 border border-black border-t-0 bg-neutral-50 px-2 py-1.5 text-[11.5px]">
+          <span>
+            รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
+          </span>
+          <span className="text-neutral-700">
+            หน่วยนับ: ชิ้นฐาน (Base unit)
+          </span>
+        </div>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
+          หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
+          กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
         </p>
 
-        <section className="signature-block mt-14 break-inside-avoid border-t border-neutral-300 pt-10 text-sm">
-          <div className="grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2">
-            <SignatureBlock label="ตรวจนับโดย" role="พนักงานธุรการ" />
-            <SignatureBlock label="ร่วมตรวจโดย" role="พนักงานขายหน่วยรถ" />
+        {/* Formal signatures — Thai official style */}
+        <section className="mt-10 break-inside-avoid">
+          <p className="mb-6 text-center text-[13px] font-semibold">
+            ส่วนลงนามรับรอง
+          </p>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2">
+            <FormalSignature
+              action="ตรวจนับโดย"
+              role="พนักงานธุรการ"
+            />
+            <FormalSignature
+              action="ร่วมตรวจโดย"
+              role="พนักงานขายหน่วยรถ"
+            />
             <div className="hidden sm:block" aria-hidden />
-            <SignatureBlock label="อนุมัติโดย" role="ผู้อนุมัติผลตรวจสอบ" />
+            <FormalSignature
+              action="อนุมัติโดย"
+              role="ผู้อนุมัติผลตรวจสอบ"
+            />
           </div>
         </section>
+
+        <footer className="mt-10 border-t border-neutral-400 pt-2 text-center text-[10px] text-neutral-500">
+          พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+        </footer>
       </article>
     </div>
   );
 }
 
-function SignatureBlock({ label, role }: { label: string; role: string }) {
+function FormalSignature({
+  action,
+  role,
+}: {
+  action: string;
+  role: string;
+}) {
   return (
-    <div className="mx-auto w-full max-w-[20rem]">
-      <div className="mb-8 flex h-14 items-end justify-center">
-        <div className="w-40 border-b border-neutral-400" />
+    <div className="mx-auto w-full max-w-[15rem] text-center text-[12px]">
+      <div className="mx-auto mb-1 h-12 w-44 border-b border-black" />
+      <p className="text-[11px] text-neutral-600">(ลงชื่อ)</p>
+
+      <div className="mt-5 space-y-1">
+        <p className="font-medium">{action}</p>
+        <div className="mx-auto h-5 w-48 border-b border-black" />
+        <p className="pt-1 text-[11px] text-neutral-700">({role})</p>
       </div>
-      <p className="mb-4 text-center text-xs text-neutral-500">ลงชื่อ</p>
-      <div className="flex items-end gap-2">
-        <span className="shrink-0 whitespace-nowrap">{label}</span>
-        <span className="mb-0.5 min-h-[1.25rem] min-w-[6rem] flex-1 border-b border-black" />
-        <span className="shrink-0 whitespace-nowrap">วันที่</span>
-        <span className="mb-0.5 min-h-[1.25rem] w-20 shrink-0 border-b border-black sm:w-24" />
+
+      <div className="mt-5 flex items-end justify-center gap-2">
+        <span className="shrink-0">วันที่</span>
+        <span className="inline-block w-8 border-b border-black" />
+        <span>/</span>
+        <span className="inline-block w-8 border-b border-black" />
+        <span>/</span>
+        <span className="inline-block w-10 border-b border-black" />
       </div>
-      <p className="mt-2 text-center text-xs text-neutral-600">({role})</p>
     </div>
   );
 }
