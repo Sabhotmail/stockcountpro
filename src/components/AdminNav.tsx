@@ -1,46 +1,33 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { AppNav, type AppNavGroup } from "@/components/AppNav";
 
-const links = [
-  { href: "/admin/users", label: "ผู้ใช้" },
-  { href: "/admin/branches", label: "สาขา" },
-  { href: "/admin/hubs", label: "Hub" },
-  { href: "/admin/settings", label: "ตั้งค่า" },
-  { href: "/admin/documents", label: "เอกสาร" },
-  { href: "/admin/audit-logs", label: "Audit Log" },
-  { href: "/tablet/documents", label: "Tablet / Sync" },
-  { href: "/supervisor/documents", label: "Supervisor" },
+const groups: AppNavGroup[] = [
+  {
+    label: "งานหลัก",
+    items: [
+      { href: "/admin/documents", label: "เอกสาร / ประวัติ" },
+      { href: "/admin/audit-logs", label: "Audit Log" },
+    ],
+  },
+  {
+    label: "ตั้งค่าระบบ",
+    items: [
+      { href: "/admin/users", label: "ผู้ใช้" },
+      { href: "/admin/branches", label: "สาขา" },
+      { href: "/admin/hubs", label: "Hub" },
+      { href: "/admin/settings", label: "ตั้งค่า" },
+    ],
+  },
+  {
+    label: "ปฏิบัติงาน",
+    items: [
+      { href: "/tablet/documents", label: "นับสต็อก (Tablet)" },
+      { href: "/supervisor/documents", label: "Approve", exact: true },
+    ],
+  },
 ];
 
 export function AdminNav() {
-  const pathname = usePathname();
-
-  return (
-    <nav className="flex flex-wrap gap-2">
-      {links.map((link) => {
-        const active =
-          pathname === link.href ||
-          (link.href !== "/admin/users" &&
-            pathname.startsWith(`${link.href}/`));
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              buttonVariants({
-                variant: active ? "default" : "secondary",
-                size: "sm",
-              }),
-            )}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <AppNav groups={groups} />;
 }

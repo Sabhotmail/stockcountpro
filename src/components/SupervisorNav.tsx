@@ -1,20 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { buttonVariants } from "@/components/ui/button";
+import { AppNav, type AppNavGroup } from "@/components/AppNav";
 import { canAccessAdmin } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
 import { UserRole } from "@/types/user";
 
-const baseLinks = [
-  { href: "/supervisor/documents", label: "เอกสารรอตรวจ / Approve", exact: true },
-  { href: "/tablet/documents", label: "Tablet / นับสต็อก", exact: false },
-];
-
 export function SupervisorNav() {
-  const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
 
   useEffect(() => {
@@ -29,7 +20,7 @@ export function SupervisorNav() {
           setShowAdmin(canAccessAdmin(data.user.role));
         }
       } catch {
-        // ignore — nav still works without Admin link
+        // nav still works without Admin group
       }
     }
 
@@ -39,35 +30,30 @@ export function SupervisorNav() {
     };
   }, []);
 
-  const links = showAdmin
-    ? [
-        { href: "/admin/documents", label: "กลับ Admin", exact: false },
-        ...baseLinks,
-      ]
-    : baseLinks;
+  const groups: AppNavGroup[] = [
+    ...(showAdmin
+      ? [
+          {
+            label: "Admin",
+            items: [
+              { href: "/admin/documents", label: "เอกสาร / ประวัติ" },
+              { href: "/admin/users", label: "หน้า Admin" },
+            ],
+          } satisfies AppNavGroup,
+        ]
+      : []),
+    {
+      label: "งานตรวจนับ",
+      items: [
+        {
+          href: "/supervisor/documents",
+          label: "เอกสารรอตรวจ / Approve",
+          exact: true,
+        },
+        { href: "/tablet/documents", label: "นับสต็อก (Tablet)" },
+      ],
+    },
+  ];
 
-  return (
-    <nav className="flex flex-wrap gap-2">
-      {links.map((link) => {
-        const active = link.exact
-          ? pathname === link.href
-          : pathname === link.href || pathname.startsWith(`${link.href}/`);
-
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              buttonVariants({
-                variant: active ? "default" : "secondary",
-                size: "sm",
-              }),
-            )}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <AppNav groups={groups} />;
 }
