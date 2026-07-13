@@ -203,16 +203,20 @@ export default function PrintDocumentPage() {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="bg-neutral-50">
+              <td
+                colSpan={3}
+                className="border border-black px-2 py-1.5 text-[11.5px]"
+              >
+                รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
+              </td>
+              <td className="border border-black px-2 py-1.5 text-right text-[11.5px] text-neutral-700">
+                หน่วยนับ: ชิ้นฐาน
+              </td>
+            </tr>
+          </tfoot>
         </table>
-
-        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2 border border-black border-t-0 bg-neutral-50 px-2 py-1.5 text-[11.5px]">
-          <span>
-            รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
-          </span>
-          <span className="text-neutral-700">
-            หน่วยนับ: ชิ้นฐาน (Base unit)
-          </span>
-        </div>
 
         <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
           หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
