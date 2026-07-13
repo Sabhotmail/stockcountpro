@@ -11,9 +11,9 @@ import {
   type PrintDocumentPayload,
 } from "@/types/count";
 
-/** Rows per printed page (A4 with header/footer). Tuned for ~12px table text. */
-const ROWS_FIRST_PAGE = 22;
-const ROWS_OTHER_PAGE = 32;
+/** Rows per printed page (leave room for page number footer). */
+const ROWS_FIRST_PAGE = 18;
+const ROWS_OTHER_PAGE = 26;
 
 function formatQty(value: number | null): string {
   if (value === null || value === undefined || value < 0) return "—";
@@ -147,72 +147,76 @@ export default function PrintDocumentPage() {
             <section
               key={`page-${pageNo}`}
               className={cn(
-                "print-page relative mx-auto mb-4 bg-white px-[14mm] py-[12mm] text-black shadow-md",
-                "print:mb-0 print:px-[12mm] print:py-[10mm] print:shadow-none",
+                "print-page mx-auto mb-4 flex min-h-[297mm] flex-col bg-white px-[14mm] pb-[14mm] pt-[12mm] text-black shadow-md",
+                "print:mb-0 print:min-h-0 print:px-[12mm] print:pb-[14mm] print:pt-[10mm] print:shadow-none",
               )}
             >
-              {isFirst ? (
-                <DocumentHeader
-                  documentNo={doc.documentNo}
-                  documentDate={doc.documentDate}
-                  locationCode={locationCode}
-                  locationName={locationName}
-                  hubLabel={hubLabel}
-                  versionNo={doc.currentVersionNo}
-                />
-              ) : (
-                <p className="mb-3 border-b border-black pb-2 text-[11px]">
-                  ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} · {doc.documentDate}{" "}
-                  · {locationCode} · หน้า {pageNo}/{totalPages}
-                </p>
-              )}
-
-              {isFirst && (
-                <p className="mt-4 mb-2 text-[12px] font-semibold">
-                  รายการสินค้าที่ตรวจนับ
-                </p>
-              )}
-
-              <LinesTable
-                rows={rows}
-                showSummary={isLast}
-                totalLines={doc.lines.length}
-              />
-
-              {isLast && (
-                <>
-                  <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
-                    หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ
-                    StockCount Pro กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
+              <div className="flex-1">
+                {isFirst ? (
+                  <DocumentHeader
+                    documentNo={doc.documentNo}
+                    documentDate={doc.documentDate}
+                    locationCode={locationCode}
+                    locationName={locationName}
+                    hubLabel={hubLabel}
+                    versionNo={doc.currentVersionNo}
+                  />
+                ) : (
+                  <p className="mb-3 border-b border-black pb-2 text-[11px]">
+                    ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} ·{" "}
+                    {doc.documentDate} · {locationCode}
                   </p>
+                )}
 
-                  <section className="mt-6 border border-black px-3 py-4">
-                    <p className="mb-5 text-center text-[13px] font-bold">
-                      ส่วนลงนามรับรอง
+                {isFirst && (
+                  <p className="mt-4 mb-2 text-[12px] font-semibold">
+                    รายการสินค้าที่ตรวจนับ
+                  </p>
+                )}
+
+                <LinesTable
+                  rows={rows}
+                  showSummary={isLast}
+                  totalLines={doc.lines.length}
+                />
+
+                {isLast && (
+                  <>
+                    <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
+                      หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ
+                      StockCount Pro
+                      กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
                     </p>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                      <FormalSignature
-                        action="ตรวจนับโดย"
-                        role="พนักงานธุรการ"
-                      />
-                      <FormalSignature
-                        action="ร่วมตรวจโดย"
-                        role="พนักงานขายหน่วยรถ"
-                      />
-                      <FormalSignature
-                        action="อนุมัติโดย"
-                        role="ผู้อนุมัติผลตรวจสอบ"
-                      />
-                    </div>
-                  </section>
 
-                  <footer className="mt-4 text-center text-[10px] text-neutral-500">
-                    พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
-                  </footer>
-                </>
-              )}
+                    <section className="mt-6 border border-black px-3 py-4">
+                      <p className="mb-5 text-center text-[13px] font-bold">
+                        ส่วนลงนามรับรอง
+                      </p>
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                        <FormalSignature
+                          action="ตรวจนับโดย"
+                          role="พนักงานธุรการ"
+                        />
+                        <FormalSignature
+                          action="ร่วมตรวจโดย"
+                          role="พนักงานขายหน่วยรถ"
+                        />
+                        <FormalSignature
+                          action="อนุมัติโดย"
+                          role="ผู้อนุมัติผลตรวจสอบ"
+                        />
+                      </div>
+                    </section>
 
-              <p className="pointer-events-none mt-6 text-center text-[11px] text-neutral-700 print:absolute print:bottom-[8mm] print:left-0 print:right-0 print:mt-0">
+                    <footer className="mt-4 text-center text-[10px] text-neutral-500">
+                      พิมพ์จาก StockCount Pro ·
+                      เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+                    </footer>
+                  </>
+                )}
+              </div>
+
+              <p className="mt-8 shrink-0 border-t border-neutral-400 pt-3 text-center text-[12px] font-medium tabular-nums tracking-wide">
                 {pageNo}/{totalPages}
               </p>
             </section>

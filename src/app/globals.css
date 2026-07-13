@@ -143,8 +143,11 @@ body {
   .print-page {
     box-shadow: none !important;
     margin: 0 !important;
+    min-height: auto !important;
     break-after: page;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
   }
   .print-page:last-child {
     break-after: auto;
