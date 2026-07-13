@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant } from "@/lib/datetime";
-import { canSupervise, isCountDocumentEditable } from "@/lib/permissions";
+import { canAccessAdmin, canSupervise, isCountDocumentEditable } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   convertPieceOverflowToCase,
@@ -786,6 +786,14 @@ export default function TabletCountPage() {
             >
               ← กลับรายการ Tablet
             </Link>
+            {role && canAccessAdmin(role) && (
+              <Link
+                href="/admin/documents"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                กลับ Admin
+              </Link>
+            )}
             {role && canSupervise(role) && (
               <Link
                 href="/supervisor/documents"
