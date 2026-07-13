@@ -11,9 +11,9 @@ import {
   type PrintDocumentPayload,
 } from "@/types/count";
 
-/** Rows per printed page (leave room for page number footer). */
-const ROWS_FIRST_PAGE = 18;
-const ROWS_OTHER_PAGE = 26;
+/** Rows per printed page (header on page 1; footer reserved at bottom). */
+const ROWS_FIRST_PAGE = 26;
+const ROWS_OTHER_PAGE = 36;
 
 function formatQty(value: number | null): string {
   if (value === null || value === undefined || value < 0) return "—";
@@ -216,7 +216,7 @@ export default function PrintDocumentPage() {
                 )}
               </div>
 
-              <p className="mt-8 shrink-0 border-t border-neutral-400 pt-3 text-center text-[12px] font-medium tabular-nums tracking-wide">
+              <p className="mt-4 shrink-0 border-t border-neutral-400 pt-2 text-center text-[12px] font-medium tabular-nums tracking-wide">
                 {pageNo}/{totalPages}
               </p>
             </section>
