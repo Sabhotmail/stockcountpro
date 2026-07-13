@@ -115,3 +115,7 @@ export function canSyncExpress(role: UserRole): boolean {
     role === UserRole.HQ
   );
 }
+
+export function canDeleteImportedDocument(role: UserRole): boolean {
+  return canSyncExpress(role);
+}

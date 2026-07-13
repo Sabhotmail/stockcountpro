@@ -26,6 +26,7 @@ export default function TabletDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadDocuments() {
     setLoading(true);
@@ -111,6 +112,35 @@ export default function TabletDocumentsPage() {
     router.push(`/tablet/count/${doc.id}`);
   }
 
+  async function handleDelete(doc: CountDocumentListItem) {
+    if (doc.status !== DocumentStatus.IMPORTED) return;
+
+    const confirmed = window.confirm(
+      `ลบเอกสารนี้?\n${doc.documentNo}\n\nลบได้เฉพาะเอกสารที่ยังไม่เริ่มนับ`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(doc.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/count-documents/${doc.id}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) throw new Error(data.error ?? "ลบเอกสารไม่สำเร็จ");
+      setDocuments((current) => current.filter((item) => item.id !== doc.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ลบเอกสารไม่สำเร็จ");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -164,19 +194,32 @@ export default function TabletDocumentsPage() {
                       : ""}
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                disabled={startingId === doc.id}
-                onClick={() => handleOpen(doc)}
-                size="lg"
-              >
-                {startingId === doc.id
-                  ? "กำลังเปิด..."
-                  : doc.status === DocumentStatus.IMPORTED ||
-                      doc.status === DocumentStatus.RECOUNT_REQUESTED
-                    ? "เริ่มนับ"
-                    : "เปิดเอกสาร"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {doc.status === DocumentStatus.IMPORTED && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={deletingId === doc.id || startingId === doc.id}
+                    onClick={() => void handleDelete(doc)}
+                    size="lg"
+                  >
+                    {deletingId === doc.id ? "กำลังลบ..." : "ลบ"}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  disabled={startingId === doc.id || deletingId === doc.id}
+                  onClick={() => void handleOpen(doc)}
+                  size="lg"
+                >
+                  {startingId === doc.id
+                    ? "กำลังเปิด..."
+                    : doc.status === DocumentStatus.IMPORTED ||
+                        doc.status === DocumentStatus.RECOUNT_REQUESTED
+                      ? "เริ่มนับ"
+                      : "เปิดเอกสาร"}
+                </Button>
+              </div>
             </CardHeader>
             <CardFooter className="flex flex-wrap items-center gap-3 border-t pt-4">
               <DocumentStatusBadge status={doc.status} />

@@ -46,6 +46,7 @@ enum AuditAction {
   APPROVE_VERSION
   COMPLETE_DOCUMENT
   IMPORT_FROM_EXPRESS
+  DELETE_DOCUMENT
 }
 
 model Branch {

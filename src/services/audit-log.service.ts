@@ -235,3 +235,18 @@ export async function logExpressSync(
     detail: `date=${countDate}; lines=${summary.expressLineCount}; created=${summary.created}; updated=${summary.updated}; skipped=${summary.skipped}${selectedLocations}`,
   });
 }
+
+export async function logDeleteDocument(
+  userId: string,
+  userName: string,
+  branchId: string,
+  detail: string,
+): Promise<AuditLog> {
+  return createAuditLog({
+    action: AuditAction.DELETE_DOCUMENT,
+    userId,
+    userName,
+    branchId,
+    detail,
+  });
+}

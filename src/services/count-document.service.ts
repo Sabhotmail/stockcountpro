@@ -10,13 +10,14 @@ import { getDocumentForSession } from "@/lib/document-access";
 import { snapshotDocumentEntries } from "@/lib/entry-snapshot";
 import {
   canAccessDocument,
+  canDeleteImportedDocument,
   canMutateCount,
   filterDocumentsForStaff,
 } from "@/lib/permissions";
 import { filterLinesForRole } from "@/lib/product-line-filter";
 import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
-import { logStartCount, logSubmit } from "@/services/audit-log.service";
+import { logDeleteDocument, logStartCount, logSubmit } from "@/services/audit-log.service";
 import { listActiveLocks } from "@/services/count-line-lock.service";
 import { getUserById } from "@/services/user.service";
 import {
@@ -394,4 +395,50 @@ export async function getEntriesForDocument(
       where: { lineId: { in: lineIds } },
     })
   ).map(mapCountEntry);
+}
+
+export async function deleteImportedDocument(
+  session: MockSession,
+  documentId: string,
+): Promise<{ success: true } | { error: string; status: 403 | 404 | 400 }> {
+  if (!canDeleteImportedDocument(session.role)) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return {
+      error: access.error,
+      status: access.status,
+    };
+  }
+
+  const doc = access.document;
+  if (doc.status !== DocumentStatus.IMPORTED) {
+    return {
+      error: "ลบได้เฉพาะเอกสารที่ยังไม่เริ่มนับ",
+      status: 400,
+    };
+  }
+
+  const detail = [
+    `documentNo=${doc.documentNo}`,
+    doc.locationCode ? `location=${doc.locationCode}` : null,
+    doc.locationName ? `name=${doc.locationName}` : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  await prisma.countDocument.delete({
+    where: { id: documentId },
+  });
+
+  await logDeleteDocument(
+    session.userId,
+    session.userName,
+    doc.branchId,
+    detail,
+  );
+
+  return { success: true };
 }

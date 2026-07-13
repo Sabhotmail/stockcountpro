@@ -21,6 +21,7 @@ const actionLabels: Record<AuditAction, string> = {
   [AuditAction.APPROVE_VERSION]: "อนุมัติเวอร์ชัน",
   [AuditAction.COMPLETE_DOCUMENT]: "ปิดเอกสาร",
   [AuditAction.IMPORT_FROM_EXPRESS]: "Sync จาก Express",
+  [AuditAction.DELETE_DOCUMENT]: "ลบเอกสาร",
 };
 
 export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
