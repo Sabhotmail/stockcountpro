@@ -254,7 +254,9 @@ export function ExpressSyncPanel({
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               {loadingLocations
                 ? "กำลังโหลดคลัง..."
-                : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
+                : error
+                  ? "ยังไม่มีรายการคลังให้เลือก"
+                  : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
             </p>
           ) : (
             <div className="divide-y">

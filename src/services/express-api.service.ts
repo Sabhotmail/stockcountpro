@@ -153,9 +153,22 @@ export async function fetchExpressLocationsByCountDate(
     `/api/stockcount/locations/countdate/${encodeURIComponent(countDate)}`,
     "Express locations by countdate",
   );
-  if ("error" in result) return result;
+  if ("error" in result) {
+    if (/\(404\)/.test(result.error)) {
+      return {
+        error: `ไม่พบข้อมูลคลังใน Express สำหรับวันที่ ${countDate} — กรุณาเลือกวันอื่น หรือตรวจสอบว่ามีใบตรวจนับใน Express แล้ว`,
+      };
+    }
+    return {
+      error: "โหลดรายการคลังจาก Express ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    };
+  }
   if (!result.success) {
-    return { error: result.message ?? "Express locations by countdate failed" };
+    return {
+      error:
+        result.message?.trim() ||
+        `ไม่พบข้อมูลคลังใน Express สำหรับวันที่ ${countDate}`,
+    };
   }
   return { locations: normalizeLocationList(result) };
 }
