@@ -136,7 +136,7 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 8mm;
+    margin: 6mm;
   }
   .no-print {
     display: none !important;
@@ -147,11 +147,14 @@ body {
   .print-page {
     box-shadow: none !important;
     margin: 0 !important;
-    min-height: auto !important;
-    height: auto !important;
-    overflow: visible !important;
+    width: auto !important;
+    height: 285mm !important;
+    max-height: 285mm !important;
+    overflow: hidden !important;
     break-after: page;
     page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
     display: flex;
     flex-direction: column;
   }

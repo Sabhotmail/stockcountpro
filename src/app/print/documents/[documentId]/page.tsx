@@ -16,10 +16,12 @@ function mm(value: number): number {
   return (value * 96) / 25.4;
 }
 
-/** A4 height minus @page margin 8mm top+bottom. */
-const PAGE_INNER_PX = mm(297 - 16);
-/** Extra safety so browser does not auto-split a page. */
-const PACK_SAFETY_PX = mm(3);
+/** @page margin (must match globals.css). */
+const PAGE_MARGIN_MM = 6;
+/** Usable content height inside A4 after @page margins. */
+const PAGE_INNER_PX = mm(297 - PAGE_MARGIN_MM * 2);
+/** Print content width (A4 − side margins). */
+const PAGE_CONTENT_WIDTH = `${210 - PAGE_MARGIN_MM * 2}mm`;
 
 function formatQty(value: number | null): string {
   if (value === null || value === undefined || value < 0) return "—";
@@ -31,7 +33,6 @@ function packLinesByHeight(
   rowHeights: number[],
   opts: {
     firstTopH: number;
-    contTopH: number;
     theadH: number;
     summaryH: number;
     footerH: number;
@@ -41,10 +42,9 @@ function packLinesByHeight(
 
   const budget = (isFirst: boolean) =>
     PAGE_INNER_PX -
-    (isFirst ? opts.firstTopH : opts.contTopH) -
+    (isFirst ? opts.firstTopH : 0) -
     opts.theadH -
-    opts.footerH -
-    PACK_SAFETY_PX;
+    opts.footerH;
 
   const pages: PrintDocumentLine[][] = [];
   let index = 0;
@@ -133,7 +133,6 @@ export default function PrintDocumentPage() {
 
     const root = measureRef.current;
     const firstTop = root.querySelector<HTMLElement>("[data-m=first-top]");
-    const contTop = root.querySelector<HTMLElement>("[data-m=cont-top]");
     const thead = root.querySelector<HTMLElement>("[data-m=thead]");
     const summary = root.querySelector<HTMLElement>("[data-m=summary]");
     const footer = root.querySelector<HTMLElement>("[data-m=footer]");
@@ -146,7 +145,6 @@ export default function PrintDocumentPage() {
       rowEls.map((el) => el.getBoundingClientRect().height),
       {
         firstTopH: firstTop?.getBoundingClientRect().height ?? 0,
-        contTopH: contTop?.getBoundingClientRect().height ?? 0,
         theadH: thead?.getBoundingClientRect().height ?? 0,
         summaryH: summary?.getBoundingClientRect().height ?? 0,
         footerH: footer?.getBoundingClientRect().height ?? 0,
@@ -218,7 +216,8 @@ export default function PrintDocumentPage() {
       <div
         ref={measureRef}
         aria-hidden
-        className="pointer-events-none absolute top-0 left-[-10000px] w-[194mm] text-black"
+        className="pointer-events-none absolute top-0 left-[-10000px] text-black"
+        style={{ width: PAGE_CONTENT_WIDTH }}
       >
         <div data-m="first-top">
           <DocumentHeader
@@ -231,12 +230,6 @@ export default function PrintDocumentPage() {
           />
           <p className="mt-3 mb-1.5 text-[12px] font-semibold">
             รายการสินค้าที่ตรวจนับ
-          </p>
-        </div>
-        <div data-m="cont-top">
-          <p className="mb-2 border-b border-black pb-1.5 text-[11px]">
-            ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} · {doc.documentDate} ·{" "}
-            {locationCode}
           </p>
         </div>
         <table className="w-full border-collapse border border-black text-[11.5px] leading-snug">
@@ -290,7 +283,7 @@ export default function PrintDocumentPage() {
           </tbody>
         </table>
         <div data-m="footer">
-          <p className="mt-3 border-t border-neutral-400 pt-1.5 text-center text-[11px] font-medium tabular-nums tracking-wide">
+          <p className="mt-2 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
             1/1
           </p>
         </div>
@@ -311,31 +304,26 @@ export default function PrintDocumentPage() {
               <section
                 key={`page-${pageNo}`}
                 className={cn(
-                  "print-page mx-auto mb-4 flex min-h-[297mm] flex-col bg-white px-[12mm] pb-[10mm] pt-[10mm] text-black shadow-md",
-                  "print:mb-0 print:min-h-0 print:px-0 print:pb-0 print:pt-0 print:shadow-none",
+                  "print-page mx-auto mb-4 flex flex-col overflow-hidden bg-white text-black shadow-md",
+                  "h-[285mm] w-[210mm] px-[6mm] py-[6mm]",
+                  "print:mb-0 print:h-[285mm] print:w-auto print:px-0 print:py-0 print:shadow-none",
                 )}
               >
-                <div className="flex-1">
-                  {isFirst ? (
-                    <DocumentHeader
-                      documentNo={doc.documentNo}
-                      documentDate={doc.documentDate}
-                      locationCode={locationCode}
-                      locationName={locationName}
-                      hubLabel={hubLabel}
-                      versionNo={doc.currentVersionNo}
-                    />
-                  ) : (
-                    <p className="mb-2 border-b border-black pb-1.5 text-[11px]">
-                      ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} ·{" "}
-                      {doc.documentDate} · {locationCode}
-                    </p>
-                  )}
-
+                <div className="min-h-0 flex-1 overflow-hidden">
                   {isFirst && (
-                    <p className="mt-3 mb-1.5 text-[12px] font-semibold">
-                      รายการสินค้าที่ตรวจนับ
-                    </p>
+                    <>
+                      <DocumentHeader
+                        documentNo={doc.documentNo}
+                        documentDate={doc.documentDate}
+                        locationCode={locationCode}
+                        locationName={locationName}
+                        hubLabel={hubLabel}
+                        versionNo={doc.currentVersionNo}
+                      />
+                      <p className="mt-3 mb-1.5 text-[12px] font-semibold">
+                        รายการสินค้าที่ตรวจนับ
+                      </p>
+                    </>
                   )}
 
                   <LinesTable
@@ -345,7 +333,7 @@ export default function PrintDocumentPage() {
                   />
                 </div>
 
-                <p className="mt-3 shrink-0 border-t border-neutral-400 pt-1.5 text-center text-[11px] font-medium tabular-nums tracking-wide">
+                <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
                   {pageNo}/{totalPages}
                 </p>
               </section>
@@ -354,16 +342,12 @@ export default function PrintDocumentPage() {
 
           <section
             className={cn(
-              "print-page mx-auto mb-4 flex min-h-[297mm] flex-col bg-white px-[12mm] pb-[10mm] pt-[10mm] text-black shadow-md",
-              "print:mb-0 print:min-h-0 print:px-0 print:pb-0 print:pt-0 print:shadow-none",
+              "print-page mx-auto mb-4 flex flex-col overflow-hidden bg-white text-black shadow-md",
+              "h-[285mm] w-[210mm] px-[6mm] py-[6mm]",
+              "print:mb-0 print:h-[285mm] print:w-auto print:px-0 print:py-0 print:shadow-none",
             )}
           >
-            <div className="flex-1">
-              <p className="mb-2 border-b border-black pb-1.5 text-[11px]">
-                ใบตรวจนับสินค้าคงเหลือ · {doc.documentNo} · {doc.documentDate} ·{" "}
-                {locationCode}
-              </p>
-
+            <div className="min-h-0 flex-1">
               <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
                 หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount
                 Pro กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
@@ -391,7 +375,7 @@ export default function PrintDocumentPage() {
               </footer>
             </div>
 
-            <p className="mt-3 shrink-0 border-t border-neutral-400 pt-1.5 text-center text-[11px] font-medium tabular-nums tracking-wide">
+            <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
               {totalPages}/{totalPages}
             </p>
           </section>
