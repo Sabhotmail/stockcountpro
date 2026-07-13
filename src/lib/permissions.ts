@@ -85,6 +85,13 @@ export function filterDocumentsForSupervisor(status: DocumentStatus): boolean {
   );
 }
 
+/** Completed docs supervisors/HQ can open for printing. */
+export function filterDocumentsForSupervisorPrint(
+  status: DocumentStatus,
+): boolean {
+  return status === DocumentStatus.COMPLETED;
+}
+
 export function canSupervise(role: UserRole): boolean {
   return (
     role === UserRole.ADMIN ||

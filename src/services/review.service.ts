@@ -17,6 +17,7 @@ import {
   canAccessDocument,
   canSupervise,
   filterDocumentsForSupervisor,
+  filterDocumentsForSupervisorPrint,
 } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
@@ -94,7 +95,10 @@ export async function listSupervisorDocuments(
   const filtered = documents
     .map(mapCountDocument)
     .filter((doc) => {
-      if (!filterDocumentsForSupervisor(doc.status)) return false;
+      const inQueue =
+        filterDocumentsForSupervisor(doc.status) ||
+        filterDocumentsForSupervisorPrint(doc.status);
+      if (!inQueue) return false;
       return canAccessDocument(
         session.role,
         session.branchIds,
@@ -127,7 +131,10 @@ export async function getReviewDetail(
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
-  if (!filterDocumentsForSupervisor(doc.status)) {
+  if (
+    !filterDocumentsForSupervisor(doc.status) &&
+    !filterDocumentsForSupervisorPrint(doc.status)
+  ) {
     return { error: "Document is not available for review" };
   }
 

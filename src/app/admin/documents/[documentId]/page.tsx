@@ -222,6 +222,29 @@ export default function AdminDocumentHistoryPage() {
         </div>
       }
     >
+      {document.status === DocumentStatus.COMPLETED ? (
+        <Alert className="mb-4 border-green-200 bg-green-50 text-green-950">
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้</span>
+            <Link
+              href={`/print/documents/${documentId}`}
+              className={buttonVariants({ size: "sm" })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              พิมพ์เอกสาร
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="mb-4">
+          <AlertDescription>
+            ปุ่มพิมพ์จะแสดงเมื่อเอกสารสถานะเสร็จสิ้น (หลัง Supervisor
+            อนุมัติแล้ว)
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>

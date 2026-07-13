@@ -144,6 +144,7 @@ export default function SupervisorReviewPage() {
   const canRecount =
     document.status === DocumentStatus.SUBMITTED ||
     document.status === DocumentStatus.REVIEWING;
+  const canPrint = document.status === DocumentStatus.COMPLETED;
 
   const subtitle = `${document.branchCode} ${document.branchName} · เวอร์ชัน ${document.currentVersionNo} · นับแล้ว ${document.countedLines}/${document.totalLines}`;
 
@@ -165,6 +166,16 @@ export default function SupervisorReviewPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <DocumentStatusBadge status={document.status} compact />
+          {canPrint && (
+            <Link
+              href={`/print/documents/${documentId}`}
+              className={buttonVariants({ size: "sm" })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              พิมพ์เอกสาร
+            </Link>
+          )}
           <Button
             type="button"
             variant="outline"

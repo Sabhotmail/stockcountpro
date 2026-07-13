@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
@@ -23,11 +23,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTimeShortTH } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
-import type { SupervisorDocumentListItem } from "@/types/count";
+import {
+  DocumentStatus,
+  type SupervisorDocumentListItem,
+} from "@/types/count";
 
-function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
+type TabKey = "pending" | "completed";
+
+function DocumentCard({
+  doc,
+  mode,
+}: {
+  doc: SupervisorDocumentListItem;
+  mode: TabKey;
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -74,12 +86,23 @@ function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
         </dl>
       </CardContent>
       <CardFooter>
-        <Link
-          href={`/supervisor/review/${doc.id}`}
-          className={cn(buttonVariants(), "w-full")}
-        >
-          ตรวจสอบ
-        </Link>
+        {mode === "completed" ? (
+          <Link
+            href={`/print/documents/${doc.id}`}
+            className={cn(buttonVariants(), "w-full")}
+            target="_blank"
+            rel="noreferrer"
+          >
+            พิมพ์เอกสาร
+          </Link>
+        ) : (
+          <Link
+            href={`/supervisor/review/${doc.id}`}
+            className={cn(buttonVariants(), "w-full")}
+          >
+            ตรวจสอบ
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
@@ -88,6 +111,7 @@ function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
 export default function SupervisorDocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<SupervisorDocumentListItem[]>([]);
+  const [tab, setTab] = useState<TabKey>("pending");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,6 +149,18 @@ export default function SupervisorDocumentsPage() {
     };
   }, [router]);
 
+  const pending = useMemo(
+    () =>
+      documents.filter((doc) => doc.status !== DocumentStatus.COMPLETED),
+    [documents],
+  );
+  const completed = useMemo(
+    () =>
+      documents.filter((doc) => doc.status === DocumentStatus.COMPLETED),
+    [documents],
+  );
+  const visible = tab === "completed" ? completed : pending;
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     router.push("/login");
@@ -133,7 +169,7 @@ export default function SupervisorDocumentsPage() {
   return (
     <PageShell
       title="ตรวจสอบเอกสารนับสต็อก"
-      subtitle="Supervisor — รายการรอตรวจ"
+      subtitle="Supervisor — รอตรวจ และเอกสารเสร็จสิ้น (พิมพ์ได้)"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<SupervisorNav />}
     >
@@ -143,19 +179,38 @@ export default function SupervisorDocumentsPage() {
         </Alert>
       )}
 
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as TabKey)}
+        className="mb-4"
+      >
+        <TabsList>
+          <TabsTrigger value="pending">
+            รอตรวจ ({pending.length})
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            เสร็จสิ้น / พิมพ์ ({completed.length})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {loading && (
         <p className="py-12 text-center text-muted-foreground">กำลังโหลด...</p>
       )}
 
-      {!loading && documents.length === 0 && (
-        <p className="py-12 text-center text-muted-foreground">ไม่มีเอกสารรอตรวจ</p>
+      {!loading && visible.length === 0 && (
+        <p className="py-12 text-center text-muted-foreground">
+          {tab === "completed"
+            ? "ยังไม่มีเอกสารเสร็จสิ้น — อนุมัติเอกสารก่อนจึงจะพิมพ์ได้"
+            : "ไม่มีเอกสารรอตรวจ"}
+        </p>
       )}
 
-      {!loading && documents.length > 0 && (
+      {!loading && visible.length > 0 && (
         <>
           <div className="flex flex-col gap-3 md:hidden">
-            {documents.map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} />
+            {visible.map((doc) => (
+              <DocumentCard key={doc.id} doc={doc} mode={tab} />
             ))}
           </div>
 
@@ -176,7 +231,7 @@ export default function SupervisorDocumentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {documents.map((doc) => (
+                  {visible.map((doc) => (
                     <TableRow key={doc.id}>
                       <TableCell className="font-medium">{doc.documentNo}</TableCell>
                       <TableCell className="whitespace-nowrap">
@@ -198,12 +253,23 @@ export default function SupervisorDocumentsPage() {
                       </TableCell>
                       <TableCell>{doc.hasDocumentNote ? "มี" : "—"}</TableCell>
                       <TableCell>
-                        <Link
-                          href={`/supervisor/review/${doc.id}`}
-                          className={buttonVariants({ size: "sm" })}
-                        >
-                          ตรวจสอบ
-                        </Link>
+                        {tab === "completed" ? (
+                          <Link
+                            href={`/print/documents/${doc.id}`}
+                            className={buttonVariants({ size: "sm" })}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            พิมพ์เอกสาร
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/supervisor/review/${doc.id}`}
+                            className={buttonVariants({ size: "sm" })}
+                          >
+                            ตรวจสอบ
+                          </Link>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
