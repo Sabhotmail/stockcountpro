@@ -217,18 +217,26 @@ export default function PrintDocumentPage() {
         <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
           หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
           กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
+          <span className="mt-1 block font-medium text-neutral-900">
+            ส่วนลงนามรับรองอยู่ด้านล่าง / หน้าถัดไป
+          </span>
         </p>
 
-        {/* Formal signatures — Thai official style */}
-        <section className="mt-10 break-inside-avoid">
-          <p className="mb-6 text-center text-[13px] font-semibold">
+        {/* Own print page so long tables never push signatures off-screen */}
+        <section className="signature-page mt-10 border-t-2 border-black pt-6 print:mt-0 print:break-before-page print:border-t-0 print:pt-0">
+          <div className="mb-6 hidden text-center print:block">
+            <p className="text-[12px] font-semibold">ใบตรวจนับสินค้าคงเหลือ</p>
+            <p className="mt-1 text-[11px] text-neutral-700">
+              เลขที่ {doc.documentNo} · {doc.documentDate} · {locationCode}
+            </p>
+          </div>
+
+          <p className="mb-8 text-center text-[14px] font-bold tracking-wide">
             ส่วนลงนามรับรอง
           </p>
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2">
-            <FormalSignature
-              action="ตรวจนับโดย"
-              role="พนักงานธุรการ"
-            />
+
+          <div className="grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2">
+            <FormalSignature action="ตรวจนับโดย" role="พนักงานธุรการ" />
             <FormalSignature
               action="ร่วมตรวจโดย"
               role="พนักงานขายหน่วยรถ"
@@ -239,11 +247,11 @@ export default function PrintDocumentPage() {
               role="ผู้อนุมัติผลตรวจสอบ"
             />
           </div>
-        </section>
 
-        <footer className="mt-10 border-t border-neutral-400 pt-2 text-center text-[10px] text-neutral-500">
-          พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
-        </footer>
+          <footer className="mt-12 border-t border-neutral-400 pt-2 text-center text-[10px] text-neutral-500">
+            พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+          </footer>
+        </section>
       </article>
     </div>
   );
@@ -257,23 +265,23 @@ function FormalSignature({
   role: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[15rem] text-center text-[12px]">
-      <div className="mx-auto mb-1 h-12 w-44 border-b border-black" />
+    <div className="mx-auto w-full max-w-[16rem] text-center text-[12px]">
+      <div className="mx-auto mb-1 h-10 w-40 border-b border-black" />
       <p className="text-[11px] text-neutral-600">(ลงชื่อ)</p>
 
-      <div className="mt-5 space-y-1">
+      <div className="mt-4 space-y-1">
         <p className="font-medium">{action}</p>
-        <div className="mx-auto h-5 w-48 border-b border-black" />
+        <div className="mx-auto h-5 w-44 border-b border-black" />
         <p className="pt-1 text-[11px] text-neutral-700">({role})</p>
       </div>
 
-      <div className="mt-5 flex items-end justify-center gap-2">
+      <div className="mt-4 flex items-end justify-center gap-1.5">
         <span className="shrink-0">วันที่</span>
-        <span className="inline-block w-8 border-b border-black" />
+        <span className="inline-block w-7 border-b border-black" />
         <span>/</span>
-        <span className="inline-block w-8 border-b border-black" />
+        <span className="inline-block w-7 border-b border-black" />
         <span>/</span>
-        <span className="inline-block w-10 border-b border-black" />
+        <span className="inline-block w-9 border-b border-black" />
       </div>
     </div>
   );
