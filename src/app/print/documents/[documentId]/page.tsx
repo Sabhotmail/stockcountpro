@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,13 @@ export default function PrintDocumentPage() {
   const params = useParams<{ documentId: string }>();
   const router = useRouter();
   const documentId = params.documentId;
+  const sheetRef = useRef<HTMLElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const [doc, setDoc] = useState<PrintDocumentPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paging, setPaging] = useState(false);
+  const [pageTotal, setPageTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,6 +60,45 @@ export default function PrintDocumentPage() {
       cancelled = true;
     };
   }, [documentId, router]);
+
+  useEffect(() => {
+    if (!doc || !sheetRef.current || !previewRef.current) return;
+
+    let cancelled = false;
+
+    async function paginate() {
+      setPaging(true);
+      try {
+        const { Previewer } = await import("pagedjs");
+        const previewer = new Previewer();
+        const source = sheetRef.current;
+        const target = previewRef.current;
+        if (!source || !target || cancelled) return;
+
+        target.innerHTML = "";
+        const flow = await previewer.preview(source.outerHTML, [], target);
+        if (cancelled) return;
+
+        source.classList.add("hidden");
+        setPageTotal(flow.total);
+      } catch (err) {
+        console.error("Paged.js preview failed", err);
+        // Fallback: keep original sheet visible; CSS @page may still help in some browsers
+        sheetRef.current?.classList.remove("hidden");
+      } finally {
+        if (!cancelled) setPaging(false);
+      }
+    }
+
+    const timer = window.setTimeout(() => {
+      void paginate();
+    }, 50);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [doc]);
 
   if (loading) {
     return (
@@ -95,10 +138,15 @@ export default function PrintDocumentPage() {
         <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             ตัวอย่างเอกสารทางการ — {doc.documentNo}
+            {pageTotal != null ? ` · ${pageTotal} หน้า` : ""}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => window.print()}>
-              พิมพ์
+            <Button
+              type="button"
+              onClick={() => window.print()}
+              disabled={paging}
+            >
+              {paging ? "กำลังจัดหน้า..." : "พิมพ์"}
             </Button>
             <Link
               href="/admin/documents"
@@ -110,8 +158,18 @@ export default function PrintDocumentPage() {
         </div>
       </div>
 
-      <article className="print-sheet mx-auto my-6 w-full max-w-[210mm] bg-white px-[14mm] py-[12mm] text-black shadow-md print:my-0 print:max-w-none print:px-[12mm] print:py-[10mm] print:shadow-none">
-        {/* Formal header */}
+      {paging && (
+        <p className="no-print py-6 text-center text-sm text-muted-foreground">
+          กำลังจัดเลขหน้า...
+        </p>
+      )}
+
+      <div ref={previewRef} className="print-preview mx-auto py-4" />
+
+      <article
+        ref={sheetRef}
+        className="print-sheet mx-auto my-6 w-full max-w-[210mm] bg-white px-[14mm] py-[12mm] text-black shadow-md print:my-0 print:max-w-none print:px-[12mm] print:py-[10mm] print:shadow-none"
+      >
         <header className="text-center">
           <p className="text-[13px] font-semibold tracking-wide">
             ระบบตรวจนับสินค้าคงเหลือ

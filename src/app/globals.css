@@ -147,3 +147,34 @@ body {
     box-shadow: none !important;
   }
 }
+
+/* A4 + page numbers (used with Paged.js on print page) */
+@page {
+  size: A4 portrait;
+  margin: 12mm 12mm 16mm 12mm;
+
+  @bottom-center {
+    content: counter(page) " / " counter(pages);
+    font-family: Tahoma, "Segoe UI", sans-serif;
+    font-size: 10pt;
+    color: #222;
+  }
+}
+
+.pagedjs_page {
+  background: white;
+  margin: 0 auto 1rem;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 12%);
+}
+
+@media print {
+  .pagedjs_page {
+    margin: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+  }
+
+  .pagedjs_page:last-child {
+    break-after: auto;
+  }
+}
