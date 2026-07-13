@@ -146,8 +146,4 @@ body {
     padding: 12mm !important;
     box-shadow: none !important;
   }
-  .signature-page {
-    break-before: page;
-    page-break-before: always;
-  }
 }
