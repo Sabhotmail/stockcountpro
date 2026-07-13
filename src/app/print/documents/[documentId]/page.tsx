@@ -302,7 +302,7 @@ function DocumentHeader({
             <th className="border border-black bg-neutral-100 px-2 py-1 text-left font-semibold">
               เวอร์ชัน
             </th>
-            <td className="border border-black px-2 py-1.5">
+            <td className="border border-black px-2 py-1">
               V{versionNo} · สถานะเสร็จสิ้น
             </td>
           </tr>
