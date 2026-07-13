@@ -435,7 +435,7 @@ function DocumentHeader({
         </p>
       </header>
 
-      <table className="mt-3 w-full border-collapse border border-black text-[12px]">
+      <table className="mt-3 w-full border-separate border-spacing-0 border border-black text-[12px]">
         <tbody>
           <tr>
             <th className="w-[18%] border border-black bg-neutral-100 px-2 py-1 text-left font-semibold">
