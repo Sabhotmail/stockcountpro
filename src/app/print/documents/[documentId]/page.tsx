@@ -44,10 +44,19 @@ function packLinesByHeight(
     firstTopH: number;
     theadH: number;
     summaryH: number;
+    signatureH: number;
     footerH: number;
   },
 ): PrintDocumentLine[][] {
   if (lines.length === 0) return [[]];
+
+  const sumHeights = (from: number, to: number) => {
+    let total = 0;
+    for (let i = from; i < to; i += 1) {
+      total += rowHeights[i] ?? mm(6);
+    }
+    return total;
+  };
 
   const budget = (isFirst: boolean) =>
     PAGE_INNER_PX -
@@ -61,17 +70,42 @@ function packLinesByHeight(
 
   while (index < lines.length) {
     const maxH = Math.max(budget(isFirst), mm(40));
+    const remainingH =
+      sumHeights(index, lines.length) + opts.summaryH + opts.signatureH;
+
+    // Remaining rows + summary + signatures fit → last page.
+    if (remainingH <= maxH) {
+      pages.push(lines.slice(index));
+      break;
+    }
+
     const chunk: PrintDocumentLine[] = [];
     let used = 0;
 
     while (index < lines.length) {
       const rowH = rowHeights[index] ?? mm(6);
+      const restWithSig =
+        sumHeights(index, lines.length) + opts.summaryH + opts.signatureH;
+
+      // Taking everything from here still fits on this page → last page.
+      if (chunk.length > 0 && used + restWithSig <= maxH) {
+        while (index < lines.length) {
+          chunk.push(lines[index]!);
+          index += 1;
+        }
+        break;
+      }
+
       const isLastLine = index === lines.length - 1;
-      const need = rowH + (isLastLine ? opts.summaryH : 0);
+      const need = isLastLine
+        ? rowH + opts.summaryH + opts.signatureH
+        : rowH;
 
       if (chunk.length > 0 && used + need > maxH) break;
 
       if (chunk.length === 0 && need > maxH) {
+        // Single row cannot fit with signatures — place row alone; signatures
+        // will go on a following page only if we keep packing (handled below).
         chunk.push(lines[index]!);
         index += 1;
         break;
@@ -79,7 +113,6 @@ function packLinesByHeight(
 
       chunk.push(lines[index]!);
       used += rowH;
-      if (isLastLine) used += opts.summaryH;
       index += 1;
     }
 
@@ -144,6 +177,7 @@ export default function PrintDocumentPage() {
     const firstTop = root.querySelector<HTMLElement>("[data-m=first-top]");
     const thead = root.querySelector<HTMLElement>("[data-m=thead]");
     const summary = root.querySelector<HTMLElement>("[data-m=summary]");
+    const signature = root.querySelector<HTMLElement>("[data-m=signature]");
     const footer = root.querySelector<HTMLElement>("[data-m=footer]");
     const rowEls = [
       ...root.querySelectorAll<HTMLElement>("[data-m-row]"),
@@ -163,6 +197,9 @@ export default function PrintDocumentPage() {
           ROW_HEIGHT_PRINT_FACTOR,
         summaryH:
           (summary?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
+        signatureH:
+          (signature?.getBoundingClientRect().height ?? 0) *
           ROW_HEIGHT_PRINT_FACTOR,
         footerH:
           (footer?.getBoundingClientRect().height ?? 0) *
@@ -203,7 +240,7 @@ export default function PrintDocumentPage() {
     : doc.isCentral
       ? "คลังกลาง HQ"
       : "—";
-  const totalPages = (pages?.length ?? 0) + 1; // +1 signature page
+  const totalPages = pages?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-neutral-200/80 print:bg-white">
@@ -301,6 +338,9 @@ export default function PrintDocumentPage() {
             </tr>
           </tbody>
         </table>
+        <div data-m="signature">
+          <SignatureBlock />
+        </div>
         <div data-m="footer">
           <p className="mt-2 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
             1/1
@@ -350,6 +390,8 @@ export default function PrintDocumentPage() {
                     showSummary={isLastLines}
                     totalLines={doc.lines.length}
                   />
+
+                  {isLastLines && <SignatureBlock />}
                 </div>
 
                 <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
@@ -358,46 +400,6 @@ export default function PrintDocumentPage() {
               </section>
             );
           })}
-
-          <section
-            className={cn(
-              "print-page mx-auto mb-4 flex flex-col bg-white text-black shadow-md",
-              "min-h-[297mm] w-[210mm] px-[12mm] py-[12mm]",
-              "print:mb-0 print:min-h-0 print:h-auto print:w-auto print:overflow-visible print:px-0 print:py-0 print:shadow-none",
-            )}
-          >
-            <div className="min-h-0 flex-1">
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
-                หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount
-                Pro กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
-              </p>
-
-              <section className="mt-6 border border-black px-3 py-4">
-                <p className="mb-5 text-center text-[13px] font-bold">
-                  ส่วนลงนามรับรอง
-                </p>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                  <FormalSignature action="ตรวจนับโดย" role="พนักงานธุรการ" />
-                  <FormalSignature
-                    action="ร่วมตรวจโดย"
-                    role="พนักงานขายหน่วยรถ"
-                  />
-                  <FormalSignature
-                    action="อนุมัติโดย"
-                    role="ผู้อนุมัติผลตรวจสอบ"
-                  />
-                </div>
-              </section>
-
-              <footer className="mt-4 text-center text-[10px] text-neutral-500">
-                พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
-              </footer>
-            </div>
-
-            <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
-              {totalPages}/{totalPages}
-            </p>
-          </section>
         </div>
       )}
     </div>
@@ -538,6 +540,32 @@ function LinesTable({
         )}
       </tbody>
     </table>
+  );
+}
+
+function SignatureBlock() {
+  return (
+    <>
+      <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
+        หมายเหตุ: เอกสารฉบับนี้เป็นหลักฐานผลการตรวจนับในระบบ StockCount Pro
+        กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
+      </p>
+
+      <section className="mt-4 border border-black px-3 py-3">
+        <p className="mb-4 text-center text-[13px] font-bold">
+          ส่วนลงนามรับรอง
+        </p>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <FormalSignature action="ตรวจนับโดย" role="พนักงานธุรการ" />
+          <FormalSignature action="ร่วมตรวจโดย" role="พนักงานขายหน่วยรถ" />
+          <FormalSignature action="อนุมัติโดย" role="ผู้อนุมัติผลตรวจสอบ" />
+        </div>
+      </section>
+
+      <footer className="mt-3 text-center text-[10px] text-neutral-500">
+        พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+      </footer>
+    </>
   );
 }
 
