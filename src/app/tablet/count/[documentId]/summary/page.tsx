@@ -15,12 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isCountDocumentEditable } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import {
-  DocumentStatus,
-  VersionStatus,
-  type CountSummary,
-} from "@/types/count";
+import { type CountSummary } from "@/types/count";
 
 export default function TabletSummaryPage() {
   const params = useParams<{ documentId: string }>();
@@ -108,9 +105,10 @@ export default function TabletSummaryPage() {
   }
 
   const { document } = summary;
-  const isEditable =
-    document.status === DocumentStatus.COUNTING &&
-    document.version?.status === VersionStatus.DRAFT;
+  const isEditable = isCountDocumentEditable(
+    document.status,
+    document.version?.status,
+  );
   const hasUncounted = summary.uncountedLines > 0;
 
   const stats = [

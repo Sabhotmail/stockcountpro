@@ -1,4 +1,4 @@
-import { DocumentStatus } from "@/types/count";
+import { DocumentStatus, VersionStatus } from "@/types/count";
 import { UserRole } from "@/types/user";
 
 export function canAccessBranch(
@@ -63,6 +63,18 @@ export function isReadOnlyRole(role: UserRole): boolean {
 
 export function filterDocumentsForStaff(status: DocumentStatus): boolean {
   return status !== DocumentStatus.COMPLETED;
+}
+
+/** Document can be edited on tablet when counting or after recount was requested. */
+export function isCountDocumentEditable(
+  status: DocumentStatus,
+  versionStatus: VersionStatus | string | null | undefined,
+): boolean {
+  return (
+    (status === DocumentStatus.COUNTING ||
+      status === DocumentStatus.RECOUNT_REQUESTED) &&
+    versionStatus === VersionStatus.DRAFT
+  );
 }
 
 export function filterDocumentsForSupervisor(status: DocumentStatus): boolean {

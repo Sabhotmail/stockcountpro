@@ -211,6 +211,22 @@ export async function startCount(
   }
 
   if (doc.status === DocumentStatus.RECOUNT_REQUESTED && doc.currentVersionId) {
+    await prisma.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.COUNTING,
+        updatedAt: new Date(),
+      },
+    });
+
+    await logStartCount(
+      session.userId,
+      session.userName,
+      doc.branchId,
+      documentId,
+      doc.currentVersionId,
+    );
+
     const detail = await getDocumentDetail(session, documentId);
     return detail ?? { error: "Document not found" };
   }

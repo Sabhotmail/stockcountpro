@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant } from "@/lib/datetime";
-import { canSupervise } from "@/lib/permissions";
+import { canSupervise, isCountDocumentEditable } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   convertPieceOverflowToCase,
@@ -23,10 +23,8 @@ import {
 } from "@/lib/unit-converter";
 import {
   type CountDocumentWithLocksResponse,
-  DocumentStatus,
   type LineLockInfo,
   type SaveEntryErrorResponse,
-  VersionStatus,
   type CountDocumentDetail,
   type CountEntry,
   type ProductLine,
@@ -182,9 +180,9 @@ export default function TabletCountPage() {
 
   const lines = document?.lines ?? [];
   const versionId = document?.currentVersionId;
-  const isEditable =
-    document?.status === DocumentStatus.COUNTING &&
-    document?.version?.status === VersionStatus.DRAFT;
+  const isEditable = document
+    ? isCountDocumentEditable(document.status, document.version?.status)
+    : false;
 
   const productCodeByLineId = useMemo(() => {
     const map = new Map<string, string>();
