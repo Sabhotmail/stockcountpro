@@ -132,6 +132,10 @@ export default function TabletDocumentsPage() {
         router.push("/login");
         return;
       }
+      if (res.status === 404) {
+        setDocuments((current) => current.filter((item) => item.id !== doc.id));
+        return;
+      }
       if (!res.ok) throw new Error(data.error ?? "ลบเอกสารไม่สำเร็จ");
       setDocuments((current) => current.filter((item) => item.id !== doc.id));
     } catch (err) {

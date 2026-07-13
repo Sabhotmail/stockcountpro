@@ -1,10 +1,11 @@
 import { getDocumentForSession } from "@/lib/document-access";
 import { mapAuditLog } from "@/lib/db/mappers";
 import { prisma } from "@/lib/prisma";
-import { AuditAction } from "@/types/audit";
+import { AuditAction as AppAuditAction } from "@/types/audit";
 import type { AuditLog } from "@/types/audit";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
+import { AuditAction as PrismaAuditAction } from "@prisma/client";
 
 async function nextAuditId(): Promise<string> {
   const logs = await prisma.auditLog.findMany({
@@ -28,7 +29,7 @@ export async function createAuditLog(
   const log = await prisma.auditLog.create({
     data: {
       id: await nextAuditId(),
-      action: input.action,
+      action: input.action as PrismaAuditAction,
       userId: input.userId,
       userName: input.userName,
       branchId: input.branchId ?? null,
@@ -82,7 +83,7 @@ export async function logLogin(
   userName: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.LOGIN,
+    action: AppAuditAction.LOGIN,
     userId,
     userName,
     detail: "Mock login",
@@ -97,7 +98,7 @@ export async function logStartCount(
   versionId: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.START_COUNT,
+    action: AppAuditAction.START_COUNT,
     userId,
     userName,
     branchId,
@@ -115,7 +116,7 @@ export async function logAutoSave(
   lineId: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.AUTO_SAVE_COUNT,
+    action: AppAuditAction.AUTO_SAVE_COUNT,
     userId,
     userName,
     branchId,
@@ -133,7 +134,7 @@ export async function logSubmit(
   versionId: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.SUBMIT_TO_SUPERVISOR,
+    action: AppAuditAction.SUBMIT_TO_SUPERVISOR,
     userId,
     userName,
     branchId,
@@ -151,7 +152,7 @@ export async function logCreateVersion(
   detail?: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.CREATE_VERSION,
+    action: AppAuditAction.CREATE_VERSION,
     userId,
     userName,
     branchId,
@@ -170,7 +171,7 @@ export async function logRequestRecount(
   detail?: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.REQUEST_RECOUNT,
+    action: AppAuditAction.REQUEST_RECOUNT,
     userId,
     userName,
     branchId,
@@ -188,7 +189,7 @@ export async function logApproveVersion(
   versionId: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.APPROVE_VERSION,
+    action: AppAuditAction.APPROVE_VERSION,
     userId,
     userName,
     branchId,
@@ -204,7 +205,7 @@ export async function logCompleteDocument(
   documentId: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.COMPLETE_DOCUMENT,
+    action: AppAuditAction.COMPLETE_DOCUMENT,
     userId,
     userName,
     branchId,
@@ -229,7 +230,7 @@ export async function logExpressSync(
     : "";
 
   return createAuditLog({
-    action: AuditAction.IMPORT_FROM_EXPRESS,
+    action: AppAuditAction.IMPORT_FROM_EXPRESS,
     userId,
     userName,
     detail: `date=${countDate}; lines=${summary.expressLineCount}; created=${summary.created}; updated=${summary.updated}; skipped=${summary.skipped}${selectedLocations}`,
@@ -243,7 +244,7 @@ export async function logDeleteDocument(
   detail: string,
 ): Promise<AuditLog> {
   return createAuditLog({
-    action: AuditAction.DELETE_DOCUMENT,
+    action: AppAuditAction.DELETE_DOCUMENT,
     userId,
     userName,
     branchId,

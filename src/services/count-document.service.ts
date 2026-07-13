@@ -433,12 +433,16 @@ export async function deleteImportedDocument(
     where: { id: documentId },
   });
 
-  await logDeleteDocument(
-    session.userId,
-    session.userName,
-    doc.branchId,
-    detail,
-  );
+  try {
+    await logDeleteDocument(
+      session.userId,
+      session.userName,
+      doc.branchId,
+      detail,
+    );
+  } catch (error) {
+    console.error("Failed to write delete audit log", error);
+  }
 
   return { success: true };
 }
