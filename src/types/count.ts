@@ -167,7 +167,8 @@ export interface RecountRequestItem {
 
 export interface RecountRequestPayload {
   baseVersionId: string;
-  items: RecountRequestItem[];
+  /** Single reason applied to the whole document recount. */
+  reason: string;
 }
 
 export interface RecountRequestRecord {

@@ -88,9 +88,7 @@ export default function SupervisorReviewPage() {
     }
   }
 
-  async function handleRequestRecount(
-    items: { lineId: string; reason: string }[],
-  ) {
+  async function handleRequestRecount(reason: string) {
     if (!review?.document.version) {
       throw new Error("Version not found");
     }
@@ -102,7 +100,7 @@ export default function SupervisorReviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           baseVersionId: review.document.version.id,
-          items,
+          reason,
         }),
       },
     );
@@ -246,7 +244,7 @@ export default function SupervisorReviewPage() {
 
       <RecountRequestModal
         open={showRecountModal}
-        lines={reviewLines}
+        lineCount={reviewLines.length}
         onClose={() => setShowRecountModal(false)}
         onSubmit={handleRequestRecount}
       />

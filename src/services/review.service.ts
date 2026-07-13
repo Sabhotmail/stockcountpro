@@ -285,8 +285,9 @@ export async function requestRecount(
     return { error: "Document cannot be sent for recount" };
   }
 
-  if (!payload.items.length) {
-    return { error: "Select at least one line for recount" };
+  const reason = payload.reason?.trim() ?? "";
+  if (!reason) {
+    return { error: "Recount reason is required" };
   }
 
   const baseVersion = await prisma.countVersion.findUnique({
@@ -296,20 +297,18 @@ export async function requestRecount(
     return { error: "Base version not found" };
   }
 
-  const lines = await prisma.productLine.findMany({ where: { documentId } });
-  for (const item of payload.items) {
-    if (!lines.some((line) => line.lineId === item.lineId)) {
-      return { error: `Line not found: ${item.lineId}` };
-    }
-    if (!item.reason.trim()) {
-      return { error: "Recount reason is required for each selected line" };
-    }
+  const lines = await prisma.productLine.findMany({
+    where: { documentId },
+    orderBy: { lineNo: "asc" },
+  });
+  if (lines.length === 0) {
+    return { error: "Document has no product lines" };
   }
 
   const now = new Date();
   const newVersionNo = baseVersion.versionNo + 1;
   const newVersionId = `ver_${documentId}_v${newVersionNo}`;
-  const recountId = `recount_${String(newVersionNo).padStart(3, "0")}`;
+  const recountId = `recount_${documentId}_v${newVersionNo}`;
 
   await snapshotDocumentEntries(documentId, baseVersion.id);
 
@@ -334,6 +333,7 @@ export async function requestRecount(
       },
     });
 
+    // Seed new draft with previously submitted quantities for every line.
     for (const entry of baseEntries.filter((item) => baseLineIds.has(item.lineId))) {
       await tx.countEntry.upsert({
         where: { lineId: entry.lineId },
@@ -361,12 +361,19 @@ export async function requestRecount(
       });
     }
 
+    const countedLines = baseEntries.filter(
+      (entry) =>
+        baseLineIds.has(entry.lineId) &&
+        isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece),
+    ).length;
+
     await tx.countDocument.update({
       where: { id: documentId },
       data: {
         status: DocumentStatus.RECOUNT_REQUESTED,
         currentVersionId: newVersionId,
         currentVersionNo: newVersionNo,
+        countedLines,
         updatedAt: now,
       },
     });
@@ -380,9 +387,9 @@ export async function requestRecount(
         requestedBy: session.userId,
         requestedAt: now,
         items: {
-          create: payload.items.map((item) => ({
-            lineId: item.lineId,
-            reason: item.reason,
+          create: lines.map((line) => ({
+            lineId: line.lineId,
+            reason,
           })),
         },
       },
@@ -395,7 +402,7 @@ export async function requestRecount(
     doc.branchId,
     documentId,
     newVersionId,
-    `Recount ${payload.items.length} line(s)`,
+    `Full-document recount (${lines.length} lines): ${reason}`,
   );
   await logCreateVersion(
     session.userId,

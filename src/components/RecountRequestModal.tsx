@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -12,53 +11,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatExpectedQtyForSupervisor } from "@/lib/express-expected-qty";
-import type { ReviewLineItem } from "@/types/count";
 
 interface RecountRequestModalProps {
   open: boolean;
-  lines: ReviewLineItem[];
+  lineCount: number;
   onClose: () => void;
-  onSubmit: (items: { lineId: string; reason: string }[]) => Promise<void>;
+  onSubmit: (reason: string) => Promise<void>;
 }
 
 export function RecountRequestModal({
   open,
-  lines,
+  lineCount,
   onClose,
   onSubmit,
 }: RecountRequestModalProps) {
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedLines = lines.filter((line) => selected[line.lineId]);
-
   async function handleSubmit() {
     setError(null);
-    const items = selectedLines.map((line) => ({
-      lineId: line.lineId,
-      reason: reasons[line.lineId]?.trim() ?? "",
-    }));
-
-    if (items.length === 0) {
-      setError("กรุณาเลือกอย่างน้อย 1 รายการ");
-      return;
-    }
-
-    if (items.some((item) => !item.reason)) {
-      setError("กรุณาระบุเหตุผลสำหรับทุกรายการที่เลือก");
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      setError("กรุณาระบุเหตุผลการขอนับใหม่");
       return;
     }
 
     setSubmitting(true);
     try {
-      await onSubmit(items);
-      setSelected({});
-      setReasons({});
+      await onSubmit(trimmed);
+      setReason("");
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
@@ -75,67 +58,37 @@ export function RecountRequestModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>ขอนับใหม่</DialogTitle>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>ขอนับใหม่ทั้งเอกสาร</DialogTitle>
           <DialogDescription>
-            เลือกรายการที่ต้องการให้พนักงานนับใหม่และระบุเหตุผล
+            จะเปิดให้นับใหม่ทั้ง {lineCount} รายการ โดยใช้ค่าที่ส่งมาในรอบก่อนเป็นจุดเริ่มต้น
+            (แก้ไขได้)
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[50vh] overflow-y-auto px-6 py-4">
+        <div className="space-y-4 py-2">
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <div className="flex flex-col gap-3">
-            {lines.map((line) => (
-              <Card key={line.lineId}>
-                <CardContent className="pt-6">
-                  <Label className="flex items-start gap-3 font-normal">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selected[line.lineId])}
-                      onChange={(e) =>
-                        setSelected((prev) => ({
-                          ...prev,
-                          [line.lineId]: e.target.checked,
-                        }))
-                      }
-                      className="mt-1 h-4 w-4 rounded border-input"
-                    />
-                    <div className="flex-1 space-y-2">
-                      <p className="font-medium">
-                        {line.productCode} — {line.productName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        คาดหวัง {formatExpectedQtyForSupervisor(line.expectedQty)} · นับได้{" "}
-                        {line.totalBaseQty ?? "—"} · ต่าง{" "}
-                        {line.difference ?? "—"}
-                      </p>
-                      {selected[line.lineId] && (
-                        <Input
-                          value={reasons[line.lineId] ?? ""}
-                          onChange={(e) =>
-                            setReasons((prev) => ({
-                              ...prev,
-                              [line.lineId]: e.target.value,
-                            }))
-                          }
-                          placeholder="เหตุผล เช่น จำนวนผิดปกติ"
-                        />
-                      )}
-                    </div>
-                  </Label>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-2">
+            <Label htmlFor="recount-reason">เหตุผล</Label>
+            <textarea
+              id="recount-reason"
+              rows={3}
+              className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="เช่น พบผลต่างหลายรายการ ต้องการทวนนับทั้งเอกสาร"
+              disabled={submitting}
+            />
           </div>
         </div>
 
-        <DialogFooter className="border-t px-6 py-4">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -147,10 +100,10 @@ export function RecountRequestModal({
           <Button
             type="button"
             className="bg-orange-600 hover:bg-orange-700"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={submitting}
           >
-            {submitting ? "กำลังส่ง..." : "ยืนยันขอนับใหม่"}
+            {submitting ? "กำลังส่ง..." : "ยืนยันขอนับใหม่ทั้งเอกสาร"}
           </Button>
         </DialogFooter>
       </DialogContent>
