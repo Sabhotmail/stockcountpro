@@ -63,11 +63,16 @@ export async function getPrintDocument(
     isCentral: doc.isCentral,
     currentVersionNo: doc.currentVersionNo,
     status: doc.status,
-    lines: productLines.map((line) => ({
-      lineNo: line.lineNo,
-      productCode: line.productCode,
-      productName: line.productName,
-      totalBaseQty: entryByLine.get(line.lineId)?.totalBaseQty ?? null,
-    })),
+    lines: productLines.map((line) => {
+      const entry = entryByLine.get(line.lineId);
+      return {
+        lineNo: line.lineNo,
+        productCode: line.productCode,
+        productName: line.productName,
+        qtyCase: entry?.qtyCase ?? null,
+        qtyPiece: entry?.qtyPiece ?? null,
+        totalBaseQty: entry?.totalBaseQty ?? null,
+      };
+    }),
   };
 }

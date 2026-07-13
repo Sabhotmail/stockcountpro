@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { type PrintDocumentPayload } from "@/types/count";
 
 function formatQty(value: number | null): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined || value < 0) return "—";
   return value.toLocaleString("th-TH");
 }
 
@@ -171,17 +171,20 @@ export default function PrintDocumentPage() {
         <table className="w-full border-collapse border border-black text-[12px]">
           <thead>
             <tr className="bg-neutral-100">
-              <th className="w-14 border border-black px-2 py-1.5 text-center font-semibold">
+              <th className="w-12 border border-black px-2 py-1.5 text-center font-semibold">
                 ลำดับ
               </th>
-              <th className="w-28 border border-black px-2 py-1.5 text-left font-semibold">
+              <th className="w-24 border border-black px-2 py-1.5 text-left font-semibold">
                 รหัสสินค้า
               </th>
               <th className="border border-black px-2 py-1.5 text-left font-semibold">
                 ชื่อสินค้า
               </th>
-              <th className="w-28 border border-black px-2 py-1.5 text-right font-semibold">
-                จำนวนที่นับ
+              <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
+                ลัง
+              </th>
+              <th className="w-16 border border-black px-2 py-1.5 text-right font-semibold">
+                ชิ้น
               </th>
             </tr>
           </thead>
@@ -198,20 +201,23 @@ export default function PrintDocumentPage() {
                   {line.productName}
                 </td>
                 <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                  {formatQty(line.totalBaseQty)}
+                  {formatQty(line.qtyCase)}
+                </td>
+                <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
+                  {formatQty(line.qtyPiece)}
                 </td>
               </tr>
             ))}
             {/* Keep summary in tbody (not tfoot) so it prints only once on the last page */}
             <tr className="bg-neutral-50">
               <td
-                colSpan={3}
+                colSpan={5}
                 className="border border-black px-2 py-1.5 text-[11.5px]"
               >
                 รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
-              </td>
-              <td className="border border-black px-2 py-1.5 text-right text-[11.5px] text-neutral-700">
-                หน่วยนับ: ชิ้นฐาน
+                <span className="ml-3 text-neutral-700">
+                  · หน่วยนับ: ลัง / ชิ้น
+                </span>
               </td>
             </tr>
           </tbody>

@@ -250,6 +250,8 @@ export interface PrintDocumentLine {
   lineNo: number;
   productCode: string;
   productName: string;
+  qtyCase: number | null;
+  qtyPiece: number | null;
   totalBaseQty: number | null;
 }
 
