@@ -25,6 +25,11 @@ import type { Branch, Hub, MockSession } from "@/types/user";
 import { parseDateKeyBangkok } from "@/lib/datetime";
 import { mapExpressExpectedQty, mapExpressFieldQty } from "@/lib/express-expected-qty";
 
+export type ExpressSyncLocationInput = {
+  code: string;
+  name?: string | null;
+};
+
 export type ExpressSyncDocumentResult = {
   branchCode: string;
   branchName?: string;
@@ -32,6 +37,7 @@ export type ExpressSyncDocumentResult = {
   hubName?: string;
   hubShortName?: string;
   locationCode?: string;
+  locationName?: string | null;
   isCentral?: boolean;
   documentId?: string;
   documentNo?: string;
@@ -77,11 +83,13 @@ type DocumentDestination =
       branch: Branch;
       hub: HubForClassify;
       locationCode: string;
+      locationName: string | null;
     }
   | {
       kind: "central";
       branch: Branch;
       locationCode: string;
+      locationName: string | null;
     };
 
 type DocumentGroupKey = string;
@@ -99,25 +107,24 @@ function buildLocationDocumentId(
   return `doc_${branchId}_${compact}_loc_${locationCode}`;
 }
 
+function sanitizeDocumentNamePart(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 function buildLocationDocumentNo(
-  branchCode: string,
   locationCode: string,
   countDate: string,
-  options: {
-    hubShortName?: string | null;
-    hubCode?: string | null;
-    isCentral?: boolean;
-    expressDocumentNo?: string;
-  },
+  locationName?: string | null,
 ): string {
-  if (options.expressDocumentNo?.trim()) {
-    return options.expressDocumentNo.trim();
+  const code = sanitizeDocumentNamePart(locationCode);
+  const name = locationName ? sanitizeDocumentNamePart(locationName) : "";
+  const dateLabel = countDate;
+
+  if (name) {
+    return `${code} · ${name} (${dateLabel})`;
   }
 
-  const label = options.isCentral
-    ? "HQ"
-    : (options.hubShortName ?? options.hubCode ?? "HUB");
-  return `CNT-${branchCode}-${label}-${locationCode}-${countDate.replace(/-/g, "")}`;
+  return `${code} (${dateLabel})`;
 }
 
 function mapExpressLineToProductLine(
@@ -184,15 +191,30 @@ async function loadActiveHubs(): Promise<Hub[]> {
   return hubs.map(mapHub);
 }
 
-function normalizeSelectedLocationCodes(locationCodes: string[]): string[] {
+function normalizeSelectedLocations(
+  locationInputs: Array<string | ExpressSyncLocationInput>,
+): ExpressSyncLocationInput[] {
   const seen = new Set<string>();
-  const normalized: string[] = [];
+  const normalized: ExpressSyncLocationInput[] = [];
 
-  for (const code of locationCodes) {
-    const value = code.trim().toUpperCase();
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    normalized.push(value);
+  for (const item of locationInputs) {
+    const code =
+      typeof item === "string"
+        ? item.trim().toUpperCase()
+        : String(item.code ?? "")
+            .trim()
+            .toUpperCase();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+
+    const name =
+      typeof item === "string"
+        ? null
+        : typeof item.name === "string"
+          ? item.name.trim() || null
+          : null;
+
+    normalized.push({ code, name });
   }
 
   return normalized;
@@ -338,6 +360,7 @@ function resolveDestination(
   locationCode: string,
   branches: Branch[],
   hubs: Hub[],
+  locationName: string | null = null,
 ): DocumentDestination | null {
   const { classification, branch } = classifyForActiveBranches(
     locationCode,
@@ -353,11 +376,12 @@ function resolveDestination(
       branch,
       hub: classification.hub,
       locationCode,
+      locationName,
     };
   }
 
   if (classification.kind === "central") {
-    return { kind: "central", branch, locationCode };
+    return { kind: "central", branch, locationCode, locationName };
   }
 
   return null;
@@ -385,6 +409,7 @@ function aggregateExpressLinesByDocument(
   branches: Branch[],
   hubs: Hub[],
   session: MockSession,
+  locationNameByCode: Map<string, string | null>,
 ): {
   linesByDestination: Map<
     DocumentGroupKey,
@@ -399,10 +424,16 @@ function aggregateExpressLinesByDocument(
   const skipped: ExpressSyncDocumentResult[] = [];
 
   for (const [locationCode, lines] of groups) {
-    const destination = resolveDestination(locationCode, branches, hubs);
+    const destination = resolveDestination(
+      locationCode,
+      branches,
+      hubs,
+      locationNameByCode.get(locationCode) ?? null,
+    );
     if (!destination) {
       skipped.push({
         branchCode: locationCode,
+        locationCode,
         status: "skipped",
         reason: `ไม่สามารถจัดกลุ่มคลัง "${locationCode}" ได้`,
         lineCount: lines.length,
@@ -435,20 +466,15 @@ async function upsertImportedDocument(
 ): Promise<ExpressSyncDocumentResult> {
   const branch = destination.branch;
   const locationCode = destination.locationCode;
+  const locationName = destination.locationName;
   const isCentral = destination.kind === "central";
   const hub = destination.kind === "hub" ? destination.hub : null;
 
   const documentId = buildLocationDocumentId(branch.id, countDateKey, locationCode);
   const documentNo = buildLocationDocumentNo(
-    branch.code,
     locationCode,
     countDateKey,
-    {
-      hubShortName: hub?.shortName,
-      hubCode: hub?.code,
-      isCentral,
-      expressDocumentNo: lines[0]?.DocumentNumber,
-    },
+    locationName,
   );
 
   const productLines = lines.map((line, index) =>
@@ -468,6 +494,7 @@ async function upsertImportedDocument(
       hubName: hub?.name,
       hubShortName: hub?.shortName ?? undefined,
       locationCode,
+      locationName,
       isCentral,
       documentId,
       documentNo: existing.documentNo,
@@ -487,6 +514,7 @@ async function upsertImportedDocument(
           documentDate: countDate,
           hubId: hub?.id ?? null,
           locationCode,
+          locationName,
           isCentral,
           totalLines: productLines.length,
           countedLines: 0,
@@ -503,6 +531,7 @@ async function upsertImportedDocument(
           branchId: branch.id,
           hubId: hub?.id ?? null,
           locationCode,
+          locationName,
           isCentral,
           status: DocumentStatus.IMPORTED,
           currentVersionId: null,
@@ -528,6 +557,7 @@ async function upsertImportedDocument(
     hubName: hub?.name,
     hubShortName: hub?.shortName ?? undefined,
     locationCode,
+    locationName,
     isCentral,
     documentId,
     documentNo,
@@ -539,7 +569,7 @@ async function upsertImportedDocument(
 export async function syncExpressCountDate(
   session: MockSession,
   countDate: string,
-  locationCodes: string[],
+  locationInputs: Array<string | ExpressSyncLocationInput>,
 ): Promise<ExpressSyncResult | { error: string }> {
   if (!canSyncExpress(session.role)) {
     return { error: "Access denied" };
@@ -550,16 +580,26 @@ export async function syncExpressCountDate(
     return { error: "Invalid date format. Use yyyy-MM-dd" };
   }
 
-  const selectedLocationCodes = normalizeSelectedLocationCodes(locationCodes);
-  if (selectedLocationCodes.length === 0) {
+  const selectedLocations = normalizeSelectedLocations(locationInputs);
+  if (selectedLocations.length === 0) {
     return { error: "locations are required" };
   }
+
+  const selectedLocationCodes = selectedLocations.map((item) => item.code);
+  const locationNameByCode = new Map(
+    selectedLocations.map((item) => [item.code, item.name ?? null]),
+  );
 
   const branches = await loadBranchesForExpressLookup();
   const hubs = await loadActiveHubs();
 
   const invalidLocationCodes = selectedLocationCodes.filter((code) => {
-    const destination = resolveDestination(code, branches, hubs);
+    const destination = resolveDestination(
+      code,
+      branches,
+      hubs,
+      locationNameByCode.get(code) ?? null,
+    );
     if (!destination) return true;
     return !canAccessClassification(
       session,
@@ -596,7 +636,13 @@ export async function syncExpressCountDate(
     ),
   );
   const { linesByDestination, skipped: skippedResults } =
-    aggregateExpressLinesByDocument(groups, branches, hubs, session);
+    aggregateExpressLinesByDocument(
+      groups,
+      branches,
+      hubs,
+      session,
+      locationNameByCode,
+    );
 
   const results: ExpressSyncDocumentResult[] = [...skippedResults];
 

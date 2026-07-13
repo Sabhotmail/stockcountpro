@@ -33,8 +33,8 @@ async function assertPreviewContract() {
 
 async function assertSyncContract() {
   const result = await syncExpressCountDate(session, "2026-07-10", [
-    "32F1",
-    "32F2",
+    { code: "2411", name: "คลังรถ 1" },
+    { code: "24GA", name: "คลังดี CHM" },
   ]);
   if ("error" in result) return;
 

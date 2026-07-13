@@ -150,7 +150,16 @@ export function ExpressSyncPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ date: countDate, locations: selectedCodes }),
+        body: JSON.stringify({
+          date: countDate,
+          locations: selectedCodes.map((code) => {
+            const location = locations.find((item) => item.locationCode === code);
+            return {
+              code,
+              name: location?.locationName ?? null,
+            };
+          }),
+        }),
       });
       const data = (await res.json()) as SyncResponse & { error?: string };
 
@@ -334,16 +343,11 @@ export function ExpressSyncPanel({
               </TableHeader>
               <TableBody>
                 {syncResults.map((item) => {
-                  const hubOrHq = item.isCentral
-                    ? "HQ กลาง"
-                    : item.hubShortName
-                      ? `Hub ${item.hubShortName}`
-                      : item.branchName
-                        ? item.branchName
-                        : item.branchCode;
-                  const destination = item.locationCode
-                    ? `${item.locationCode} · ${hubOrHq}`
-                    : hubOrHq;
+                  const destination =
+                    item.documentNo ??
+                    (item.locationName
+                      ? `${item.locationCode} · ${item.locationName}`
+                      : item.locationCode ?? item.branchCode);
 
                   return (
                   <TableRow key={`${item.locationCode ?? item.branchCode}-${item.status}-${item.reason ?? ""}`}>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   previewExpressCountDate,
   syncExpressCountDate,
+  type ExpressSyncLocationInput,
 } from "@/services/express-sync.service";
 import { getServerSession } from "@/services/mock-session.service";
 
@@ -32,6 +33,35 @@ export async function GET(request: Request) {
   return NextResponse.json(result);
 }
 
+function parseLocationsBody(
+  locations: unknown,
+): ExpressSyncLocationInput[] | null {
+  if (!Array.isArray(locations) || locations.length === 0) return null;
+
+  if (locations.every((item) => typeof item === "string")) {
+    return locations.map((code) => ({ code }));
+  }
+
+  if (
+    locations.every(
+      (item) =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as { code?: unknown }).code === "string",
+    )
+  ) {
+    return locations.map((item) => {
+      const row = item as { code: string; name?: unknown };
+      return {
+        code: row.code,
+        name: typeof row.name === "string" ? row.name : null,
+      };
+    });
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession();
   if (!session) {
@@ -46,17 +76,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "date is required" }, { status: 400 });
   }
 
-  if (
-    !Array.isArray(body.locations) ||
-    !body.locations.every((item) => typeof item === "string")
-  ) {
+  const locations = parseLocationsBody(body.locations);
+  if (!locations) {
     return NextResponse.json(
-      { error: "locations must be an array of strings" },
+      {
+        error:
+          "locations must be an array of strings or { code, name } objects",
+      },
       { status: 400 },
     );
   }
 
-  const result = await syncExpressCountDate(session, body.date, body.locations);
+  const result = await syncExpressCountDate(session, body.date, locations);
   if ("error" in result) {
     const message = result.error ?? "Sync failed";
     const status =

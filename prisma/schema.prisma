@@ -111,6 +111,7 @@ model CountDocument {
   branchId         String
   hubId            String?
   locationCode     String?
+  locationName     String?
   isCentral        Boolean          @default(false)
   status           DocumentStatus
   currentVersionId String?

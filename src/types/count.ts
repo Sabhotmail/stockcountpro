@@ -74,6 +74,7 @@ export interface CountDocument {
   branchId: string;
   hubId: string | null;
   locationCode: string | null;
+  locationName: string | null;
   isCentral: boolean;
   status: DocumentStatus;
   currentVersionId: string | null;
