@@ -110,6 +110,7 @@ model CountDocument {
   documentDate     DateTime         @db.Date
   branchId         String
   hubId            String?
+  locationCode     String?
   isCentral        Boolean          @default(false)
   status           DocumentStatus
   currentVersionId String?
@@ -129,6 +130,7 @@ model CountDocument {
   lineLocks        CountLineLock[]
 
   @@index([branchId, documentDate, hubId])
+  @@index([branchId, documentDate, locationCode])
 }
 
 model ProductLine {

@@ -10,7 +10,6 @@ import { prisma } from "@/lib/prisma";
 import {
   canAccessBranch,
   canAccessCentralDocuments,
-  canAccessDocument,
   canAccessHub,
   canSyncExpress,
 } from "@/lib/permissions";
@@ -32,6 +31,7 @@ export type ExpressSyncDocumentResult = {
   hubCode?: string;
   hubName?: string;
   hubShortName?: string;
+  locationCode?: string;
   isCentral?: boolean;
   documentId?: string;
   documentNo?: string;
@@ -72,8 +72,17 @@ export type ExpressSyncPreviewResult = {
 };
 
 type DocumentDestination =
-  | { kind: "hub"; branch: Branch; hub: HubForClassify }
-  | { kind: "central"; branch: Branch };
+  | {
+      kind: "hub";
+      branch: Branch;
+      hub: HubForClassify;
+      locationCode: string;
+    }
+  | {
+      kind: "central";
+      branch: Branch;
+      locationCode: string;
+    };
 
 type DocumentGroupKey = string;
 
@@ -81,45 +90,34 @@ function parseCountDate(value: string): Date | null {
   return parseDateKeyBangkok(value);
 }
 
-function buildHubDocumentId(
+function buildLocationDocumentId(
   branchId: string,
   countDate: string,
-  hubCode: string,
+  locationCode: string,
 ): string {
   const compact = countDate.replace(/-/g, "");
-  return `doc_${branchId}_${compact}_hub_${hubCode}`;
+  return `doc_${branchId}_${compact}_loc_${locationCode}`;
 }
 
-function buildCentralDocumentId(branchId: string, countDate: string): string {
-  const compact = countDate.replace(/-/g, "");
-  return `doc_${branchId}_${compact}_central`;
-}
-
-function buildHubDocumentNo(
+function buildLocationDocumentNo(
   branchCode: string,
-  hubShortName: string | null,
-  hubCode: string,
+  locationCode: string,
   countDate: string,
-  expressDocumentNo?: string,
+  options: {
+    hubShortName?: string | null;
+    hubCode?: string | null;
+    isCentral?: boolean;
+    expressDocumentNo?: string;
+  },
 ): string {
-  if (expressDocumentNo?.trim()) {
-    return expressDocumentNo.trim();
+  if (options.expressDocumentNo?.trim()) {
+    return options.expressDocumentNo.trim();
   }
 
-  const label = hubShortName ?? hubCode;
-  return `CNT-${branchCode}-${label}-${countDate.replace(/-/g, "")}`;
-}
-
-function buildCentralDocumentNo(
-  branchCode: string,
-  countDate: string,
-  expressDocumentNo?: string,
-): string {
-  if (expressDocumentNo?.trim()) {
-    return expressDocumentNo.trim();
-  }
-
-  return `CNT-${branchCode}-HQ-${countDate.replace(/-/g, "")}`;
+  const label = options.isCentral
+    ? "HQ"
+    : (options.hubShortName ?? options.hubCode ?? "HUB");
+  return `CNT-${branchCode}-${label}-${locationCode}-${countDate.replace(/-/g, "")}`;
 }
 
 function mapExpressLineToProductLine(
@@ -333,11 +331,7 @@ function buildLocationPreviews(
 }
 
 function getDocumentGroupKey(destination: DocumentDestination): DocumentGroupKey {
-  if (destination.kind === "central") {
-    return `${destination.branch.id}|central`;
-  }
-
-  return `${destination.branch.id}|hub:${destination.hub.id}`;
+  return `${destination.branch.id}|loc:${destination.locationCode}`;
 }
 
 function resolveDestination(
@@ -354,11 +348,16 @@ function resolveDestination(
   if (!branch) return null;
 
   if (classification.kind === "hub") {
-    return { kind: "hub", branch, hub: classification.hub };
+    return {
+      kind: "hub",
+      branch,
+      hub: classification.hub,
+      locationCode,
+    };
   }
 
   if (classification.kind === "central") {
-    return { kind: "central", branch };
+    return { kind: "central", branch, locationCode };
   }
 
   return null;
@@ -435,22 +434,22 @@ async function upsertImportedDocument(
   lines: ExpressStockCountLine[],
 ): Promise<ExpressSyncDocumentResult> {
   const branch = destination.branch;
+  const locationCode = destination.locationCode;
   const isCentral = destination.kind === "central";
   const hub = destination.kind === "hub" ? destination.hub : null;
 
-  const documentId = isCentral
-    ? buildCentralDocumentId(branch.id, countDateKey)
-    : buildHubDocumentId(branch.id, countDateKey, hub!.code);
-
-  const documentNo = isCentral
-    ? buildCentralDocumentNo(branch.code, countDateKey, lines[0]?.DocumentNumber)
-    : buildHubDocumentNo(
-        branch.code,
-        hub!.shortName,
-        hub!.code,
-        countDateKey,
-        lines[0]?.DocumentNumber,
-      );
+  const documentId = buildLocationDocumentId(branch.id, countDateKey, locationCode);
+  const documentNo = buildLocationDocumentNo(
+    branch.code,
+    locationCode,
+    countDateKey,
+    {
+      hubShortName: hub?.shortName,
+      hubCode: hub?.code,
+      isCentral,
+      expressDocumentNo: lines[0]?.DocumentNumber,
+    },
+  );
 
   const productLines = lines.map((line, index) =>
     mapExpressLineToProductLine(line, documentId, index + 1),
@@ -468,6 +467,7 @@ async function upsertImportedDocument(
       hubCode: hub?.code,
       hubName: hub?.name,
       hubShortName: hub?.shortName ?? undefined,
+      locationCode,
       isCentral,
       documentId,
       documentNo: existing.documentNo,
@@ -486,6 +486,7 @@ async function upsertImportedDocument(
           documentNo,
           documentDate: countDate,
           hubId: hub?.id ?? null,
+          locationCode,
           isCentral,
           totalLines: productLines.length,
           countedLines: 0,
@@ -501,6 +502,7 @@ async function upsertImportedDocument(
           documentDate: countDate,
           branchId: branch.id,
           hubId: hub?.id ?? null,
+          locationCode,
           isCentral,
           status: DocumentStatus.IMPORTED,
           currentVersionId: null,
@@ -525,6 +527,7 @@ async function upsertImportedDocument(
     hubCode: hub?.code,
     hubName: hub?.name,
     hubShortName: hub?.shortName ?? undefined,
+    locationCode,
     isCentral,
     documentId,
     documentNo,

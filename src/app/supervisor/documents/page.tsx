@@ -37,6 +37,12 @@ function DocumentCard({ doc }: { doc: SupervisorDocumentListItem }) {
         </div>
         <p className="text-sm text-muted-foreground">
           {doc.branchCode} · {doc.branchName}
+          {doc.locationCode ? ` · คลัง ${doc.locationCode}` : ""}
+          {doc.hubShortName
+            ? ` · Hub ${doc.hubShortName}`
+            : doc.isCentral
+              ? " · HQ กลาง"
+              : ""}
         </p>
       </CardHeader>
       <CardContent>
@@ -175,6 +181,7 @@ export default function SupervisorDocumentsPage() {
                       <TableCell className="font-medium">{doc.documentNo}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         {doc.branchCode} {doc.branchName}
+                        {doc.locationCode ? ` · ${doc.locationCode}` : ""}
                       </TableCell>
                       <TableCell>
                         <DocumentStatusBadge status={doc.status} compact />

@@ -334,16 +334,19 @@ export function ExpressSyncPanel({
               </TableHeader>
               <TableBody>
                 {syncResults.map((item) => {
-                  const destination = item.isCentral
-                    ? `${item.branchCode} · HQ กลาง`
+                  const hubOrHq = item.isCentral
+                    ? "HQ กลาง"
                     : item.hubShortName
-                      ? `${item.branchCode} · Hub ${item.hubShortName}`
+                      ? `Hub ${item.hubShortName}`
                       : item.branchName
-                        ? `${item.branchCode} · ${item.branchName}`
+                        ? item.branchName
                         : item.branchCode;
+                  const destination = item.locationCode
+                    ? `${item.locationCode} · ${hubOrHq}`
+                    : hubOrHq;
 
                   return (
-                  <TableRow key={`${item.branchCode}-${item.hubCode ?? "hq"}-${item.status}-${item.reason ?? ""}`}>
+                  <TableRow key={`${item.locationCode ?? item.branchCode}-${item.status}-${item.reason ?? ""}`}>
                     <TableCell>{destination}</TableCell>
                     <TableCell>
                       {item.status === "created"

@@ -82,6 +82,7 @@ export function mapCountDocument(doc: PrismaCountDocument): CountDocument {
     documentDate: toDateOnly(doc.documentDate),
     branchId: doc.branchId,
     hubId: doc.hubId,
+    locationCode: doc.locationCode,
     isCentral: doc.isCentral,
     status: doc.status as DocumentStatus,
     currentVersionId: doc.currentVersionId,

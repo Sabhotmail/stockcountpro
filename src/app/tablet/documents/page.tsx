@@ -155,9 +155,12 @@ export default function TabletDocumentsPage() {
                 <CardTitle>{doc.documentNo}</CardTitle>
                 <CardDescription>
                   {doc.documentDate} · {doc.branchCode} {doc.branchName}
-                  {doc.branchExpressLocationPrefix
-                    ? ` · Express prefix ${doc.branchExpressLocationPrefix}`
-                    : ""}
+                  {doc.locationCode ? ` · คลัง ${doc.locationCode}` : ""}
+                  {doc.hubShortName
+                    ? ` · Hub ${doc.hubShortName}`
+                    : doc.isCentral
+                      ? " · HQ กลาง"
+                      : ""}
                 </CardDescription>
               </div>
               <Button
