@@ -202,8 +202,7 @@ export default function PrintDocumentPage() {
                 </td>
               </tr>
             ))}
-          </tbody>
-          <tfoot>
+            {/* Keep summary in tbody (not tfoot) so it prints only once on the last page */}
             <tr className="bg-neutral-50">
               <td
                 colSpan={3}
@@ -215,7 +214,7 @@ export default function PrintDocumentPage() {
                 หน่วยนับ: ชิ้นฐาน
               </td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
 
         <p className="mt-3 text-[11px] leading-relaxed text-neutral-700">
