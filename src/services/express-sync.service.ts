@@ -22,7 +22,7 @@ import { DocumentStatus } from "@/types/count";
 import type { ExpressLocationItem, ExpressStockCountLine } from "@/types/express";
 import type { Branch, Hub, MockSession } from "@/types/user";
 
-import { parseDateKeyBangkok } from "@/lib/datetime";
+import { dateKeyToUtcDateOnly, parseDateKeyBangkok } from "@/lib/datetime";
 import { mapExpressExpectedQty, mapExpressFieldQty } from "@/lib/express-expected-qty";
 
 export type ExpressSyncLocationInput = {
@@ -460,7 +460,6 @@ function aggregateExpressLinesByDocument(
 
 async function upsertImportedDocument(
   destination: DocumentDestination,
-  countDate: Date,
   countDateKey: string,
   lines: ExpressStockCountLine[],
 ): Promise<ExpressSyncDocumentResult> {
@@ -476,6 +475,24 @@ async function upsertImportedDocument(
     countDateKey,
     locationName,
   );
+  const documentDate = dateKeyToUtcDateOnly(countDateKey);
+  if (!documentDate) {
+    return {
+      branchCode: branch.code,
+      branchName: branch.name,
+      hubCode: hub?.code,
+      hubName: hub?.name,
+      hubShortName: hub?.shortName ?? undefined,
+      locationCode,
+      locationName,
+      isCentral,
+      documentId,
+      documentNo,
+      lineCount: 0,
+      status: "skipped",
+      reason: "วันที่เอกสารไม่ถูกต้อง",
+    };
+  }
 
   const productLines = lines.map((line, index) =>
     mapExpressLineToProductLine(line, documentId, index + 1),
@@ -511,7 +528,7 @@ async function upsertImportedDocument(
         where: { id: documentId },
         data: {
           documentNo,
-          documentDate: countDate,
+          documentDate,
           hubId: hub?.id ?? null,
           locationCode,
           locationName,
@@ -527,7 +544,7 @@ async function upsertImportedDocument(
         data: {
           id: documentId,
           documentNo,
-          documentDate: countDate,
+          documentDate,
           branchId: branch.id,
           hubId: hub?.id ?? null,
           locationCode,
@@ -648,7 +665,7 @@ export async function syncExpressCountDate(
 
   for (const { destination, lines } of linesByDestination.values()) {
     results.push(
-      await upsertImportedDocument(destination, parsedDate, countDate, lines),
+      await upsertImportedDocument(destination, countDate, lines),
     );
   }
 

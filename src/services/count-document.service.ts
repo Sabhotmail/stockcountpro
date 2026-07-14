@@ -16,6 +16,7 @@ import {
 } from "@/lib/permissions";
 import { filterLinesForRole } from "@/lib/product-line-filter";
 import { prisma } from "@/lib/prisma";
+import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import { isEntryCounted } from "@/lib/unit-converter";
 import { logDeleteDocument, logStartCount, logSubmit } from "@/services/audit-log.service";
 import { listActiveLocks } from "@/services/count-line-lock.service";
@@ -79,6 +80,8 @@ export async function countCountedLines(
 export async function listDocumentsForUser(
   session: MockSession,
 ): Promise<CountDocumentListItem[]> {
+  await repairOffByOneDocumentDates();
+
   const documents = await prisma.countDocument.findMany({
     orderBy: { documentDate: "desc" },
   });

@@ -8,6 +8,7 @@ import { todayDateKeyBangkok } from "@/lib/datetime";
 import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import { canPushToExpress } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import {
   calculateTotalBaseQty,
   isEntryCounted,
@@ -50,6 +51,8 @@ export async function pushDocumentToExpress(
   if (!canPushToExpress(session.role)) {
     return { error: "Access denied", status: 403 };
   }
+
+  await repairOffByOneDocumentDates();
 
   const access = await getDocumentForSession(session, documentId);
   if (!access.ok) {

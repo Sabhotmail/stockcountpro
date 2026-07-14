@@ -28,6 +28,38 @@ export function parseDateKeyBangkok(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/**
+ * Calendar `YYYY-MM-DD` → Date at UTC midnight for Prisma `@db.Date`.
+ * Using Bangkok midnight shifts back one day when Postgres stores the UTC date.
+ */
+export function dateKeyToUtcDateOnly(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/** `Date` from `@db.Date` → `YYYY-MM-DD` using UTC calendar parts. */
+export function toDateKeyUtc(value: Date): string {
+  const y = value.getUTCFullYear();
+  const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(value.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Extract count date from location document ids:
+ * `doc_{branchId}_{YYYYMMDD}_loc_{locationCode}`
+ */
+export function dateKeyFromLocationDocumentId(
+  documentId: string,
+): string | null {
+  const match = /_(\d{8})_loc_/.exec(documentId);
+  if (!match) return null;
+  const raw = match[1];
+  const key = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
 export function formatDateTimeTH(
   value: string | Date,
   options?: Intl.DateTimeFormatOptions,

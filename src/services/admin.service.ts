@@ -7,6 +7,7 @@ import {
 } from "@/lib/express-location";
 import { canAccessDocument } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import {
   getAuditLogsByDocument,
   listAllAuditLogs,
@@ -342,6 +343,8 @@ export async function listCountDocumentsForAdmin(
   filters: AdminDocumentListFilters = {},
 ): Promise<CountDocumentListItem[] | { error: string }> {
   if (!canAccessAdmin(session)) return { error: "Access denied" };
+
+  await repairOffByOneDocumentDates();
 
   const q = filters.q?.trim().toLowerCase() || null;
   const documentDate = filters.documentDate?.trim() || null;

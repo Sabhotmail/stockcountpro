@@ -1,4 +1,4 @@
-import { toDateKeyBangkok, toIsoInstant } from "@/lib/datetime";
+import { toDateKeyUtc, toIsoInstant } from "@/lib/datetime";
 import type {
   AuditLog as PrismaAuditLog,
   Branch as PrismaBranch,
@@ -33,7 +33,7 @@ function toIso(value: Date): string {
 }
 
 function toDateOnly(value: Date): string {
-  return toDateKeyBangkok(value);
+  return toDateKeyUtc(value);
 }
 
 export function mapBranch(branch: PrismaBranch): Branch {

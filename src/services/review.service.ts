@@ -21,6 +21,7 @@ import {
 } from "@/lib/permissions";
 import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import { prisma } from "@/lib/prisma";
+import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import { isEntryCounted } from "@/lib/unit-converter";
 import { hasComparableExpectedQty } from "@/lib/express-expected-qty";
 import {
@@ -94,6 +95,8 @@ export async function listSupervisorDocuments(
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
+
+  await repairOffByOneDocumentDates();
 
   const documents = await prisma.countDocument.findMany();
   const filtered = documents
