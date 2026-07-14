@@ -136,7 +136,26 @@ export default function PrintDocumentPage() {
   const [error, setError] = useState<string | null>(null);
   const [pages, setPages] = useState<PrintDocumentLine[][] | null>(null);
   const [signaturesOnLastPage, setSignaturesOnLastPage] = useState(true);
+  const [printedAt, setPrintedAt] = useState<string>("");
   const measureRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function stampPrintedAt() {
+      setPrintedAt(
+        new Date().toLocaleString("th-TH", {
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+    }
+
+    stampPrintedAt();
+    window.addEventListener("beforeprint", stampPrintedAt);
+    return () => window.removeEventListener("beforeprint", stampPrintedAt);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -362,7 +381,7 @@ export default function PrintDocumentPage() {
           </tbody>
         </table>
         <div data-m="signature">
-          <SignatureBlock />
+          <SignatureBlock printedAt={printedAt || "—"} />
         </div>
         <div data-m="footer">
           <p className="mt-2 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
@@ -416,7 +435,7 @@ export default function PrintDocumentPage() {
                     totalLines={doc.lines.length}
                   />
 
-                  {showSignatures && <SignatureBlock />}
+                  {showSignatures && <SignatureBlock printedAt={printedAt} />}
                 </div>
 
                 <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
@@ -446,7 +465,7 @@ export default function PrintDocumentPage() {
                     variant="compact"
                   />
                 </div>
-                <SignatureBlock />
+                <SignatureBlock printedAt={printedAt} />
               </div>
               <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
                 {totalPages}/{totalPages}
@@ -609,7 +628,7 @@ function LinesTable({
   );
 }
 
-function SignatureBlock() {
+function SignatureBlock({ printedAt }: { printedAt: string }) {
   return (
     <>
       <p className="mt-2 text-[10.5px] leading-snug text-neutral-700">
@@ -630,6 +649,7 @@ function SignatureBlock() {
 
       <footer className="mt-2 text-center text-[10px] text-neutral-500">
         พิมพ์จาก StockCount Pro · เอกสารสำหรับเก็บเป็นหลักฐานภายใน
+        {printedAt ? ` · พิมพ์เมื่อ ${printedAt}` : null}
       </footer>
     </>
   );
