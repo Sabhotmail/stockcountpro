@@ -121,7 +121,43 @@ EXPRESS_PUSH_DEBUG=1
 
 Restart dev server, then push again. Server console logs `[Express push] request` / `response` with URL, sample rows, and full body. The push success dialog also shows **Request ที่ส่งไป Express** (URL + sample 3 rows; full `details[]` when debug is on).
 
-Compare `CountDate`, `LocationCode`, `ProductCode`, `CaseQty`, `PieceQty`, `PhysicalBalance` with what Express expects.
+Compare `CountDate`, `LocationCode`, `ProductCode`, `CaseQty`, `CaseUnitFactor`, `PieceQty`, `PhysicalBalance` with what Express expects.
+
+### Push field mapping
+
+| Express | App |
+|---------|-----|
+| `LocationCode` | `CountDocument.locationCode` |
+| `ProductCode` | `productLine.productCode` |
+| `CountDate` | `documentDate` (`YYYY-MM-DD`) |
+| `CaseQty` | counted `qtyCase` (0 if not counted in case unit) |
+| `CaseUnitFactor` | `productLine.caseRatio` |
+| `PieceQty` | counted `qtyPiece` |
+| `PhysicalBalance` | `totalBaseQty` (หรือคำนวณจาก case/pack/piece) |
+| `CountFlag` | `"3"` |
+| `UserID` | username สูงสุด 8 ตัว |
+| `ChangedDate` | วันนี้ (Asia/Bangkok) |
+
+Sample body:
+
+```json
+{
+  "details": [
+    {
+      "LocationCode": "32G1",
+      "ProductCode": "1010010009",
+      "CountDate": "2026-03-11",
+      "CaseQty": 10,
+      "CaseUnitFactor": 36,
+      "PieceQty": 3,
+      "PhysicalBalance": 363,
+      "CountFlag": "3",
+      "UserID": "BIT9",
+      "ChangedDate": "2026-07-15"
+    }
+  ]
+}
+```
 
 ## Field mapping (sync)
 

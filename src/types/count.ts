@@ -199,6 +199,15 @@ export interface ReviewLineItem {
   productName: string;
   expectedQty: number | null;
   totalBaseQty: number | null;
+  qtyCase: number | null;
+  qtyPack: number | null;
+  qtyPiece: number | null;
+  allowCase: boolean;
+  allowPack: boolean;
+  allowPiece: boolean;
+  unitCaseName: string | null;
+  unitPackName: string | null;
+  unitPieceName: string | null;
   difference: number | null;
   versionNo: number;
   isCounted: boolean;
@@ -220,6 +229,15 @@ export interface CountSummaryLine {
   productCode: string;
   productName: string;
   totalBaseQty: number | null;
+  qtyCase: number | null;
+  qtyPack: number | null;
+  qtyPiece: number | null;
+  allowCase: boolean;
+  allowPack: boolean;
+  allowPiece: boolean;
+  unitCaseName: string | null;
+  unitPackName: string | null;
+  unitPieceName: string | null;
   isCounted: boolean;
   isZeroCount: boolean;
 }
@@ -257,6 +275,7 @@ export interface PrintDocumentLine {
   qtyCase: number | null;
   qtyPiece: number | null;
   totalBaseQty: number | null;
+  isCounted: boolean;
 }
 
 export interface PrintDocumentPayload {
@@ -271,5 +290,7 @@ export interface PrintDocumentPayload {
   isCentral: boolean;
   currentVersionNo: number;
   status: DocumentStatus;
+  totalLines: number;
+  countedLines: number;
   lines: PrintDocumentLine[];
 }

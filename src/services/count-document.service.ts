@@ -228,6 +228,7 @@ export async function startCount(
       doc.branchId,
       documentId,
       doc.currentVersionId,
+      `เริ่มนับ · V${doc.currentVersionNo}`,
     );
 
     const detail = await getDocumentDetail(session, documentId);
@@ -270,6 +271,7 @@ export async function startCount(
     doc.branchId,
     documentId,
     versionId,
+    "เริ่มนับ · V1",
   );
 
   const detail = await getDocumentDetail(session, documentId);
@@ -327,6 +329,7 @@ export async function submitVersion(
     doc.branchId,
     documentId,
     versionId,
+    `ส่ง V${version.versionNo} · นับแล้ว ${countedLines}/${doc.totalLines}`,
   );
 
   return { success: true };
@@ -381,6 +384,15 @@ export async function getDocumentSummary(
       productCode: line.productCode,
       productName: line.productName,
       totalBaseQty,
+      qtyCase: entry?.qtyCase ?? null,
+      qtyPack: entry?.qtyPack ?? null,
+      qtyPiece: entry?.qtyPiece ?? null,
+      allowCase: line.allowCase,
+      allowPack: line.allowPack,
+      allowPiece: line.allowPiece,
+      unitCaseName: line.unitCaseName ?? null,
+      unitPackName: line.unitPackName ?? null,
+      unitPieceName: line.unitPieceName ?? null,
       isCounted,
       isZeroCount: isCounted && totalBaseQty === 0,
     };

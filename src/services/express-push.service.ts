@@ -107,6 +107,9 @@ export async function pushDocumentToExpress(
     if (!entry) continue;
     if (!isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)) continue;
 
+    const caseUnitFactor = Math.max(1, Math.round(line.caseRatio || 1));
+    const caseQty = effectiveQtyForTotal(entry.qtyCase);
+    const pieceQty = effectiveQtyForTotal(entry.qtyPiece);
     const physical =
       entry.totalBaseQty ??
       calculateTotalBaseQty(
@@ -115,14 +118,15 @@ export async function pushDocumentToExpress(
         entry.qtyPack,
         entry.qtyPiece,
       ) ??
-      0;
+      caseQty * caseUnitFactor + pieceQty;
 
     details.push({
       LocationCode: locationCode,
       ProductCode: line.productCode,
       CountDate: countDate,
-      CaseQty: effectiveQtyForTotal(entry.qtyCase),
-      PieceQty: effectiveQtyForTotal(entry.qtyPiece),
+      CaseQty: caseQty,
+      CaseUnitFactor: caseUnitFactor,
+      PieceQty: pieceQty,
       PhysicalBalance: physical,
       CountFlag: EXPRESS_COUNT_FLAG,
       UserID: userIdSent,

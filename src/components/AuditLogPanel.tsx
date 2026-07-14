@@ -30,7 +30,7 @@ export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
   if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        ยังไม่มี audit log
+        ยังไม่มีประวัติการทำงาน
       </p>
     );
   }
@@ -56,7 +56,7 @@ export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
                 {actionLabels[log.action] ?? log.action}
               </TableCell>
               <TableCell>{log.userName}</TableCell>
-              <TableCell className="text-muted-foreground">
+              <TableCell className="max-w-xs text-muted-foreground">
                 {log.detail ?? "—"}
               </TableCell>
             </TableRow>

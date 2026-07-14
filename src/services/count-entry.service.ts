@@ -14,6 +14,7 @@ import {
   assertCallerHoldsActiveLock,
 } from "@/services/count-line-lock.service";
 import { logAutoSave } from "@/services/audit-log.service";
+import { buildAutoSaveDetail } from "@/lib/audit-log-detail";
 import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
@@ -170,6 +171,23 @@ async function applyEntrySave(
     documentId,
     versionId,
     lineId,
+    buildAutoSaveDetail(
+      {
+        productCode: line.productCode,
+        productName: line.productName,
+        allowCase: line.allowCase,
+        allowPack: line.allowPack,
+        allowPiece: line.allowPiece,
+        unitCaseName: line.unitCaseName,
+        unitPackName: line.unitPackName,
+        unitPieceName: line.unitPieceName,
+      },
+      {
+        qtyCase: saved.qtyCase,
+        qtyPack: saved.qtyPack,
+        qtyPiece: saved.qtyPiece,
+      },
+    ),
   );
 
   await acquireOrRenewLineLock(session, documentId, lineId);

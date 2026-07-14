@@ -7,15 +7,8 @@ import { ExpressSyncPanel } from "@/components/ExpressSyncPanel";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
+import { TabletDocumentRow } from "@/components/TabletDocumentRow";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canSupervise } from "@/lib/permissions";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
@@ -169,7 +162,7 @@ export default function TabletDocumentsPage() {
   return (
     <PageShell
       title="เอกสารนับสต็อก"
-      subtitle="Tablet — รายการเอกสาร"
+      subtitle="รายการเอกสาร"
       nav={showSupervisorNav ? <SupervisorNav /> : undefined}
       actions={<LogoutButton onClick={handleLogout} />}
     >
@@ -207,73 +200,29 @@ export default function TabletDocumentsPage() {
         </Alert>
       )}
 
-      <div className="grid gap-4">
-        {filtered.map((doc) => (
-          <Card key={doc.id}>
-            <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <CardTitle className="text-xl">{doc.documentNo}</CardTitle>
-                <CardDescription>
-                  {doc.documentDate}
-                  {doc.locationCode ? ` · ${doc.locationCode}` : ""}
-                  {doc.locationName ? ` · ${doc.locationName}` : ""}
-                  {doc.hubShortName
-                    ? ` · Hub ${doc.hubShortName}`
-                    : doc.isCentral
-                      ? " · HQ กลาง"
-                      : ""}
-                </CardDescription>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                {doc.status === DocumentStatus.IMPORTED && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={deletingId === doc.id || startingId === doc.id}
-                    onClick={() => void handleDelete(doc)}
-                    size="lg"
-                    className="min-h-11 w-full sm:w-auto"
-                  >
-                    {deletingId === doc.id ? "กำลังลบ..." : "ลบ"}
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  disabled={startingId === doc.id || deletingId === doc.id}
-                  onClick={() => void handleOpen(doc)}
-                  size="lg"
-                  className="min-h-11 w-full sm:w-auto"
-                >
-                  {startingId === doc.id
-                    ? "กำลังเปิด..."
-                    : doc.status === DocumentStatus.IMPORTED ||
-                        doc.status === DocumentStatus.RECOUNT_REQUESTED
-                      ? "เริ่มนับ"
-                      : "เปิดเอกสาร"}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardFooter className="flex flex-wrap items-center gap-3 border-t pt-4">
-              <DocumentStatusBadge status={doc.status} />
-              <span className="text-sm text-muted-foreground">
-                เวอร์ชัน {doc.currentVersionNo || "—"}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                นับแล้ว {doc.countedLines}/{doc.totalLines} รายการ
-              </span>
-            </CardFooter>
-          </Card>
-        ))}
+      {!loading && filtered.length > 0 && (
+        <section className="rounded-lg border border-border/80 bg-background px-4 sm:px-5">
+          {filtered.map((doc) => (
+            <TabletDocumentRow
+              key={doc.id}
+              doc={doc}
+              starting={startingId === doc.id}
+              deleting={deletingId === doc.id}
+              onOpen={() => void handleOpen(doc)}
+              onDelete={() => void handleDelete(doc)}
+            />
+          ))}
+        </section>
+      )}
 
-        {!loading && filtered.length === 0 && (
-          <div className="rounded-lg border border-dashed px-4 py-6 text-center">
-            <p className="font-medium">ยังไม่มีเอกสาร</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              เลือกวันที่ด้านบน แล้วกด 「โหลดคลัง」 และ Sync จาก Express
-            </p>
-          </div>
-        )}
-      </div>
+      {!loading && filtered.length === 0 && (
+        <div className="rounded-lg border border-dashed px-4 py-8 text-center">
+          <p className="font-medium">ยังไม่มีเอกสาร</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            เลือกวันที่ด้านบน แล้วกด 「โหลดคลัง」 และ Sync จาก Express
+          </p>
+        </div>
+      )}
     </PageShell>
   );
 }

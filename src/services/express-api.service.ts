@@ -251,6 +251,7 @@ export interface ExpressPushCountDetail {
   ProductCode: string;
   CountDate: string;
   CaseQty: number;
+  CaseUnitFactor: number;
   PieceQty: number;
   PhysicalBalance: number;
   CountFlag: string;

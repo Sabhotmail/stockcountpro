@@ -9,6 +9,7 @@ import { canAccessDocument } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import {
+  enrichAuditLogs,
   getAuditLogsByDocument,
   listAllAuditLogs,
 } from "@/services/audit-log.service";
@@ -304,7 +305,7 @@ export async function listAuditLogsForAdmin(
   });
 
   return {
-    logs: logs.map(mapAuditLog),
+    logs: await enrichAuditLogs(logs.map(mapAuditLog)),
     truncated: totalMatching > logs.length,
   };
 }

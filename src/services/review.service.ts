@@ -185,6 +185,15 @@ export async function getReviewDetail(
       productName: line.productName,
       expectedQty,
       totalBaseQty,
+      qtyCase: entry?.qtyCase ?? null,
+      qtyPack: entry?.qtyPack ?? null,
+      qtyPiece: entry?.qtyPiece ?? null,
+      allowCase: line.allowCase,
+      allowPack: line.allowPack,
+      allowPiece: line.allowPiece,
+      unitCaseName: line.unitCaseName ?? null,
+      unitPackName: line.unitPackName ?? null,
+      unitPieceName: line.unitPieceName ?? null,
       difference:
         expectedQty !== null && totalBaseQty !== null
           ? totalBaseQty - expectedQty
@@ -291,12 +300,14 @@ export async function approveDocument(
     doc.branchId,
     documentId,
     version.id,
+    `อนุมัติ V${version.versionNo}`,
   );
   await logCompleteDocument(
     session.userId,
     session.userName,
     doc.branchId,
     documentId,
+    `ปิดเอกสาร ${doc.documentNo}`,
   );
 
   if (!options.pushToExpress) {
@@ -470,7 +481,7 @@ export async function requestRecount(
     doc.branchId,
     documentId,
     newVersionId,
-    `Full-document recount (${lines.length} lines): ${reason}`,
+    `ขอนับใหม่ ${lines.length} รายการ · ${reason}`,
   );
   await logCreateVersion(
     session.userId,
@@ -478,7 +489,7 @@ export async function requestRecount(
     doc.branchId,
     documentId,
     newVersionId,
-    `Created version ${newVersionNo} from ${baseVersion.id}`,
+    `สร้างเวอร์ชัน V${newVersionNo}`,
   );
 
   return { success: true, versionId: newVersionId, versionNo: newVersionNo };

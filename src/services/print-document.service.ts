@@ -6,6 +6,7 @@ import {
 } from "@/lib/entry-snapshot";
 import { canAccessAdmin, canSupervise } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { isEntryCounted } from "@/lib/unit-converter";
 import { DocumentStatus, type PrintDocumentPayload } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
@@ -51,6 +52,25 @@ export async function getPrintDocument(
 
   const entryByLine = new Map(entries.map((e) => [e.lineId, e]));
 
+  const lines = productLines.map((line) => {
+    const entry = entryByLine.get(line.lineId);
+    const isCounted = entry
+      ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
+      : false;
+
+    return {
+      lineNo: line.lineNo,
+      productCode: line.productCode,
+      productName: line.productName,
+      qtyCase: entry?.qtyCase ?? null,
+      qtyPiece: entry?.qtyPiece ?? null,
+      totalBaseQty: entry?.totalBaseQty ?? null,
+      isCounted,
+    };
+  });
+
+  const countedLines = lines.filter((line) => line.isCounted).length;
+
   return {
     documentId: doc.id,
     documentNo: doc.documentNo,
@@ -63,16 +83,8 @@ export async function getPrintDocument(
     isCentral: doc.isCentral,
     currentVersionNo: doc.currentVersionNo,
     status: doc.status,
-    lines: productLines.map((line) => {
-      const entry = entryByLine.get(line.lineId);
-      return {
-        lineNo: line.lineNo,
-        productCode: line.productCode,
-        productName: line.productName,
-        qtyCase: entry?.qtyCase ?? null,
-        qtyPiece: entry?.qtyPiece ?? null,
-        totalBaseQty: entry?.totalBaseQty ?? null,
-      };
-    }),
+    totalLines: lines.length,
+    countedLines,
+    lines,
   };
 }

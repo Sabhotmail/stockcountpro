@@ -9,16 +9,13 @@ import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { PushExpressButton } from "@/components/PushExpressButton";
+import {
+  isSupervisorDocBulkEligible,
+  SupervisorDocumentRow,
+} from "@/components/SupervisorDocumentRow";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -46,130 +43,7 @@ function locationNameLabel(doc: SupervisorDocumentListItem): string {
 }
 
 function isBulkEligible(doc: SupervisorDocumentListItem) {
-  return (
-    doc.status === DocumentStatus.COMPLETED && !doc.lastExpressPushAt
-  );
-}
-
-function DocumentCard({
-  doc,
-  mode,
-  onPushed,
-  selected,
-  onToggleSelect,
-}: {
-  doc: SupervisorDocumentListItem;
-  mode: TabKey;
-  onPushed: (documentId: string, message: string) => void;
-  selected?: boolean;
-  onToggleSelect?: (documentId: string, next: boolean) => void;
-}) {
-  const pushed = Boolean(doc.lastExpressPushAt);
-  const eligible = isBulkEligible(doc);
-
-  return (
-    <Card className={cn(pushed && mode === "completed" && "border-emerald-200")}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2">
-            {mode === "completed" && eligible && onToggleSelect && (
-              <input
-                type="checkbox"
-                className="mt-1 size-4 shrink-0"
-                checked={Boolean(selected)}
-                onChange={(e) => onToggleSelect(doc.id, e.target.checked)}
-                aria-label={`เลือก ${doc.documentNo}`}
-              />
-            )}
-            <CardTitle className="text-base leading-snug break-words">
-              {doc.documentNo}
-            </CardTitle>
-          </div>
-          <DocumentStatusBadge status={doc.status} compact />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {locationCodeLabel(doc)} · {locationNameLabel(doc)}
-          {doc.hubShortName
-            ? ` · Hub ${doc.hubShortName}`
-            : doc.isCentral
-              ? " · HQ กลาง"
-              : ""}
-        </p>
-        {mode === "completed" && (
-          <div className="pt-1">
-            <ExpressPushBadge at={doc.lastExpressPushAt} />
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div>
-            <dt className="text-muted-foreground">เวอร์ชัน</dt>
-            <dd className="font-medium">V{doc.currentVersionNo || "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">รายการ</dt>
-            <dd className="font-medium">
-              {doc.countedLines}/{doc.totalLines}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">ส่งโดย</dt>
-            <dd className="font-medium">{doc.submittedByName ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">หมายเหตุ</dt>
-            <dd className="font-medium">{doc.hasDocumentNote ? "มี" : "—"}</dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-muted-foreground">ส่งเมื่อ</dt>
-            <dd className="font-medium">
-              {formatDateTimeShortTH(doc.submittedAt)}
-            </dd>
-          </div>
-        </dl>
-      </CardContent>
-      <CardFooter className="flex flex-row flex-wrap gap-2">
-        {mode === "completed" ? (
-          <>
-            <Link
-              href={`/supervisor/review/${doc.id}`}
-              className={cn(
-                buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                }),
-                "flex-1 border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
-              )}
-            >
-              ขอนับใหม่
-            </Link>
-            <Link
-              href={`/print/documents/${doc.id}`}
-              className={cn(buttonVariants({ size: "sm" }), "flex-1")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              พิมพ์
-            </Link>
-            <PushExpressButton
-              documentId={doc.id}
-              className="flex-1"
-              alreadyPushed={pushed}
-              onPushed={(message) => onPushed(doc.id, message)}
-            />
-          </>
-        ) : (
-          <Link
-            href={`/supervisor/review/${doc.id}`}
-            className={cn(buttonVariants({ size: "sm" }), "w-full")}
-          >
-            ตรวจสอบ
-          </Link>
-        )}
-      </CardFooter>
-    </Card>
-  );
+  return isSupervisorDocBulkEligible(doc);
 }
 
 export default function SupervisorDocumentsPage() {
@@ -365,9 +239,9 @@ export default function SupervisorDocumentsPage() {
             />
           )}
 
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="md:hidden rounded-lg border border-border/80 bg-background px-4 sm:px-5">
             {visible.map((doc) => (
-              <DocumentCard
+              <SupervisorDocumentRow
                 key={doc.id}
                 doc={doc}
                 mode={tab}
@@ -378,9 +252,8 @@ export default function SupervisorDocumentsPage() {
             ))}
           </div>
 
-          <Card className="hidden md:block">
-            <CardContent className="pt-4">
-              <Table className="table-fixed">
+          <div className="hidden overflow-hidden rounded-lg border border-border/80 bg-background md:block">
+            <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
                     {tab === "completed" && (
@@ -523,8 +396,7 @@ export default function SupervisorDocumentsPage() {
                   })}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </div>
         </>
       )}
     </PageShell>

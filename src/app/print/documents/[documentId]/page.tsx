@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PrintDocumentSkeleton } from "@/components/loading/PageSkeletons";
+import { isQtyFieldCounted } from "@/lib/count-qty";
 import { cn } from "@/lib/utils";
 import {
   type PrintDocumentLine,
@@ -34,8 +35,8 @@ const PAGE_INNER_PX = mm(297 - PAGE_MARGIN_MM * 2 - PRINT_SAFETY_MM);
 const PAGE_CONTENT_WIDTH = `${210 - PAGE_MARGIN_MM * 2}mm`;
 
 function formatQty(value: number | null): string {
-  if (value === null || value === undefined || value < 0) return "—";
-  return value.toLocaleString("th-TH");
+  if (!isQtyFieldCounted(value)) return "—";
+  return value!.toLocaleString("th-TH");
 }
 
 function packLinesByHeight(
@@ -310,6 +311,8 @@ export default function PrintDocumentPage() {
             locationName={locationName}
             hubLabel={hubLabel}
             versionNo={doc.currentVersionNo}
+            countedLines={doc.countedLines}
+            totalLines={doc.totalLines}
             variant="full"
           />
           <p className="mt-3 mb-1.5 text-[12px] font-semibold">
@@ -324,6 +327,8 @@ export default function PrintDocumentPage() {
             locationName={locationName}
             hubLabel={hubLabel}
             versionNo={doc.currentVersionNo}
+            countedLines={doc.countedLines}
+            totalLines={doc.totalLines}
             variant="compact"
           />
         </div>
@@ -339,11 +344,14 @@ export default function PrintDocumentPage() {
               <th className="border border-neutral-400 px-1.5 py-1 text-left font-semibold">
                 ชื่อสินค้า
               </th>
-              <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+              <th className="w-14 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
                 ลัง
               </th>
-              <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+              <th className="w-14 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
                 ชิ้น
+              </th>
+              <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+                รวม
               </th>
             </tr>
           </thead>
@@ -365,14 +373,24 @@ export default function PrintDocumentPage() {
                 <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
                   {formatQty(line.qtyPiece)}
                 </td>
+                <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top font-medium tabular-nums">
+                  {line.isCounted ? formatQty(line.totalBaseQty) : "—"}
+                </td>
               </tr>
             ))}
             <tr data-m="summary" className="bg-neutral-50">
               <td
-                colSpan={5}
+                colSpan={6}
                 className="border border-neutral-400 px-1.5 py-1 text-[11px]"
               >
-                รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
+                รวมทั้งสิ้น <strong>{doc.totalLines}</strong> รายการ
+                <span className="ml-3">
+                  · นับแล้ว <strong>{doc.countedLines}</strong>
+                </span>
+                <span className="ml-3 text-neutral-700">
+                  · ยังไม่นับ{" "}
+                  <strong>{doc.totalLines - doc.countedLines}</strong>
+                </span>
               </td>
             </tr>
           </tbody>
@@ -417,6 +435,8 @@ export default function PrintDocumentPage() {
                       locationName={locationName}
                       hubLabel={hubLabel}
                       versionNo={doc.currentVersionNo}
+                      countedLines={doc.countedLines}
+                      totalLines={doc.totalLines}
                       variant={isFirst ? "full" : "compact"}
                     />
                   </div>
@@ -429,7 +449,8 @@ export default function PrintDocumentPage() {
                   <LinesTable
                     rows={rows}
                     showSummary={isLastLines}
-                    totalLines={doc.lines.length}
+                    totalLines={doc.totalLines}
+                    countedLines={doc.countedLines}
                   />
 
                   {showSignatures && <SignatureBlock printedAt={printedAt} />}
@@ -459,6 +480,8 @@ export default function PrintDocumentPage() {
                     locationName={locationName}
                     hubLabel={hubLabel}
                     versionNo={doc.currentVersionNo}
+                    countedLines={doc.countedLines}
+                    totalLines={doc.totalLines}
                     variant="compact"
                   />
                 </div>
@@ -482,6 +505,8 @@ function DocumentHeader({
   locationName,
   hubLabel,
   versionNo,
+  countedLines,
+  totalLines,
   variant = "full",
 }: {
   documentNo: string;
@@ -490,6 +515,8 @@ function DocumentHeader({
   locationName: string;
   hubLabel: string;
   versionNo: number;
+  countedLines: number;
+  totalLines: number;
   variant?: "full" | "compact";
 }) {
   return (
@@ -553,6 +580,22 @@ function DocumentHeader({
               V{versionNo} · สถานะเสร็จสิ้น
             </td>
           </tr>
+          <tr>
+            <th className="border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
+              ตรวจนับแล้ว
+            </th>
+            <td
+              className="border border-neutral-400 px-2 py-1 font-semibold tabular-nums"
+              colSpan={3}
+            >
+              {countedLines.toLocaleString("th-TH")} /{" "}
+              {totalLines.toLocaleString("th-TH")} รายการ
+              <span className="ml-2 font-normal text-neutral-700">
+                (ยังไม่นับ {(totalLines - countedLines).toLocaleString("th-TH")}{" "}
+                รายการ)
+              </span>
+            </td>
+          </tr>
         </tbody>
       </table>
     </>
@@ -563,10 +606,12 @@ function LinesTable({
   rows,
   showSummary,
   totalLines,
+  countedLines,
 }: {
   rows: PrintDocumentLine[];
   showSummary: boolean;
   totalLines: number;
+  countedLines: number;
 }) {
   return (
     <table className="w-full border-separate border-spacing-0 border border-neutral-400 text-[11.5px] leading-snug">
@@ -581,11 +626,14 @@ function LinesTable({
           <th className="border border-neutral-400 px-1.5 py-1 text-left font-semibold">
             ชื่อสินค้า
           </th>
-          <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+          <th className="w-14 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
             ลัง
           </th>
-          <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+          <th className="w-14 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
             ชิ้น
+          </th>
+          <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
+            รวม
           </th>
         </tr>
       </thead>
@@ -607,16 +655,25 @@ function LinesTable({
             <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
               {formatQty(line.qtyPiece)}
             </td>
+            <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top font-medium tabular-nums">
+              {line.isCounted ? formatQty(line.totalBaseQty) : "—"}
+            </td>
           </tr>
         ))}
         {showSummary && (
           <tr className="bg-neutral-50">
             <td
-              colSpan={5}
+              colSpan={6}
               className="border border-neutral-400 px-1.5 py-1 text-[11px]"
             >
               รวมทั้งสิ้น <strong>{totalLines}</strong> รายการ
-              <span className="ml-3 text-neutral-700">· หน่วยนับ: ลัง / ชิ้น</span>
+              <span className="ml-3">
+                · นับแล้ว <strong>{countedLines}</strong>
+              </span>
+              <span className="ml-3 text-neutral-700">
+                · ยังไม่นับ <strong>{totalLines - countedLines}</strong>
+              </span>
+              <span className="ml-3 text-neutral-700">· หน่วย: ลัง / ชิ้น</span>
             </td>
           </tr>
         )}

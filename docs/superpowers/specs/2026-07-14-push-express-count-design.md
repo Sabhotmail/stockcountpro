@@ -11,7 +11,7 @@ Allow Supervisor / Branch Manager / HQ / Admin to push completed count results b
 ```text
 PUT /api/stockcount/countdate/{countdate}/locationcode/{locationcode}
 Authorization: Bearer {token}
-Body: { "details": [ { LocationCode, ProductCode, CountDate, CaseQty, PieceQty, PhysicalBalance, CountFlag, UserID, ChangedDate } ] }
+Body: { "details": [ { LocationCode, ProductCode, CountDate, CaseQty, CaseUnitFactor, PieceQty, PhysicalBalance, CountFlag, UserID, ChangedDate } ] }
 ```
 
 ## Rules
@@ -25,6 +25,7 @@ Body: { "details": [ { LocationCode, ProductCode, CountDate, CaseQty, PieceQty, 
 | `CountFlag` | `"3"` (per Express sample) |
 | `ChangedDate` | Today `YYYY-MM-DD` (Asia/Bangkok) |
 | `PhysicalBalance` | `totalBaseQty` (or computed from case/pack/piece) |
+| `CaseUnitFactor` | `productLine.caseRatio` (same as sync inbound `CaseUnitFactor`) |
 | Re-send | Allowed; each attempt logged |
 
 ## App surface

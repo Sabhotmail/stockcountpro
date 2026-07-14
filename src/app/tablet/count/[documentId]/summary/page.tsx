@@ -2,23 +2,98 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { isCountDocumentEditable } from "@/lib/permissions";
+import { formatCountQtyCasePiece } from "@/lib/count-qty";
+import { filterCountableLines } from "@/lib/line-filter";
 import { cn } from "@/lib/utils";
-import { type CountSummary } from "@/types/count";
+import { type CountSummary, type CountSummaryLine } from "@/types/count";
+
+function formatLineQty(line: CountSummaryLine): string {
+  return formatCountQtyCasePiece({
+    qtyCase: line.qtyCase,
+    qtyPack: line.qtyPack,
+    qtyPiece: line.qtyPiece,
+    allowCase: line.allowCase,
+    allowPack: line.allowPack,
+    allowPiece: line.allowPiece,
+    unitCaseName: line.unitCaseName,
+    unitPackName: line.unitPackName,
+    unitPieceName: line.unitPieceName,
+    isCounted: line.isCounted,
+  });
+}
+
+function SummaryLineRow({ line }: { line: CountSummaryLine }) {
+  return (
+    <tr
+      className={cn(
+        "border-b border-border/60",
+        !line.isCounted && "bg-amber-50/30",
+      )}
+    >
+      <td className="whitespace-nowrap px-3 py-2.5 font-medium tabular-nums">
+        {line.productCode}
+      </td>
+      <td className="max-w-[20rem] px-3 py-2.5 text-foreground/90">
+        {line.productName}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">
+        {formatLineQty(line)}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-right">
+        {!line.isCounted ? (
+          <span className="text-amber-700">ยังไม่นับ</span>
+        ) : line.isZeroCount ? (
+          <span className="text-muted-foreground">นับได้ 0</span>
+        ) : (
+          <span className="text-emerald-700">นับแล้ว</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function SummaryLineCard({ line }: { line: CountSummaryLine }) {
+  return (
+    <div
+      className={cn(
+        "border-b border-border/70 px-1 py-3 last:border-b-0",
+        !line.isCounted && "bg-amber-50/40",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium tabular-nums">{line.productCode}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {line.productName}
+          </p>
+        </div>
+        {!line.isCounted ? (
+          <span className="shrink-0 text-xs font-medium text-amber-700">
+            ยังไม่นับ
+          </span>
+        ) : line.isZeroCount ? (
+          <span className="shrink-0 text-xs text-muted-foreground">นับได้ 0</span>
+        ) : (
+          <span className="shrink-0 text-xs font-medium text-emerald-700">
+            นับแล้ว
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-sm tabular-nums">
+        <span className="text-muted-foreground">นับได้ </span>
+        <span className="font-medium">{formatLineQty(line)}</span>
+      </p>
+    </div>
+  );
+}
 
 export default function TabletSummaryPage() {
   const params = useParams<{ documentId: string }>();
@@ -29,6 +104,9 @@ export default function TabletSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codeFilter, setCodeFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
+  const [showUncountedOnly, setShowUncountedOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +137,15 @@ export default function TabletSummaryPage() {
       cancelled = true;
     };
   }, [documentId, router]);
+
+  const filteredLines = useMemo(() => {
+    if (!summary) return [];
+    return filterCountableLines(summary.lines, {
+      codeFilter,
+      nameFilter,
+      showUncountedOnly,
+    });
+  }, [summary, codeFilter, nameFilter, showUncountedOnly]);
 
   async function handleSubmit() {
     const versionId = summary?.document.currentVersionId;
@@ -108,20 +195,13 @@ export default function TabletSummaryPage() {
   );
   const hasUncounted = summary.uncountedLines > 0;
 
-  const stats = [
-    { label: "ทั้งหมด", value: summary.totalLines },
-    { label: "นับแล้ว", value: summary.countedLines },
-    { label: "ยังไม่นับ", value: summary.uncountedLines },
-    { label: "นับได้ 0", value: summary.zeroCountLines },
-  ];
-
   return (
-    <div className="min-h-screen bg-muted/40 pb-24">
-      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 shadow-sm sm:px-6">
+    <div className="min-h-screen bg-muted/40 pb-28">
+      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6">
         <div className="mx-auto max-w-4xl">
           <Link
             href={`/tablet/count/${documentId}`}
-            className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             ← กลับไปนับต่อ
           </Link>
@@ -146,88 +226,167 @@ export default function TabletSummaryPage() {
           </Alert>
         )}
 
-        <section className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((item) => (
-            <Card key={item.label}>
-              <CardContent className="pt-6 text-center">
-                <p className="text-2xl font-bold">{item.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <section className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3 border-b border-border/70 pb-4">
+          <div>
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
+              นับแล้ว
+            </p>
+            <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
+              {summary.countedLines}
+              <span className="text-base font-normal text-muted-foreground">
+                /{summary.totalLines}
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
+              ยังไม่นับ
+            </p>
+            <p
+              className={cn(
+                "mt-0.5 text-2xl font-semibold tracking-tight tabular-nums",
+                summary.uncountedLines > 0 ? "text-amber-700" : "text-foreground",
+              )}
+            >
+              {summary.uncountedLines}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
+              นับได้ 0
+            </p>
+            <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
+              {summary.zeroCountLines}
+            </p>
+          </div>
         </section>
 
         {document.note && (
-          <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-900">
-            <AlertDescription>หมายเหตุเอกสาร: {document.note}</AlertDescription>
+          <Alert className="mb-4 border-amber-200/80 bg-amber-50 text-amber-950">
+            <AlertDescription>หมายเหตุ: {document.note}</AlertDescription>
           </Alert>
         )}
 
         {hasUncounted && isEditable && (
-          <Alert className="mb-4 border-orange-200 bg-orange-50 text-orange-800">
+          <Alert className="mb-4 border-orange-200/80 bg-orange-50 text-orange-950">
             <AlertDescription>
-              ยังมี {summary.uncountedLines} รายการที่ยังไม่นับ — สามารถส่งได้
+              ยังมี {summary.uncountedLines} รายการที่ยังไม่นับ — ส่งได้
               แต่ควรตรวจสอบก่อน
             </AlertDescription>
           </Alert>
         )}
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-base">รายการสินค้า</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัส</TableHead>
-                  <TableHead>ชื่อสินค้า</TableHead>
-                  <TableHead className="text-right">นับได้</TableHead>
-                  <TableHead className="text-center">สถานะ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.lines.map((line) => (
-                  <TableRow key={line.lineId}>
-                    <TableCell className="font-medium">{line.productCode}</TableCell>
-                    <TableCell>{line.productName}</TableCell>
-                    <TableCell className="text-right">
-                      {line.totalBaseQty ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {!line.isCounted ? (
-                        <span className="text-amber-600">ยังไม่นับ</span>
-                      ) : line.isZeroCount ? (
-                        <span className="text-muted-foreground">นับได้ 0</span>
-                      ) : (
-                        <span className="text-green-600">นับแล้ว</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <section className="mb-4 border-b border-border/70 pb-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="summary-code-filter">ค้นหารหัส</Label>
+              <Input
+                id="summary-code-filter"
+                value={codeFilter}
+                onChange={(e) => setCodeFilter(e.target.value)}
+                placeholder="เช่น 101001"
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="summary-name-filter">ค้นหาชื่อ</Label>
+              <Input
+                id="summary-name-filter"
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder="เช่น เจเล่"
+                className="h-10"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground tabular-nums">
+              แสดง {filteredLines.length} จาก {summary.lines.length} รายการ
+            </p>
+            <Button
+              type="button"
+              variant={showUncountedOnly ? "secondary" : "outline"}
+              size="sm"
+              className={
+                showUncountedOnly
+                  ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                  : undefined
+              }
+              onClick={() => setShowUncountedOnly((v) => !v)}
+            >
+              {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
+            </Button>
+          </div>
+        </section>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <section>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold tracking-tight">รายการสินค้า</h2>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {summary.lines.length} รายการ
+            </p>
+          </div>
+
+          <div className="md:hidden">
+            {filteredLines.map((line) => (
+              <SummaryLineCard key={line.lineId} line={line} />
+            ))}
+            {filteredLines.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                ไม่พบรายการที่ตรงกับตัวกรอง
+              </p>
+            )}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-lg border border-border/80 bg-background md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[36rem] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs font-medium tracking-wide text-muted-foreground">
+                    <th className="px-3 py-2.5 font-medium">รหัส</th>
+                    <th className="px-3 py-2.5 font-medium">ชื่อสินค้า</th>
+                    <th className="px-3 py-2.5 text-right font-medium">นับได้</th>
+                    <th className="px-3 py-2.5 text-right font-medium">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLines.map((line) => (
+                    <SummaryLineRow key={line.lineId} line={line} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {filteredLines.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                ไม่พบรายการที่ตรงกับตัวกรอง
+              </p>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto flex max-w-4xl gap-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
           <Link
             href={`/tablet/count/${documentId}`}
-            className={buttonVariants({ variant: "outline", size: "lg" })}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "min-h-11 flex-1",
+            )}
           >
             แก้ไขการนับ
           </Link>
           <Button
             type="button"
             size="lg"
-            className="bg-green-600 hover:bg-green-700"
+            className="min-h-11 flex-1 bg-emerald-600 hover:bg-emerald-700"
             onClick={handleSubmit}
             disabled={!isEditable || submitting}
           >
             {submitting ? "กำลังส่ง..." : "ยืนยันส่งให้หัวหน้างาน"}
           </Button>
         </div>
-      </main>
+      </footer>
     </div>
   );
 }

@@ -47,10 +47,10 @@ export function SupervisorNav() {
       items: [
         {
           href: "/supervisor/documents",
-          label: "เอกสารรอตรวจ / Approve",
+          label: "รออนุมัติ",
           exact: true,
         },
-        { href: "/tablet/documents", label: "นับสต็อก (Tablet)" },
+        { href: "/tablet/documents", label: "นับสต็อก" },
       ],
     },
   ];
