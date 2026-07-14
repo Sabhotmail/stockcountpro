@@ -1,9 +1,11 @@
 import type { User } from "@/types/user";
 import { UserRole } from "@/types/user";
 
+/** Seed passwords for `prisma db seed` / set-admin-password — not shown in the UI. */
 export const DEFAULT_SEED_PASSWORD = "StockCount1!";
 export const ADMIN_SEED_PASSWORD = "12345678";
 
+/** Dev seed users for `prisma db seed` — runtime auth reads from Prisma. */
 export const mockUsers: Array<User & { username: string }> = [
   {
     id: "user_admin",

@@ -1,5 +1,6 @@
 import type { Branch } from "@/types/user";
 
+/** Seed data for `prisma db seed` — runtime data comes from Prisma. */
 export const mockBranches: Branch[] = [
   {
     id: "branch_bkk3",
@@ -7,34 +8,6 @@ export const mockBranches: Branch[] = [
     name: "กรุงเทพ 3",
     expressLocationPrefix: "24",
     isActive: true,
-  },
-  {
-    id: "branch_bkk1",
-    code: "BKK1",
-    name: "กรุงเทพ 1",
-    expressLocationPrefix: "32",
-    isActive: false,
-  },
-  {
-    id: "branch_bkk2",
-    code: "BKK2",
-    name: "กรุงเทพ 2",
-    expressLocationPrefix: null,
-    isActive: false,
-  },
-  {
-    id: "branch_chm",
-    code: "CHM",
-    name: "เชียงใหม่",
-    expressLocationPrefix: null,
-    isActive: false,
-  },
-  {
-    id: "branch_srb",
-    code: "SRB",
-    name: "สระบุรี",
-    expressLocationPrefix: null,
-    isActive: false,
   },
 ];
 
@@ -58,11 +31,3 @@ export const mockHubs = [
     isActive: true,
   },
 ] as const;
-
-export function getBranchById(id: string): Branch | undefined {
-  return mockBranches.find((b) => b.id === id);
-}
-
-export function getBranchByCode(code: string): Branch | undefined {
-  return mockBranches.find((b) => b.code === code);
-}
