@@ -178,13 +178,24 @@ export default function TabletDocumentsPage() {
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as FilterKey)}
-        className="mb-6"
+        className="mb-4"
       >
-        <TabsList>
-          <TabsTrigger value="all">ทั้งหมด</TabsTrigger>
-          <TabsTrigger value="not_started">ยังไม่เริ่ม</TabsTrigger>
-          <TabsTrigger value="counting">กำลังนับ</TabsTrigger>
-          <TabsTrigger value="recount">ขอนับใหม่</TabsTrigger>
+        <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto p-1">
+          <TabsTrigger value="all" className="min-h-11 flex-1 px-3 py-2.5">
+            ทั้งหมด
+          </TabsTrigger>
+          <TabsTrigger
+            value="not_started"
+            className="min-h-11 flex-1 px-3 py-2.5"
+          >
+            ยังไม่เริ่ม
+          </TabsTrigger>
+          <TabsTrigger value="counting" className="min-h-11 flex-1 px-3 py-2.5">
+            กำลังนับ
+          </TabsTrigger>
+          <TabsTrigger value="recount" className="min-h-11 flex-1 px-3 py-2.5">
+            ขอนับใหม่
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -199,9 +210,9 @@ export default function TabletDocumentsPage() {
       <div className="grid gap-4">
         {filtered.map((doc) => (
           <Card key={doc.id}>
-            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4 space-y-0">
-              <div>
-                <CardTitle>{doc.documentNo}</CardTitle>
+            <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <CardTitle className="text-xl">{doc.documentNo}</CardTitle>
                 <CardDescription>
                   {doc.documentDate}
                   {doc.locationCode ? ` · ${doc.locationCode}` : ""}
@@ -213,7 +224,7 @@ export default function TabletDocumentsPage() {
                       : ""}
                 </CardDescription>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                 {doc.status === DocumentStatus.IMPORTED && (
                   <Button
                     type="button"
@@ -221,6 +232,7 @@ export default function TabletDocumentsPage() {
                     disabled={deletingId === doc.id || startingId === doc.id}
                     onClick={() => void handleDelete(doc)}
                     size="lg"
+                    className="min-h-11 w-full sm:w-auto"
                   >
                     {deletingId === doc.id ? "กำลังลบ..." : "ลบ"}
                   </Button>
@@ -230,6 +242,7 @@ export default function TabletDocumentsPage() {
                   disabled={startingId === doc.id || deletingId === doc.id}
                   onClick={() => void handleOpen(doc)}
                   size="lg"
+                  className="min-h-11 w-full sm:w-auto"
                 >
                   {startingId === doc.id
                     ? "กำลังเปิด..."
@@ -253,7 +266,7 @@ export default function TabletDocumentsPage() {
         ))}
 
         {!loading && filtered.length === 0 && (
-          <div className="rounded-lg border border-dashed px-4 py-10 text-center">
+          <div className="rounded-lg border border-dashed px-4 py-6 text-center">
             <p className="font-medium">ยังไม่มีเอกสาร</p>
             <p className="mt-1 text-sm text-muted-foreground">
               เลือกวันที่ด้านบน แล้วกด 「โหลดคลัง」 และ Sync จาก Express

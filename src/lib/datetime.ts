@@ -51,3 +51,36 @@ export function formatDateTimeShortTH(
     timeStyle: "short",
   });
 }
+
+/** `YYYY-MM-DD` → `DD/MM/YYYY` for display inputs. */
+export function dateKeyToDmy(value: string | null | undefined): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+  const [y, m, d] = value.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * Parse `DD/MM/YYYY` (also accepts `D/M/YYYY`) into `YYYY-MM-DD`.
+ * Returns null when invalid.
+ */
+export function dmyToDateKey(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}

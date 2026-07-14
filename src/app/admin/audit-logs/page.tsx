@@ -10,6 +10,7 @@ import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateInputDMY } from "@/components/DateInputDMY";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -120,11 +121,10 @@ export default function AdminAuditLogsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="audit-date">วันที่เอกสาร</Label>
-              <Input
+              <DateInputDMY
                 id="audit-date"
-                type="date"
                 value={documentDate}
-                onChange={(e) => setDocumentDate(e.target.value)}
+                onChange={setDocumentDate}
                 className="w-full sm:w-44"
               />
             </div>

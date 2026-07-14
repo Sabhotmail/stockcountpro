@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DateInputDMY } from "@/components/DateInputDMY";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -227,11 +228,10 @@ export default function AdminDocumentsPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="doc-date">วันที่</Label>
-              <Input
+              <DateInputDMY
                 id="doc-date"
-                type="date"
                 value={documentDate}
-                onChange={(e) => setDocumentDate(e.target.value)}
+                onChange={setDocumentDate}
                 className="w-full sm:w-44"
               />
             </div>

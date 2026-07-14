@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DateInputDMY } from "@/components/DateInputDMY";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -200,15 +200,15 @@ export function ExpressSyncPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="grid w-full max-w-xs gap-2">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid w-full gap-2 lg:max-w-xs">
             <Label htmlFor="express-sync-date">วันที่ตรวจนับ</Label>
-            <Input
+            <DateInputDMY
               id="express-sync-date"
-              type="date"
               value={countDate}
-              onChange={(event) => {
-                setCountDate(event.target.value);
+              allowEmpty={false}
+              onChange={(next) => {
+                setCountDate(next);
                 setError(null);
                 setSyncMessage(null);
                 setSyncResults(null);
@@ -218,9 +218,11 @@ export function ExpressSyncPanel({
               ขั้นตอน: เลือกวัน → โหลดคลัง → เลือกคลัง → Sync
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap">
             <Button
               type="button"
+              size="lg"
+              className="min-h-11 w-full lg:w-auto"
               variant={locations.length === 0 && !error ? "default" : "outline"}
               onClick={() => void loadLocations()}
               disabled={loadingLocations || syncing}
@@ -229,6 +231,8 @@ export function ExpressSyncPanel({
             </Button>
             <Button
               type="button"
+              size="lg"
+              className="min-h-11 w-full lg:w-auto"
               variant="secondary"
               onClick={toggleAllSelectable}
               disabled={loadingLocations || syncing || selectableCodes.length === 0}
@@ -237,6 +241,8 @@ export function ExpressSyncPanel({
             </Button>
             <Button
               type="button"
+              size="lg"
+              className="min-h-11 w-full lg:w-auto"
               variant={canSync ? "default" : "outline"}
               onClick={() => void handleSync()}
               disabled={!canSync}
@@ -272,7 +278,7 @@ export function ExpressSyncPanel({
           {loadingLocations ? (
             <ListPanelSkeleton rows={6} className="rounded-none border-0" />
           ) : locations.length === 0 ? (
-            <div className="space-y-2 px-4 py-8 text-center">
+            <div className="space-y-2 px-4 py-6 text-center">
               <p className="text-sm font-medium text-foreground">
                 {error
                   ? "ยังไม่มีคลังให้เลือกสำหรับวันนี้"
@@ -283,9 +289,9 @@ export function ExpressSyncPanel({
               </p>
               <Button
                 type="button"
-                size="sm"
+                size="lg"
                 variant="outline"
-                className="mt-1"
+                className="mt-1 min-h-11"
                 onClick={() => void loadLocations()}
                 disabled={loadingLocations || syncing}
               >
@@ -315,13 +321,13 @@ export function ExpressSyncPanel({
                   <label
                     key={location.locationCode}
                     className={cn(
-                      "flex cursor-pointer items-start gap-3 px-4 py-3",
+                      "flex cursor-pointer items-start gap-3 px-4 py-4",
                       !location.selectable && "cursor-not-allowed bg-muted/40",
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="mt-1 size-4 rounded border-border accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-1 size-5 rounded border-border accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                       checked={checked}
                       disabled={!location.selectable || loadingLocations || syncing}
                       onChange={() => toggleLocation(location.locationCode)}
