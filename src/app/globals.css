@@ -162,34 +162,18 @@ body {
     break-after: auto;
     page-break-after: auto;
   }
-  /* Light grid that still prints; keep outer frame via table border */
+  /* Visible light grid — collapse so lines stay 1px, not double-dark */
   .print-page table {
-    width: calc(100% - 1px) !important;
-    max-width: calc(100% - 1px) !important;
-    border-collapse: separate !important;
+    width: calc(100% - 2px) !important;
+    max-width: calc(100% - 2px) !important;
+    border-collapse: collapse !important;
     border-spacing: 0 !important;
     border: 1px solid #bdbdbd !important;
     box-sizing: border-box !important;
   }
   .print-page th,
   .print-page td {
-    border-color: #bdbdbd !important;
-    border-style: solid !important;
-    /* right + bottom only — outer frame comes from table border */
-    border-width: 0 1px 1px 0 !important;
-  }
-  .print-page tr > :first-child {
-    border-left-width: 0 !important;
-  }
-  .print-page thead tr:first-child > *,
-  .print-page tbody tr:first-child > * {
-    border-top-width: 0 !important;
-  }
-  .print-page tr > :last-child {
-    border-right-width: 0 !important;
-  }
-  .print-page tr:last-child > * {
-    border-bottom-width: 0 !important;
+    border: 1px solid #bdbdbd !important;
   }
   .print-page section.border,
   .print-page .border {
