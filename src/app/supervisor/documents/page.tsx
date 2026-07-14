@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BulkPushExpressToolbar } from "@/components/BulkPushExpressToolbar";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
@@ -44,24 +45,46 @@ function locationNameLabel(doc: SupervisorDocumentListItem): string {
   return doc.locationName ?? doc.branchName;
 }
 
+function isBulkEligible(doc: SupervisorDocumentListItem) {
+  return (
+    doc.status === DocumentStatus.COMPLETED && !doc.lastExpressPushAt
+  );
+}
+
 function DocumentCard({
   doc,
   mode,
   onPushed,
+  selected,
+  onToggleSelect,
 }: {
   doc: SupervisorDocumentListItem;
   mode: TabKey;
   onPushed: (documentId: string, message: string) => void;
+  selected?: boolean;
+  onToggleSelect?: (documentId: string, next: boolean) => void;
 }) {
   const pushed = Boolean(doc.lastExpressPushAt);
+  const eligible = isBulkEligible(doc);
 
   return (
     <Card className={cn(pushed && mode === "completed" && "border-emerald-200")}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-base leading-snug break-words">
-            {doc.documentNo}
-          </CardTitle>
+          <div className="flex min-w-0 items-start gap-2">
+            {mode === "completed" && eligible && onToggleSelect && (
+              <input
+                type="checkbox"
+                className="mt-1 size-4 shrink-0"
+                checked={Boolean(selected)}
+                onChange={(e) => onToggleSelect(doc.id, e.target.checked)}
+                aria-label={`เลือก ${doc.documentNo}`}
+              />
+            )}
+            <CardTitle className="text-base leading-snug break-words">
+              {doc.documentNo}
+            </CardTitle>
+          </div>
           <DocumentStatusBadge status={doc.status} compact />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -144,6 +167,25 @@ export default function SupervisorDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pushNotice, setPushNotice] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const expressOk = params.get("expressPushOk");
+    const expressErr = params.get("expressPushError");
+    if (expressOk) {
+      setTab("completed");
+      setPushNotice("อนุมัติสำเร็จ และส่ง Express แล้ว");
+    } else if (expressErr) {
+      setTab("completed");
+      setPushNotice(
+        `อนุมัติสำเร็จ แต่ส่ง Express ไม่สำเร็จ: ${expressErr}`,
+      );
+    }
+    if (expressOk || expressErr) {
+      router.replace("/supervisor/documents");
+    }
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +232,23 @@ export default function SupervisorDocumentsPage() {
     [documents],
   );
   const visible = tab === "completed" ? completed : pending;
+  const eligibleDocs = useMemo(
+    () => completed.filter(isBulkEligible),
+    [completed],
+  );
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const docLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const doc of documents) map[doc.id] = doc.documentNo;
+    return map;
+  }, [documents]);
+
+  function toggleSelect(documentId: string, next: boolean) {
+    setSelectedIds((prev) => {
+      if (next) return prev.includes(documentId) ? prev : [...prev, documentId];
+      return prev.filter((id) => id !== documentId);
+    });
+  }
 
   function handlePushed(documentId: string, message: string) {
     setPushNotice(message);
@@ -200,6 +259,21 @@ export default function SupervisorDocumentsPage() {
           : doc,
       ),
     );
+    setSelectedIds((prev) => prev.filter((id) => id !== documentId));
+  }
+
+  function handleBulkComplete(pushedIds: string[]) {
+    if (pushedIds.length === 0) return;
+    const now = new Date().toISOString();
+    setPushNotice(`ส่ง Express แบบชุดสำเร็จ ${pushedIds.length} เอกสาร`);
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        pushedIds.includes(doc.id)
+          ? { ...doc, lastExpressPushAt: now }
+          : doc,
+      ),
+    );
+    setSelectedIds((prev) => prev.filter((id) => !pushedIds.includes(id)));
   }
 
   async function handleLogout() {
@@ -238,7 +312,10 @@ export default function SupervisorDocumentsPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as TabKey)}
+        onValueChange={(value) => {
+          setTab(value as TabKey);
+          setSelectedIds([]);
+        }}
         className="mb-4"
       >
         <TabsList>
@@ -263,6 +340,19 @@ export default function SupervisorDocumentsPage() {
 
       {!loading && visible.length > 0 && (
         <>
+          {tab === "completed" && (
+            <BulkPushExpressToolbar
+              selectedIds={selectedIds}
+              eligibleCount={eligibleDocs.length}
+              onSelectAllEligible={() =>
+                setSelectedIds(eligibleDocs.map((d) => d.id))
+              }
+              onClearSelection={() => setSelectedIds([])}
+              onComplete={handleBulkComplete}
+              labels={docLabels}
+            />
+          )}
+
           <div className="flex flex-col gap-3 md:hidden">
             {visible.map((doc) => (
               <DocumentCard
@@ -270,6 +360,8 @@ export default function SupervisorDocumentsPage() {
                 doc={doc}
                 mode={tab}
                 onPushed={handlePushed}
+                selected={selectedSet.has(doc.id)}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </div>
@@ -279,7 +371,14 @@ export default function SupervisorDocumentsPage() {
               <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[38%]">เอกสาร</TableHead>
+                    {tab === "completed" && (
+                      <TableHead className="w-[5%]">
+                        <span className="sr-only">เลือก</span>
+                      </TableHead>
+                    )}
+                    <TableHead className={tab === "completed" ? "w-[33%]" : "w-[38%]"}>
+                      เอกสาร
+                    </TableHead>
                     {tab === "pending" && (
                       <TableHead className="w-[12%]">สถานะ</TableHead>
                     )}
@@ -296,6 +395,7 @@ export default function SupervisorDocumentsPage() {
                 <TableBody>
                   {visible.map((doc) => {
                     const pushed = Boolean(doc.lastExpressPushAt);
+                    const eligible = isBulkEligible(doc);
                     return (
                       <TableRow
                         key={doc.id}
@@ -305,6 +405,20 @@ export default function SupervisorDocumentsPage() {
                             "bg-emerald-50/50",
                         )}
                       >
+                        {tab === "completed" && (
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              className="size-4"
+                              disabled={!eligible}
+                              checked={selectedSet.has(doc.id)}
+                              onChange={(e) =>
+                                toggleSelect(doc.id, e.target.checked)
+                              }
+                              aria-label={`เลือก ${doc.documentNo}`}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="max-w-0 whitespace-normal">
                           <div className="min-w-0 space-y-0.5">
                             <p

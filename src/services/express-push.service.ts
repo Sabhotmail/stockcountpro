@@ -4,6 +4,7 @@ import {
   resolveEffectiveEntries,
 } from "@/lib/entry-snapshot";
 import { todayDateKeyBangkok } from "@/lib/datetime";
+import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import { canPushToExpress } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
@@ -165,4 +166,123 @@ export async function pushDocumentToExpress(
     userIdSent,
     expressResponse,
   };
+}
+
+const BULK_PUSH_MAX = 50;
+
+export type BulkPushExpressItemResult =
+  | {
+      documentId: string;
+      status: "pushed";
+      locationCode: string;
+      countDate: string;
+      lineCount: number;
+      userIdSent: string;
+      expressResponse: unknown;
+    }
+  | {
+      documentId: string;
+      status: "skipped";
+      reason: "already_pushed" | "not_completed" | "access_denied" | "not_found";
+      error?: string;
+    }
+  | {
+      documentId: string;
+      status: "failed";
+      error: string;
+    };
+
+export type BulkPushExpressResult =
+  | {
+      summary: {
+        requested: number;
+        pushed: number;
+        skipped: number;
+        failed: number;
+      };
+      results: BulkPushExpressItemResult[];
+    }
+  | { error: string; status: 400 | 403 };
+
+export async function pushDocumentsToExpressBulk(
+  session: MockSession,
+  documentIds: string[],
+): Promise<BulkPushExpressResult> {
+  if (!canPushToExpress(session.role)) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const uniqueIds = [...new Set(documentIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { error: "กรุณาเลือกอย่างน้อย 1 เอกสาร", status: 400 };
+  }
+  if (uniqueIds.length > BULK_PUSH_MAX) {
+    return {
+      error: `ส่งทีละได้ไม่เกิน ${BULK_PUSH_MAX} เอกสาร`,
+      status: 400,
+    };
+  }
+
+  const alreadyPushed = await getLastSuccessfulExpressPushes(uniqueIds);
+  const results: BulkPushExpressItemResult[] = [];
+
+  for (const documentId of uniqueIds) {
+    if (alreadyPushed.has(documentId)) {
+      results.push({
+        documentId,
+        status: "skipped",
+        reason: "already_pushed",
+      });
+      continue;
+    }
+
+    const access = await getDocumentForSession(session, documentId);
+    if (!access.ok) {
+      results.push({
+        documentId,
+        status: "skipped",
+        reason: access.status === 404 ? "not_found" : "access_denied",
+        error: access.error,
+      });
+      continue;
+    }
+
+    if (access.document.status !== DocumentStatus.COMPLETED) {
+      results.push({
+        documentId,
+        status: "skipped",
+        reason: "not_completed",
+      });
+      continue;
+    }
+
+    const pushResult = await pushDocumentToExpress(session, documentId);
+    if ("error" in pushResult) {
+      results.push({
+        documentId,
+        status: "failed",
+        error: pushResult.error,
+      });
+      continue;
+    }
+
+    results.push({
+      documentId,
+      status: "pushed",
+      locationCode: pushResult.locationCode,
+      countDate: pushResult.countDate,
+      lineCount: pushResult.lineCount,
+      userIdSent: pushResult.userIdSent,
+      expressResponse: pushResult.expressResponse,
+    });
+  }
+
+  const summary = {
+    requested: uniqueIds.length,
+    pushed: results.filter((r) => r.status === "pushed").length,
+    skipped: results.filter((r) => r.status === "skipped").length,
+    failed: results.filter((r) => r.status === "failed").length,
+  };
+
+  return { summary, results };
 }

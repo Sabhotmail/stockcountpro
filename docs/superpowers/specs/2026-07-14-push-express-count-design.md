@@ -35,6 +35,10 @@ Body: { "details": [ { LocationCode, ProductCode, CountDate, CaseQty, PieceQty, 
 
 ## Out of scope (MVP)
 
-- Auto-push on Approve
-- Bulk push of multiple documents
+- Auto-push on Approve always (without checkbox)
+- Bulk push of documents already pushed successfully
 - Background job queue
+
+## Related
+
+- Optional approve checkbox + bulk UI: see `2026-07-14-bulk-and-auto-push-express-design.md`

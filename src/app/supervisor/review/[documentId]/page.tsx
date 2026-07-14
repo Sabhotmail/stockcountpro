@@ -16,6 +16,14 @@ import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { DocumentStatus, type ReviewDetail } from "@/types/count";
 
@@ -30,6 +38,8 @@ export default function SupervisorReviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showRecountModal, setShowRecountModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [pushToExpress, setPushToExpress] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,26 +76,47 @@ export default function SupervisorReviewPage() {
     };
   }, [documentId, router]);
 
-  async function handleApprove() {
+  async function confirmApprove() {
     if (!review) return;
-    if (!confirm("ยืนยันอนุมัติและปิดเอกสารนี้?")) return;
 
+    setApproveOpen(false);
     setActionLoading(true);
     setError(null);
     try {
       const res = await fetch(
         `/api/supervisor/count-documents/${documentId}/approve`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pushToExpress }),
+        },
       );
+      const data = (await res.json()) as {
+        error?: string;
+        expressPush?: { ok: boolean; error?: string; lineCount?: number };
+      };
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error ?? "Approve failed");
       }
-      router.push(`/print/documents/${documentId}`);
+
+      const params = new URLSearchParams();
+      if (pushToExpress && data.expressPush?.ok === false) {
+        params.set(
+          "expressPushError",
+          data.expressPush.error ?? "ส่ง Express ไม่สำเร็จ",
+        );
+      } else if (pushToExpress && data.expressPush?.ok) {
+        params.set("expressPushOk", "1");
+      }
+      const qs = params.toString();
+      router.push(
+        `/supervisor/documents${qs ? `?${qs}` : ""}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Approve failed");
     } finally {
       setActionLoading(false);
+      setPushToExpress(false);
     }
   }
 
@@ -203,7 +234,10 @@ export default function SupervisorReviewPage() {
             type="button"
             size="sm"
             className="bg-green-600 hover:bg-green-700"
-            onClick={handleApprove}
+            onClick={() => {
+              setPushToExpress(false);
+              setApproveOpen(true);
+            }}
             disabled={!canApprove || actionLoading}
           >
             {actionLoading ? "กำลังดำเนินการ..." : "อนุมัติและปิดเอกสาร"}
@@ -222,6 +256,56 @@ export default function SupervisorReviewPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <Dialog
+        open={approveOpen}
+        onOpenChange={(open) => {
+          if (!actionLoading) setApproveOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>อนุมัติและปิดเอกสาร</DialogTitle>
+            <DialogDescription>
+              เอกสารจะเปลี่ยนเป็นสถานะเสร็จสิ้น และพิมพ์ได้ทันที
+            </DialogDescription>
+          </DialogHeader>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4"
+              checked={pushToExpress}
+              onChange={(e) => setPushToExpress(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">ส่ง Express ด้วย</span>
+              <span className="mt-0.5 block text-muted-foreground">
+                ถ้าส่งไม่สำเร็จ เอกสารยังอนุมัติได้ — ส่งมือทีหลังได้จากแท็บเสร็จสิ้น
+              </span>
+            </span>
+          </label>
+
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={actionLoading}
+              onClick={() => setApproveOpen(false)}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              className="bg-green-600 hover:bg-green-700"
+              disabled={actionLoading}
+              onClick={() => void confirmApprove()}
+            >
+              {actionLoading ? "กำลังดำเนินการ..." : "ยืนยันอนุมัติ"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {showAuditLog && (
         <Card className="mb-6">

@@ -3,7 +3,7 @@ import { approveDocument } from "@/services/review.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ documentId: string }> },
 ) {
   const session = await getServerSession();
@@ -12,7 +12,16 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  const result = await approveDocument(session, documentId);
+
+  let pushToExpress = false;
+  try {
+    const body = (await request.json()) as { pushToExpress?: unknown };
+    pushToExpress = body.pushToExpress === true;
+  } catch {
+    // empty / non-JSON body → approve only
+  }
+
+  const result = await approveDocument(session, documentId, { pushToExpress });
 
   if ("error" in result) {
     const status =
@@ -24,5 +33,5 @@ export async function POST(
     return NextResponse.json({ error: result.error }, { status });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json(result);
 }

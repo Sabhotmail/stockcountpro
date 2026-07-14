@@ -31,6 +31,7 @@ import {
   logRequestRecount,
 } from "@/services/audit-log.service";
 import { countCountedLines } from "@/services/count-document.service";
+import { pushDocumentToExpress } from "@/services/express-push.service";
 import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
@@ -228,7 +229,23 @@ export async function getReviewDetail(
 export async function approveDocument(
   session: MockSession,
   documentId: string,
-): Promise<{ success: true } | { error: string }> {
+  options: { pushToExpress?: boolean } = {},
+): Promise<
+  | {
+      success: true;
+      expressPush?:
+        | {
+            ok: true;
+            locationCode: string;
+            countDate: string;
+            lineCount: number;
+            userIdSent: string;
+            expressResponse: unknown;
+          }
+        | { ok: false; error: string };
+    }
+  | { error: string }
+> {
   if (!canSupervise(session.role)) {
     return { error: "Access denied" };
   }
@@ -277,7 +294,29 @@ export async function approveDocument(
     documentId,
   );
 
-  return { success: true };
+  if (!options.pushToExpress) {
+    return { success: true };
+  }
+
+  const pushResult = await pushDocumentToExpress(session, documentId);
+  if ("error" in pushResult) {
+    return {
+      success: true,
+      expressPush: { ok: false, error: pushResult.error },
+    };
+  }
+
+  return {
+    success: true,
+    expressPush: {
+      ok: true,
+      locationCode: pushResult.locationCode,
+      countDate: pushResult.countDate,
+      lineCount: pushResult.lineCount,
+      userIdSent: pushResult.userIdSent,
+      expressResponse: pushResult.expressResponse,
+    },
+  };
 }
 
 export async function requestRecount(

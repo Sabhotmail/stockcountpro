@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { BulkPushExpressToolbar } from "@/components/BulkPushExpressToolbar";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
@@ -57,6 +58,12 @@ function locationLabel(doc: CountDocumentListItem) {
   return `${code} · ${name}${hub}`;
 }
 
+function isBulkEligible(doc: CountDocumentListItem) {
+  return (
+    doc.status === DocumentStatus.COMPLETED && !doc.lastExpressPushAt
+  );
+}
+
 export default function AdminDocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<CountDocumentListItem[]>([]);
@@ -67,6 +74,18 @@ export default function AdminDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pushNotice, setPushNotice] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const eligibleDocs = useMemo(
+    () => documents.filter(isBulkEligible),
+    [documents],
+  );
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const docLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const doc of documents) map[doc.id] = doc.documentNo;
+    return map;
+  }, [documents]);
 
   const loadDocuments = useCallback(
     async (filters: { q: string; documentDate: string; status: string }) => {
@@ -93,6 +112,7 @@ export default function AdminDocumentsPage() {
         if (!res.ok) throw new Error("โหลดรายการเอกสารไม่สำเร็จ");
         const data = (await res.json()) as { documents: CountDocumentListItem[] };
         setDocuments(data.documents);
+        setSelectedIds([]);
         setApplied(filters);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Load failed");
@@ -116,6 +136,28 @@ export default function AdminDocumentsPage() {
           : doc,
       ),
     );
+    setSelectedIds((prev) => prev.filter((id) => id !== documentId));
+  }
+
+  function handleBulkComplete(pushedIds: string[]) {
+    if (pushedIds.length === 0) return;
+    const now = new Date().toISOString();
+    setPushNotice(`ส่ง Express แบบชุดสำเร็จ ${pushedIds.length} เอกสาร`);
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        pushedIds.includes(doc.id)
+          ? { ...doc, lastExpressPushAt: now }
+          : doc,
+      ),
+    );
+    setSelectedIds((prev) => prev.filter((id) => !pushedIds.includes(id)));
+  }
+
+  function toggleSelect(documentId: string, next: boolean) {
+    setSelectedIds((prev) => {
+      if (next) return prev.includes(documentId) ? prev : [...prev, documentId];
+      return prev.filter((id) => id !== documentId);
+    });
   }
 
   async function handleLogout() {
@@ -244,10 +286,22 @@ export default function AdminDocumentsPage() {
             พบ {documents.length} เอกสาร
           </p>
 
+          <BulkPushExpressToolbar
+            selectedIds={selectedIds}
+            eligibleCount={eligibleDocs.length}
+            onSelectAllEligible={() =>
+              setSelectedIds(eligibleDocs.map((d) => d.id))
+            }
+            onClearSelection={() => setSelectedIds([])}
+            onComplete={handleBulkComplete}
+            labels={docLabels}
+          />
+
           <div className="flex flex-col gap-3 md:hidden">
             {documents.map((doc) => {
               const pushed = Boolean(doc.lastExpressPushAt);
               const completed = doc.status === DocumentStatus.COMPLETED;
+              const eligible = isBulkEligible(doc);
               return (
                 <Card
                   key={doc.id}
@@ -255,9 +309,22 @@ export default function AdminDocumentsPage() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-3">
-                      <CardTitle className="text-base leading-snug break-words">
-                        {doc.documentNo}
-                      </CardTitle>
+                      <div className="flex min-w-0 items-start gap-2">
+                        {eligible && (
+                          <input
+                            type="checkbox"
+                            className="mt-1 size-4 shrink-0"
+                            checked={selectedSet.has(doc.id)}
+                            onChange={(e) =>
+                              toggleSelect(doc.id, e.target.checked)
+                            }
+                            aria-label={`เลือก ${doc.documentNo}`}
+                          />
+                        )}
+                        <CardTitle className="text-base leading-snug break-words">
+                          {doc.documentNo}
+                        </CardTitle>
+                      </div>
                       <DocumentStatusBadge status={doc.status} compact />
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -312,18 +379,22 @@ export default function AdminDocumentsPage() {
               <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[28%]">เอกสาร</TableHead>
+                    <TableHead className="w-[5%]">
+                      <span className="sr-only">เลือก</span>
+                    </TableHead>
+                    <TableHead className="w-[25%]">เอกสาร</TableHead>
                     <TableHead className="w-[10%]">วันที่</TableHead>
                     <TableHead className="w-[12%]">สถานะ</TableHead>
                     <TableHead className="w-[12%]">Express</TableHead>
                     <TableHead className="w-[8%]">รายการ</TableHead>
-                    <TableHead className="w-[30%] text-right">การทำงาน</TableHead>
+                    <TableHead className="w-[28%] text-right">การทำงาน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {documents.map((doc) => {
                     const pushed = Boolean(doc.lastExpressPushAt);
                     const completed = doc.status === DocumentStatus.COMPLETED;
+                    const eligible = isBulkEligible(doc);
                     return (
                       <TableRow
                         key={doc.id}
@@ -333,6 +404,18 @@ export default function AdminDocumentsPage() {
                         )}
                         onClick={() => router.push(`/admin/documents/${doc.id}`)}
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            disabled={!eligible}
+                            checked={selectedSet.has(doc.id)}
+                            onChange={(e) =>
+                              toggleSelect(doc.id, e.target.checked)
+                            }
+                            aria-label={`เลือก ${doc.documentNo}`}
+                          />
+                        </TableCell>
                         <TableCell className="max-w-0 whitespace-normal">
                           <div className="min-w-0 space-y-0.5">
                             <p
