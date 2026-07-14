@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
-import { toIsoInstant } from "@/lib/datetime";
+import { toIsoInstant, dateKeyToDmy } from "@/lib/datetime";
 import { canAccessAdmin, canSupervise, isCountDocumentEditable } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
@@ -156,6 +156,7 @@ export default function TabletCountPage() {
   const [toasts, setToasts] = useState<CountToastItem[]>([]);
   const [pendingQtyConfirm, setPendingQtyConfirm] =
     useState<PendingQtyConfirm | null>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
@@ -773,81 +774,99 @@ export default function TabletCountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40 pb-24">
-      <header className="sticky top-0 z-10 border-b bg-background px-6 py-4 shadow-sm">
+    <div className="min-h-screen bg-muted/40 pb-28">
+      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-sm sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/tablet/documents"
-              className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
+              className={cn(
+                buttonVariants({ variant: "link" }),
+                "h-auto min-h-11 px-0 py-2",
+              )}
             >
-              ← กลับรายการ Tablet
+              ← กลับรายการ
             </Link>
             {role && canAccessAdmin(role) && (
               <Link
                 href="/admin/documents"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "min-h-9",
+                )}
               >
-                กลับ Admin
+                Admin
               </Link>
             )}
             {role && canSupervise(role) && (
               <Link
                 href="/supervisor/documents"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "min-h-9",
+                )}
               >
-                ไปหน้า Approve
+                Approve
               </Link>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">
+
+          <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
                 {document.documentNo}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {document.branchCode}
                 {document.branchExpressLocationPrefix
-                  ? ` (Express prefix ${document.branchExpressLocationPrefix})`
+                  ? ` · prefix ${document.branchExpressLocationPrefix}`
                   : ""}{" "}
-                · วันที่ {document.documentDate} · เวอร์ชัน{" "}
+                · {dateKeyToDmy(document.documentDate) || document.documentDate} · v
                 {document.currentVersionNo} · นับแล้ว {countedSummary.counted}/
-                {countedSummary.total} รายการ
+                {countedSummary.total}
               </p>
             </div>
-            <Link
-              href={`/tablet/count/${documentId}/summary`}
-              className={cn(
-                buttonVariants(),
-                "bg-green-600 hover:bg-green-700",
-                !isEditable && "pointer-events-none opacity-40",
-              )}
-            >
-              สรุปและส่งให้หัวหน้างาน
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              {!noteOpen && <SyncStatusBadge status={noteSyncStatus} />}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-9"
+                onClick={() => setNoteOpen((open) => !open)}
+              >
+                {noteOpen
+                  ? "ซ่อนหมายเหตุ"
+                  : documentNote.trim()
+                    ? "หมายเหตุ · มีข้อความ"
+                    : "หมายเหตุ"}
+              </Button>
+            </div>
           </div>
 
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="document-note">หมายเหตุเอกสาร</Label>
-              <SyncStatusBadge status={noteSyncStatus} />
+          {noteOpen && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="document-note">หมายเหตุเอกสาร</Label>
+                <SyncStatusBadge status={noteSyncStatus} />
+              </div>
+              <textarea
+                id="document-note"
+                rows={2}
+                disabled={!isEditable}
+                value={documentNote}
+                onChange={(e) => updateDocumentNote(e.target.value)}
+                placeholder="เพิ่มหมายเหตุสำหรับเอกสารนี้ (ถ้ามี)"
+                className={cn(
+                  "w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
+                )}
+              />
             </div>
-            <textarea
-              id="document-note"
-              rows={2}
-              disabled={!isEditable}
-              value={documentNote}
-              onChange={(e) => updateDocumentNote(e.target.value)}
-              placeholder="เพิ่มหมายเหตุสำหรับเอกสารนี้ (ถ้ามี)"
-              className={cn(
-                "w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
-              )}
-            />
-          </div>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-4">
+      <main className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
@@ -932,6 +951,24 @@ export default function TabletCountPage() {
           )}
         </div>
       </main>
+
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+        <div className="mx-auto max-w-4xl">
+          <Link
+            href={`/tablet/count/${documentId}/summary`}
+            aria-disabled={!isEditable}
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "min-h-11 w-full bg-green-600 hover:bg-green-700",
+              !isEditable && "pointer-events-none opacity-40",
+            )}
+          >
+            สรุปและส่งให้หัวหน้างาน ({countedSummary.counted}/
+            {countedSummary.total})
+          </Link>
+        </div>
+      </footer>
+
       <CountQtyConfirmDialog
         open={pendingQtyConfirm !== null}
         productCode={pendingQtyConfirm?.line.productCode ?? ""}
