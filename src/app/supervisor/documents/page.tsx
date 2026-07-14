@@ -482,6 +482,18 @@ export default function SupervisorDocumentsPage() {
                           {tab === "completed" ? (
                             <div className="inline-flex flex-nowrap items-center justify-end gap-1.5">
                               <Link
+                                href={`/supervisor/review/${doc.id}`}
+                                className={cn(
+                                  buttonVariants({
+                                    variant: "outline",
+                                    size: "sm",
+                                  }),
+                                  "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
+                                )}
+                              >
+                                ขอนับใหม่
+                              </Link>
+                              <Link
                                 href={`/print/documents/${doc.id}`}
                                 className={buttonVariants({ size: "sm" })}
                                 target="_blank"
