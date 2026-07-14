@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 interface RecountRequestModalProps {
   open: boolean;
   lineCount: number;
+  /** Document was already completed (e.g. after Express push). */
+  completedDocument?: boolean;
   onClose: () => void;
   onSubmit: (reason: string) => Promise<void>;
 }
@@ -23,6 +25,7 @@ interface RecountRequestModalProps {
 export function RecountRequestModal({
   open,
   lineCount,
+  completedDocument = false,
   onClose,
   onSubmit,
 }: RecountRequestModalProps) {
@@ -64,6 +67,12 @@ export function RecountRequestModal({
           <DialogDescription>
             จะเปิดให้นับใหม่ทั้ง {lineCount} รายการ โดยใช้ค่าที่ส่งมาในรอบก่อนเป็นจุดเริ่มต้น
             (แก้ไขได้)
+            {completedDocument ? (
+              <>
+                {" "}
+                — ไม่ต้อง Sync จาก Express ใหม่
+              </>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
 

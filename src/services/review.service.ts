@@ -12,10 +12,12 @@ import {
   resolveEffectiveEntries,
   snapshotDocumentEntries,
   snapshotFinalCountEntries,
+  getFinalCountEntries,
 } from "@/lib/entry-snapshot";
 import {
   canAccessDocument,
   canSupervise,
+  canRequestRecount,
   filterDocumentsForSupervisor,
   filterDocumentsForSupervisorPrint,
 } from "@/lib/permissions";
@@ -335,11 +337,11 @@ export async function requestRecount(
   if (!access.ok) return { error: access.error };
 
   const doc = access.document;
-  if (
-    doc.status !== DocumentStatus.SUBMITTED &&
-    doc.status !== DocumentStatus.REVIEWING
-  ) {
-    return { error: "Document cannot be sent for recount" };
+  if (!canRequestRecount(doc.status)) {
+    return {
+      error:
+        "ขอนับใหม่ได้เฉพาะเอกสารที่ส่งตรวจ / กำลังตรวจ / หรือปิดแล้ว (เช่น หลังส่ง Express พบผลต่าง)",
+    };
   }
 
   const reason = payload.reason?.trim() ?? "";
@@ -370,6 +372,15 @@ export async function requestRecount(
   await snapshotDocumentEntries(documentId, baseVersion.id);
 
   const baseEntries = await resolveEffectiveEntries(documentId, baseVersion.id);
+  const finalEntries =
+    baseEntries.length === 0 && doc.status === DocumentStatus.COMPLETED
+      ? await getFinalCountEntries(documentId)
+      : [];
+  const seedEntries =
+    baseEntries.length > 0 ? baseEntries : finalEntries;
+  if (seedEntries.length === 0) {
+    return { error: "ไม่พบข้อมูลการนับจากรอบก่อน — ไม่สามารถขอนับใหม่ได้" };
+  }
   const baseLineIds = new Set(lines.map((line) => line.lineId));
 
   await prisma.$transaction(async (tx) => {
@@ -391,7 +402,7 @@ export async function requestRecount(
     });
 
     // Seed new draft with previously submitted quantities for every line.
-    for (const entry of baseEntries.filter((item) => baseLineIds.has(item.lineId))) {
+    for (const entry of seedEntries.filter((item) => baseLineIds.has(item.lineId))) {
       await tx.countEntry.upsert({
         where: { lineId: entry.lineId },
         create: {
@@ -418,7 +429,7 @@ export async function requestRecount(
       });
     }
 
-    const countedLines = baseEntries.filter(
+    const countedLines = seedEntries.filter(
       (entry) =>
         baseLineIds.has(entry.lineId) &&
         isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece),

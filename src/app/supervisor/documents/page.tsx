@@ -133,6 +133,18 @@ function DocumentCard({
         {mode === "completed" ? (
           <>
             <Link
+              href={`/supervisor/review/${doc.id}`}
+              className={cn(
+                buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                }),
+                "flex-1 border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
+              )}
+            >
+              ขอนับใหม่
+            </Link>
+            <Link
               href={`/print/documents/${doc.id}`}
               className={cn(buttonVariants({ size: "sm" }), "flex-1")}
               target="_blank"

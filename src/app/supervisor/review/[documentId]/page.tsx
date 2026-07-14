@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { canRequestRecount } from "@/lib/permissions";
 import { DocumentStatus, type ReviewDetail } from "@/types/count";
 
 export default function SupervisorReviewPage() {
@@ -171,10 +172,10 @@ export default function SupervisorReviewPage() {
 
   const { document, reviewLines, auditLogs } = review;
   const canApprove = document.status === DocumentStatus.SUBMITTED;
-  const canRecount =
-    document.status === DocumentStatus.SUBMITTED ||
-    document.status === DocumentStatus.REVIEWING;
+  const canRecount = canRequestRecount(document.status);
   const canPrint = document.status === DocumentStatus.COMPLETED;
+  const isPostExpressRecount =
+    document.status === DocumentStatus.COMPLETED;
 
   const subtitle = `${document.branchCode} ${document.branchName} · เวอร์ชัน ${document.currentVersionNo} · นับแล้ว ${document.countedLines}/${document.totalLines}`;
 
@@ -248,6 +249,15 @@ export default function SupervisorReviewPage() {
       {document.note && (
         <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-900">
           <AlertDescription>หมายเหตุเอกสาร: {document.note}</AlertDescription>
+        </Alert>
+      )}
+
+      {isPostExpressRecount && (
+        <Alert className="mb-4 border-orange-200 bg-orange-50 text-orange-900">
+          <AlertDescription>
+            เอกสารปิดแล้ว — ถ้าตรวจใน Express แล้วพบผลต่าง กด「ขอนับใหม่」ได้เลย
+            ไม่ต้อง Sync จาก Express ใหม่ ระบบใช้รายการเดิมและค่าที่ส่งไปรอบก่อน
+          </AlertDescription>
         </Alert>
       )}
 
@@ -339,6 +349,7 @@ export default function SupervisorReviewPage() {
       <RecountRequestModal
         open={showRecountModal}
         lineCount={reviewLines.length}
+        completedDocument={isPostExpressRecount}
         onClose={() => setShowRecountModal(false)}
         onSubmit={handleRequestRecount}
       />

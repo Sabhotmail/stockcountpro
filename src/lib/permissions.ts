@@ -92,6 +92,15 @@ export function filterDocumentsForSupervisorPrint(
   return status === DocumentStatus.COMPLETED;
 }
 
+/** Supervisor may request full-document recount (incl. after Express push). */
+export function canRequestRecount(status: DocumentStatus): boolean {
+  return (
+    status === DocumentStatus.SUBMITTED ||
+    status === DocumentStatus.REVIEWING ||
+    status === DocumentStatus.COMPLETED
+  );
+}
+
 export function canSupervise(role: UserRole): boolean {
   return (
     role === UserRole.ADMIN ||
