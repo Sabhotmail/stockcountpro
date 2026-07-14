@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { PageShell } from "@/components/PageShell";
 import { RecountRequestModal } from "@/components/RecountRequestModal";
 import {
@@ -116,9 +117,7 @@ export default function SupervisorReviewPage() {
   if (loading) {
     return (
       <PageShell title="กำลังโหลด..." subtitle="ข้อมูลตรวจสอบ">
-        <p className="py-12 text-center text-muted-foreground">
-          กำลังโหลดข้อมูลตรวจสอบ...
-        </p>
+        <DetailSkeleton />
       </PageShell>
     );
   }

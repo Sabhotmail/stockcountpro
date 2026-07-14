@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { FormCardsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -251,7 +252,7 @@ export default function AdminHubsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">กำลังโหลด...</p>
+            <FormCardsSkeleton cards={2} />
           ) : (
             <Table>
               <TableHeader>

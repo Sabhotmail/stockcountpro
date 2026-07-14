@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
 import { VersionCompareTable } from "@/components/VersionCompareTable";
@@ -162,7 +163,7 @@ export default function AdminDocumentHistoryPage() {
   if (loading) {
     return (
       <PageShell title="ประวัติเอกสาร" subtitle="กำลังโหลด..." nav={<AdminNav />}>
-        <p className="py-12 text-center text-muted-foreground">กำลังโหลด...</p>
+        <DetailSkeleton />
       </PageShell>
     );
   }
@@ -280,11 +281,7 @@ export default function AdminDocumentHistoryPage() {
         </TabsContent>
 
         <TabsContent value="versions" className="space-y-4">
-          {versionsLoading && (
-            <p className="py-8 text-center text-muted-foreground">
-              กำลังโหลดเวอร์ชัน...
-            </p>
-          )}
+          {versionsLoading && <DetailSkeleton />}
 
           {!versionsLoading && (
             <>

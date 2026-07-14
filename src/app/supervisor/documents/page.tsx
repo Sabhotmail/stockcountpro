@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -194,9 +195,7 @@ export default function SupervisorDocumentsPage() {
         </TabsList>
       </Tabs>
 
-      {loading && (
-        <p className="py-12 text-center text-muted-foreground">กำลังโหลด...</p>
-      )}
+      {loading && <TableRowsSkeleton rows={8} />}
 
       {!loading && visible.length === 0 && (
         <p className="py-12 text-center text-muted-foreground">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -181,9 +182,7 @@ export default function AdminDocumentsPage() {
         </CardContent>
       </Card>
 
-      {loading && (
-        <p className="py-12 text-center text-muted-foreground">กำลังโหลด...</p>
-      )}
+      {loading && <TableRowsSkeleton rows={8} />}
 
       {!loading && documents.length === 0 && (
         <p className="py-12 text-center text-muted-foreground">

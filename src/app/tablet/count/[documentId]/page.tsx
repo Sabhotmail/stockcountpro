@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountQtyConfirmDialog } from "@/components/CountQtyConfirmDialog";
 import { CountToast, type CountToastItem } from "@/components/CountToast";
+import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -754,11 +755,7 @@ export default function TabletCountPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
-        <p className="text-muted-foreground">กำลังโหลดเอกสาร...</p>
-      </div>
-    );
+    return <CountDocumentSkeleton />;
   }
 
   if (!document) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
@@ -103,7 +104,7 @@ export default function SupervisorVersionsPage() {
   if (loading) {
     return (
       <PageShell title="เปรียบเทียบเวอร์ชัน" subtitle="กำลังโหลด...">
-        <p className="py-12 text-center text-muted-foreground">กำลังโหลดเวอร์ชัน...</p>
+        <DetailSkeleton />
       </PageShell>
     );
   }

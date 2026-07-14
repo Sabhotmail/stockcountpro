@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ListPanelSkeleton } from "@/components/loading/PageSkeletons";
 import {
   Card,
   CardContent,
@@ -250,13 +251,13 @@ export function ExpressSyncPanel({
         )}
 
         <div className="rounded-lg border">
-          {locations.length === 0 ? (
+          {loadingLocations ? (
+            <ListPanelSkeleton rows={6} className="rounded-none border-0" />
+          ) : locations.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {loadingLocations
-                ? "กำลังโหลดคลัง..."
-                : error
-                  ? "ยังไม่มีรายการคลังให้เลือก"
-                  : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
+              {error
+                ? "ยังไม่มีรายการคลังให้เลือก"
+                : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
             </p>
           ) : (
             <div className="divide-y">

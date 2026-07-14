@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { FormCardsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -283,7 +284,7 @@ export default function AdminBranchesPage() {
       )}
 
       {loading ? (
-        <p className="text-muted-foreground">กำลังโหลด...</p>
+        <FormCardsSkeleton cards={2} />
       ) : (
         <>
           <div className="grid gap-4 md:hidden">

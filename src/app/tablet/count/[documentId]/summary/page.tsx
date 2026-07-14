@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,11 +84,7 @@ export default function TabletSummaryPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
-        <p className="text-muted-foreground">กำลังโหลดสรุป...</p>
-      </div>
-    );
+    return <CountDocumentSkeleton />;
   }
 
   if (!summary) {

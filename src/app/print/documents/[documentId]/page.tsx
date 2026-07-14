@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { PrintDocumentSkeleton } from "@/components/loading/PageSkeletons";
 import { cn } from "@/lib/utils";
 import {
   type PrintDocumentLine,
@@ -239,11 +240,7 @@ export default function PrintDocumentPage() {
   }, [doc]);
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">
-        กำลังโหลดเอกสารพิมพ์...
-      </div>
-    );
+    return <PrintDocumentSkeleton />;
   }
 
   if (error || !doc) {
@@ -391,8 +388,8 @@ export default function PrintDocumentPage() {
       </div>
 
       {!pages ? (
-        <div className="p-8 text-center text-muted-foreground">
-          กำลังจัดหน้าเอกสาร...
+        <div className="p-4">
+          <PrintDocumentSkeleton />
         </div>
       ) : (
         <div className="mx-auto max-w-[210mm] py-4 print:max-w-none print:py-0">

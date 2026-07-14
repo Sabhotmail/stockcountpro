@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { ExpressSyncPanel } from "@/components/ExpressSyncPanel";
+import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -187,9 +188,7 @@ export default function TabletDocumentsPage() {
         </TabsList>
       </Tabs>
 
-      {loading && (
-        <p className="py-12 text-center text-muted-foreground">กำลังโหลด...</p>
-      )}
+      {loading && <TableRowsSkeleton rows={6} />}
 
       {error && (
         <Alert variant="destructive" className="mb-4">

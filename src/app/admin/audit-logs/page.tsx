@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
+import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -180,7 +181,7 @@ export default function AdminAuditLogsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!loading && <AuditLogPanel logs={logs} />}
+          {loading ? <DetailSkeleton /> : <AuditLogPanel logs={logs} />}
         </CardContent>
       </Card>
     </PageShell>

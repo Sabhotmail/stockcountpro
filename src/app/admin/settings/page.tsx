@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { FormCardsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -127,7 +128,7 @@ export default function AdminSettingsPage() {
       )}
 
       {loading ? (
-        <p className="text-slate-500">กำลังโหลด...</p>
+        <FormCardsSkeleton cards={1} />
       ) : (
         <Card className="max-w-xl">
           <CardHeader>
