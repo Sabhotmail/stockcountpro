@@ -143,3 +143,8 @@ export function canSyncExpress(role: UserRole): boolean {
 export function canDeleteImportedDocument(role: UserRole): boolean {
   return canSyncExpress(role);
 }
+
+/** Push completed counts back to Express (manual button). */
+export function canPushToExpress(role: UserRole): boolean {
+  return canSupervise(role);
+}

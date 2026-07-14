@@ -22,6 +22,7 @@ const actionLabels: Record<AuditAction, string> = {
   [AuditAction.COMPLETE_DOCUMENT]: "ปิดเอกสาร",
   [AuditAction.IMPORT_FROM_EXPRESS]: "Sync จาก Express",
   [AuditAction.DELETE_DOCUMENT]: "ลบเอกสาร",
+  [AuditAction.PUSH_TO_EXPRESS]: "ส่งกลับ Express",
 };
 
 export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {

@@ -29,6 +29,7 @@ Restart `npm run dev` after changing env.
 | 1 | GET | `/api/stockcount/locations` | Master warehouse list (ISTAB) |
 | 2 | GET | `/api/stockcount/locations/countdate/{yyyy-MM-dd}` | Warehouses with stock-count data for a date (`locationData[]`) |
 | 3 | GET | `/api/stockcount/countdate/{yyyy-MM-dd}/locations/{codes}` | Stock-count lines for date + comma-separated location codes |
+| 4 | PUT | `/api/stockcount/countdate/{yyyy-MM-dd}/locationcode/{code}` | Push counted results back for one location |
 | — | GET | `/api/stockcount/countdate/{yyyy-MM-dd}` | Legacy full-day fetch (still available; sync no longer uses it) |
 
 ## Admin proxy endpoints
@@ -90,6 +91,25 @@ Users see **all** Express locations for the date; only locations mapped to branc
 5. Creates/updates documents with status `IMPORTED` only.
 6. Skips documents that already started counting (`COUNTING` or later).
 7. Writes audit log action `IMPORT_FROM_EXPRESS` (includes selected locations).
+
+## Push results back to Express
+
+After a document is `COMPLETED`, Supervisor / Branch Manager / HQ / Admin can click **ส่งกลับ Express**.
+
+```text
+POST /api/count-documents/{documentId}/push-express
+```
+
+Server behavior:
+
+1. Requires document access + `COMPLETED`.
+2. Builds Express `details[]` from **counted lines only**.
+3. Calls Express API #4:
+   `PUT /api/stockcount/countdate/{date}/locationcode/{locationCode}`
+4. `UserID` = current user's username (max 8 chars).
+5. `CountFlag` = `"3"`, `ChangedDate` = today (Asia/Bangkok).
+6. Writes audit `PUSH_TO_EXPRESS` (success or failure detail).
+7. Re-send is allowed.
 
 ## Field mapping (sync)
 

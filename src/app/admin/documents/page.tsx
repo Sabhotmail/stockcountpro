@@ -7,6 +7,7 @@ import { AdminNav } from "@/components/AdminNav";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
+import { PushExpressButton } from "@/components/PushExpressButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,14 +233,17 @@ export default function AdminDocumentsPage() {
                     ดูประวัติ
                   </Link>
                   {doc.status === DocumentStatus.COMPLETED && (
-                    <Link
-                      href={`/print/documents/${doc.id}`}
-                      className={cn(buttonVariants({ variant: "outline" }), "w-full")}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      พิมพ์เอกสาร
-                    </Link>
+                    <>
+                      <Link
+                        href={`/print/documents/${doc.id}`}
+                        className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        พิมพ์เอกสาร
+                      </Link>
+                      <PushExpressButton documentId={doc.id} fullWidth />
+                    </>
                   )}
                 </CardFooter>
               </Card>
@@ -291,18 +295,21 @@ export default function AdminDocumentsPage() {
                             ดูประวัติ
                           </Link>
                           {doc.status === DocumentStatus.COMPLETED && (
-                            <Link
-                              href={`/print/documents/${doc.id}`}
-                              className={buttonVariants({
-                                size: "sm",
-                                variant: "outline",
-                              })}
-                              onClick={(e) => e.stopPropagation()}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              พิมพ์
-                            </Link>
+                            <>
+                              <Link
+                                href={`/print/documents/${doc.id}`}
+                                className={buttonVariants({
+                                  size: "sm",
+                                  variant: "outline",
+                                })}
+                                onClick={(e) => e.stopPropagation()}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                พิมพ์
+                              </Link>
+                              <PushExpressButton documentId={doc.id} />
+                            </>
                           )}
                         </div>
                       </TableCell>

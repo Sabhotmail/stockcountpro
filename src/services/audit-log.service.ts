@@ -251,3 +251,20 @@ export async function logDeleteDocument(
     detail,
   });
 }
+
+export async function logPushToExpress(
+  userId: string,
+  userName: string,
+  branchId: string,
+  documentId: string,
+  detail: string,
+): Promise<AuditLog> {
+  return createAuditLog({
+    action: AppAuditAction.PUSH_TO_EXPRESS,
+    userId,
+    userName,
+    branchId,
+    documentId,
+    detail,
+  });
+}

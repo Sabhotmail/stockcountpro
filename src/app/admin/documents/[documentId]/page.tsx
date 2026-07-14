@@ -8,6 +8,7 @@ import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
+import { PushExpressButton } from "@/components/PushExpressButton";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
 import { VersionCompareTable } from "@/components/VersionCompareTable";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -199,14 +200,17 @@ export default function AdminDocumentHistoryPage() {
         <div className="flex flex-wrap items-center gap-2">
           <DocumentStatusBadge status={document.status} compact />
           {document.status === DocumentStatus.COMPLETED && (
-            <Link
-              href={`/print/documents/${documentId}`}
-              className={buttonVariants({ size: "sm" })}
-              target="_blank"
-              rel="noreferrer"
-            >
-              พิมพ์เอกสาร
-            </Link>
+            <>
+              <Link
+                href={`/print/documents/${documentId}`}
+                className={buttonVariants({ size: "sm" })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                พิมพ์เอกสาร
+              </Link>
+              <PushExpressButton documentId={documentId} />
+            </>
           )}
           <LogoutButton onClick={handleLogout} />
         </div>
@@ -226,15 +230,18 @@ export default function AdminDocumentHistoryPage() {
       {document.status === DocumentStatus.COMPLETED ? (
         <Alert className="mb-4 border-green-200 bg-green-50 text-green-950">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span>เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้</span>
-            <Link
-              href={`/print/documents/${documentId}`}
-              className={buttonVariants({ size: "sm" })}
-              target="_blank"
-              rel="noreferrer"
-            >
-              พิมพ์เอกสาร
-            </Link>
+            <span>เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้ หรือส่งผลกลับ Express</span>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/print/documents/${documentId}`}
+                className={buttonVariants({ size: "sm" })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                พิมพ์เอกสาร
+              </Link>
+              <PushExpressButton documentId={documentId} />
+            </div>
           </AlertDescription>
         </Alert>
       ) : (

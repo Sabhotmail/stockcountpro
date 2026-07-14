@@ -111,6 +111,60 @@ async function expressGet<T>(
   return (await res.json()) as T;
 }
 
+async function expressPutJson<T>(
+  path: string,
+  body: unknown,
+  errorLabel: string,
+): Promise<T | { error: string }> {
+  const config = getExpressConfig();
+  if ("error" in config) return { error: config.error };
+
+  const tokenResult = await getExpressToken();
+  if ("error" in tokenResult) return tokenResult;
+
+  const url = `${config.baseUrl}${path}`;
+
+  const doFetch = async (token: string) =>
+    fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+  let res = await doFetch(tokenResult.token);
+  if (res.status === 401) {
+    cachedToken = null;
+    const retryToken = await loginExpressApi();
+    if ("error" in retryToken) return retryToken;
+    res = await doFetch(retryToken.token);
+  }
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const text = await res.text();
+      detail = text ? `: ${text.slice(0, 300)}` : "";
+    } catch {
+      /* ignore body parse errors */
+    }
+    return {
+      error: `${errorLabel} failed (${res.status}) for ${path}${detail}`,
+    };
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await res.json()) as T;
+  }
+
+  return { success: true } as T;
+}
+
 function normalizeLocationList(
   data: ExpressLocationsResponse,
 ): ExpressLocationItem[] {
@@ -189,6 +243,41 @@ export async function fetchExpressCountDateByLocations(
     `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${joined}`,
     "Express countdate by locations",
   );
+}
+
+export interface ExpressPushCountDetail {
+  LocationCode: string;
+  ProductCode: string;
+  CountDate: string;
+  CaseQty: number;
+  PieceQty: number;
+  PhysicalBalance: number;
+  CountFlag: string;
+  UserID: string;
+  ChangedDate: string;
+}
+
+export async function putExpressCountByLocation(
+  countDate: string,
+  locationCode: string,
+  details: ExpressPushCountDetail[],
+): Promise<{ success: true } | { error: string }> {
+  const code = locationCode.trim().toUpperCase();
+  if (!code) return { error: "locationCode is required" };
+  if (details.length === 0) return { error: "details are required" };
+
+  const result = await expressPutJson<{ success?: boolean; message?: string }>(
+    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locationcode/${encodeURIComponent(code)}`,
+    { details },
+    "Express push countdate by location",
+  );
+
+  if ("error" in result) return result;
+  if (result.success === false) {
+    return { error: result.message ?? "Express push failed" };
+  }
+
+  return { success: true };
 }
 
 export function summarizeExpressCountDate(data: ExpressCountDateResponse) {

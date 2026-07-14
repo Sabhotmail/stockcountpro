@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
+import { PushExpressButton } from "@/components/PushExpressButton";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
@@ -86,16 +87,19 @@ function DocumentCard({
           </div>
         </dl>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col gap-2">
         {mode === "completed" ? (
-          <Link
-            href={`/print/documents/${doc.id}`}
-            className={cn(buttonVariants(), "w-full")}
-            target="_blank"
-            rel="noreferrer"
-          >
-            พิมพ์เอกสาร
-          </Link>
+          <>
+            <Link
+              href={`/print/documents/${doc.id}`}
+              className={cn(buttonVariants(), "w-full")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              พิมพ์เอกสาร
+            </Link>
+            <PushExpressButton documentId={doc.id} fullWidth />
+          </>
         ) : (
           <Link
             href={`/supervisor/review/${doc.id}`}
@@ -253,14 +257,17 @@ export default function SupervisorDocumentsPage() {
                       <TableCell>{doc.hasDocumentNote ? "มี" : "—"}</TableCell>
                       <TableCell>
                         {tab === "completed" ? (
-                          <Link
-                            href={`/print/documents/${doc.id}`}
-                            className={buttonVariants({ size: "sm" })}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            พิมพ์เอกสาร
-                          </Link>
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/print/documents/${doc.id}`}
+                              className={buttonVariants({ size: "sm" })}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              พิมพ์เอกสาร
+                            </Link>
+                            <PushExpressButton documentId={doc.id} />
+                          </div>
                         ) : (
                           <Link
                             href={`/supervisor/review/${doc.id}`}
