@@ -215,7 +215,7 @@ export function ExpressSyncPanel({
               }}
             />
             <p className="text-xs text-muted-foreground">
-              ขั้นตอน: เลือกวัน → โหลดคลัง → เลือกคลัง → Sync
+              ขั้นตอน: เลือกวัน → โหลดคลัง → เลือกคลัง → Sync ด้านล่าง
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap">
@@ -239,20 +239,6 @@ export function ExpressSyncPanel({
             >
               {allSelectableSelected ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมดที่เลือกได้"}
             </Button>
-            <Button
-              type="button"
-              size="lg"
-              className="min-h-11 w-full lg:w-auto"
-              variant={canSync ? "default" : "outline"}
-              onClick={() => void handleSync()}
-              disabled={!canSync}
-            >
-              {syncing
-                ? "กำลัง Sync..."
-                : selectedCodes.length > 0
-                  ? `2. Sync ที่เลือก (${selectedCodes.length})`
-                  : "2. Sync จาก Express"}
-            </Button>
           </div>
         </div>
 
@@ -261,16 +247,9 @@ export function ExpressSyncPanel({
             <AlertDescription className="space-y-1">
               <p className="font-medium">{error}</p>
               <p className="text-sm opacity-90">
-                ลองเปลี่ยนวันที่ตรวจนับ (รูปแบบ {countDate || "YYYY-MM-DD"})
-                แล้วกด 「โหลดคลัง」อีกครั้ง
+                ลองเปลี่ยนวันที่ตรวจนับ แล้วกด 「โหลดคลัง」อีกครั้ง
               </p>
             </AlertDescription>
-          </Alert>
-        )}
-
-        {syncMessage && (
-          <Alert className="border-green-200 bg-green-50 text-green-800">
-            <AlertDescription>{syncMessage}</AlertDescription>
           </Alert>
         )}
 
@@ -385,9 +364,32 @@ export function ExpressSyncPanel({
           selectedCodes.length === 0 &&
           !loadingLocations && (
             <p className="text-sm text-muted-foreground">
-              เลือกอย่างน้อย 1 คลังด้านบน แล้วกด Sync
+              เลือกอย่างน้อย 1 คลังด้านบน แล้วกด Sync ด้านล่าง
             </p>
           )}
+
+        {locations.length > 0 && (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            variant={canSync ? "default" : "outline"}
+            onClick={() => void handleSync()}
+            disabled={!canSync}
+          >
+            {syncing
+              ? "กำลัง Sync..."
+              : selectedCodes.length > 0
+                ? `2. Sync ที่เลือก (${selectedCodes.length})`
+                : "2. Sync จาก Express"}
+          </Button>
+        )}
+
+        {syncMessage && (
+          <Alert className="border-green-200 bg-green-50 text-green-800">
+            <AlertDescription>{syncMessage}</AlertDescription>
+          </Alert>
+        )}
 
         {syncResults && syncResults.length > 0 && (
           <div className="space-y-3">
