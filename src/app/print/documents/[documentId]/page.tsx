@@ -42,6 +42,7 @@ function packLinesByHeight(
   rowHeights: number[],
   opts: {
     firstTopH: number;
+    pageTopH: number;
     theadH: number;
     summaryH: number;
     signatureH: number;
@@ -62,7 +63,7 @@ function packLinesByHeight(
 
   const budget = (isFirst: boolean) =>
     PAGE_INNER_PX -
-    (isFirst ? opts.firstTopH : 0) -
+    (isFirst ? opts.firstTopH : opts.pageTopH) -
     opts.theadH -
     opts.footerH;
 
@@ -179,6 +180,7 @@ export default function PrintDocumentPage() {
 
     const root = measureRef.current;
     const firstTop = root.querySelector<HTMLElement>("[data-m=first-top]");
+    const pageTop = root.querySelector<HTMLElement>("[data-m=page-top]");
     const thead = root.querySelector<HTMLElement>("[data-m=thead]");
     const summary = root.querySelector<HTMLElement>("[data-m=summary]");
     const signature = root.querySelector<HTMLElement>("[data-m=signature]");
@@ -195,6 +197,9 @@ export default function PrintDocumentPage() {
       {
         firstTopH:
           (firstTop?.getBoundingClientRect().height ?? 0) *
+          ROW_HEIGHT_PRINT_FACTOR,
+        pageTopH:
+          (pageTop?.getBoundingClientRect().height ?? 0) *
           ROW_HEIGHT_PRINT_FACTOR,
         theadH:
           (thead?.getBoundingClientRect().height ?? 0) *
@@ -289,10 +294,22 @@ export default function PrintDocumentPage() {
             locationName={locationName}
             hubLabel={hubLabel}
             versionNo={doc.currentVersionNo}
+            variant="full"
           />
           <p className="mt-3 mb-1.5 text-[12px] font-semibold">
             รายการสินค้าที่ตรวจนับ
           </p>
+        </div>
+        <div data-m="page-top" className="mb-2">
+          <DocumentHeader
+            documentNo={doc.documentNo}
+            documentDate={doc.documentDate}
+            locationCode={locationCode}
+            locationName={locationName}
+            hubLabel={hubLabel}
+            versionNo={doc.currentVersionNo}
+            variant="compact"
+          />
         </div>
         <table className="w-full border-separate border-spacing-0 border border-neutral-400 text-[11.5px] leading-snug">
           <thead>
@@ -376,20 +393,21 @@ export default function PrintDocumentPage() {
                 )}
               >
                 <div>
+                  <div className={isFirst ? undefined : "mb-2"}>
+                    <DocumentHeader
+                      documentNo={doc.documentNo}
+                      documentDate={doc.documentDate}
+                      locationCode={locationCode}
+                      locationName={locationName}
+                      hubLabel={hubLabel}
+                      versionNo={doc.currentVersionNo}
+                      variant={isFirst ? "full" : "compact"}
+                    />
+                  </div>
                   {isFirst && (
-                    <>
-                      <DocumentHeader
-                        documentNo={doc.documentNo}
-                        documentDate={doc.documentDate}
-                        locationCode={locationCode}
-                        locationName={locationName}
-                        hubLabel={hubLabel}
-                        versionNo={doc.currentVersionNo}
-                      />
-                      <p className="mt-3 mb-1.5 text-[12px] font-semibold">
-                        รายการสินค้าที่ตรวจนับ
-                      </p>
-                    </>
+                    <p className="mt-3 mb-1.5 text-[12px] font-semibold">
+                      รายการสินค้าที่ตรวจนับ
+                    </p>
                   )}
 
                   <LinesTable
@@ -417,6 +435,17 @@ export default function PrintDocumentPage() {
               )}
             >
               <div>
+                <div className="mb-2">
+                  <DocumentHeader
+                    documentNo={doc.documentNo}
+                    documentDate={doc.documentDate}
+                    locationCode={locationCode}
+                    locationName={locationName}
+                    hubLabel={hubLabel}
+                    versionNo={doc.currentVersionNo}
+                    variant="compact"
+                  />
+                </div>
                 <SignatureBlock />
               </div>
               <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
@@ -437,6 +466,7 @@ function DocumentHeader({
   locationName,
   hubLabel,
   versionNo,
+  variant = "full",
 }: {
   documentNo: string;
   documentDate: string;
@@ -444,22 +474,34 @@ function DocumentHeader({
   locationName: string;
   hubLabel: string;
   versionNo: number;
+  variant?: "full" | "compact";
 }) {
   return (
     <>
-      <header className="text-center">
-        <p className="text-[12px] font-semibold tracking-wide">
-          ระบบตรวจนับสินค้าคงเหลือ
-        </p>
-        <h1 className="mt-1 text-[20px] font-bold tracking-tight underline decoration-2 underline-offset-4">
-          ใบตรวจนับสินค้าคงเหลือ
-        </h1>
-        <p className="mt-1 text-[11px] text-neutral-700">
+      {variant === "full" ? (
+        <header className="text-center">
+          <p className="text-[12px] font-semibold tracking-wide">
+            ระบบตรวจนับสินค้าคงเหลือ
+          </p>
+          <h1 className="mt-1 text-[20px] font-bold tracking-tight underline decoration-2 underline-offset-4">
+            ใบตรวจนับสินค้าคงเหลือ
+          </h1>
+          <p className="mt-1 text-[11px] text-neutral-700">
+            StockCount Pro · เอกสารยืนยันผลการตรวจนับ
+          </p>
+        </header>
+      ) : (
+        <p className="text-center text-[11px] text-neutral-700">
           StockCount Pro · เอกสารยืนยันผลการตรวจนับ
         </p>
-      </header>
+      )}
 
-      <table className="mt-3 w-full border-separate border-spacing-0 border border-neutral-400 text-[12px]">
+      <table
+        className={cn(
+          "w-full border-separate border-spacing-0 border border-neutral-400 text-[12px]",
+          variant === "full" ? "mt-3" : "mt-2",
+        )}
+      >
         <tbody>
           <tr>
             <th className="w-[18%] border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
