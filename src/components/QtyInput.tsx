@@ -61,14 +61,16 @@ export function QtyInput({
     const previous = value;
 
     setFocused(false);
-    onBlur?.();
 
+    // Commit qty before blur/release so parent can renew the lock
+    // before any deferred unlock runs.
     if (committed !== previous) {
       onChange(committed);
-      return;
+    } else {
+      setDraft(formatQtyValue(value));
     }
 
-    setDraft(formatQtyValue(value));
+    onBlur?.();
   };
 
   const handleFocus = () => {

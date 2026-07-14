@@ -34,6 +34,8 @@ import {
 import { UserRole } from "@/types/user";
 
 const AUTO_SAVE_DELAY_MS = 1000;
+/** Wait after blur before releasing so renew/save is not raced by DELETE. */
+const LOCK_RELEASE_GRACE_MS = 2500;
 
 type PendingQtyConfirm = {
   line: ProductLine;
@@ -170,6 +172,17 @@ export default function TabletCountPage() {
   const entriesRef = useRef<Record<string, CountEntry>>({});
   const syncStatusByLineRef = useRef<Record<string, SyncStatus>>({});
   const scrollYRef = useRef(0);
+  const releaseTimersRef = useRef<
+    Record<string, ReturnType<typeof setTimeout>>
+  >({});
+  const savingLinesRef = useRef(new Set<string>());
+
+  const cancelScheduledRelease = useCallback((lineId: string) => {
+    const timer = releaseTimersRef.current[lineId];
+    if (!timer) return;
+    clearTimeout(timer);
+    delete releaseTimersRef.current[lineId];
+  }, []);
 
   const pushToast = useCallback((message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -201,6 +214,15 @@ export default function TabletCountPage() {
   useEffect(() => {
     syncStatusByLineRef.current = syncStatusByLine;
   }, [syncStatusByLine]);
+
+  useEffect(() => {
+    const releaseTimers = releaseTimersRef.current;
+    const saveTimers = saveTimersRef.current;
+    return () => {
+      for (const timer of Object.values(releaseTimers)) clearTimeout(timer);
+      for (const timer of Object.values(saveTimers)) clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -422,6 +444,8 @@ export default function TabletCountPage() {
     async (lineId: string) => {
       if (!versionId) return false;
 
+      cancelScheduledRelease(lineId);
+
       const res = await fetch(
         `/api/count-documents/${documentId}/versions/${versionId}/locks/${lineId}`,
         { method: "POST" },
@@ -439,12 +463,14 @@ export default function TabletCountPage() {
       setLocks((prev) => ({ ...prev, [lineId]: data.lock }));
       return true;
     },
-    [documentId, pushToast, versionId],
+    [cancelScheduledRelease, documentId, pushToast, versionId],
   );
 
   const releaseLock = useCallback(
     async (lineId: string) => {
       if (!versionId) return;
+
+      cancelScheduledRelease(lineId);
 
       await fetch(
         `/api/count-documents/${documentId}/versions/${versionId}/locks/${lineId}`,
@@ -457,7 +483,29 @@ export default function TabletCountPage() {
         return next;
       });
     },
-    [documentId, versionId],
+    [cancelScheduledRelease, documentId, versionId],
+  );
+
+  const scheduleReleaseLock = useCallback(
+    (lineId: string) => {
+      cancelScheduledRelease(lineId);
+
+      releaseTimersRef.current[lineId] = setTimeout(() => {
+        delete releaseTimersRef.current[lineId];
+
+        if (
+          saveTimersRef.current[lineId] ||
+          pendingSavesRef.current[lineId] ||
+          savingLinesRef.current.has(lineId)
+        ) {
+          scheduleReleaseLock(lineId);
+          return;
+        }
+
+        void releaseLock(lineId);
+      }, LOCK_RELEASE_GRACE_MS);
+    },
+    [cancelScheduledRelease, releaseLock],
   );
 
   const filteredLines = useMemo(() => {
@@ -513,8 +561,15 @@ export default function TabletCountPage() {
     async (lineId: string, payload: Record<string, unknown>) => {
       if (!versionId) return;
 
+      savingLinesRef.current.add(lineId);
       setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
       try {
+        const gotLock = await ensureLock(lineId);
+        if (!gotLock) {
+          setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+          return;
+        }
+
         const res = await fetch(
           `/api/count-documents/${documentId}/versions/${versionId}/entries/${lineId}`,
           {
@@ -568,9 +623,11 @@ export default function TabletCountPage() {
         setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saved" }));
       } catch {
         setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+      } finally {
+        savingLinesRef.current.delete(lineId);
       }
     },
-    [documentId, productCodeByLineId, pushToast, versionId],
+    [documentId, ensureLock, productCodeByLineId, pushToast, versionId],
   );
 
   const saveDocumentNote = useCallback(
@@ -936,7 +993,7 @@ export default function TabletCountPage() {
                 void ensureLock(line.lineId);
               }}
               onEditEnd={() => {
-                void releaseLock(line.lineId);
+                scheduleReleaseLock(line.lineId);
               }}
               onQtyChange={(field, value) => {
                 void updateEntry(line, field, value);
