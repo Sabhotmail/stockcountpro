@@ -35,29 +35,69 @@ import {
 
 type TabKey = "pending" | "completed";
 
+function locationCodeLabel(doc: SupervisorDocumentListItem): string {
+  return doc.locationCode ?? doc.branchCode;
+}
+
+function locationNameLabel(doc: SupervisorDocumentListItem): string {
+  return doc.locationName ?? doc.branchName;
+}
+
+function ExpressPushBadge({ at }: { at: string | null }) {
+  if (!at) {
+    return (
+      <span className="inline-flex whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+        ยังไม่ส่ง
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex flex-col gap-0.5 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium leading-tight text-emerald-800"
+      title={`ส่ง Express แล้ว · ${formatDateTimeShortTH(at)}`}
+    >
+      <span>ส่งแล้ว</span>
+      <span className="font-normal text-emerald-700/80">
+        {formatDateTimeShortTH(at)}
+      </span>
+    </span>
+  );
+}
+
 function DocumentCard({
   doc,
   mode,
+  onPushed,
 }: {
   doc: SupervisorDocumentListItem;
   mode: TabKey;
+  onPushed: (documentId: string, message: string) => void;
 }) {
+  const pushed = Boolean(doc.lastExpressPushAt);
+
   return (
-    <Card>
+    <Card className={cn(pushed && mode === "completed" && "border-emerald-200")}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-base">{doc.documentNo}</CardTitle>
+          <CardTitle className="text-base leading-snug break-words">
+            {doc.documentNo}
+          </CardTitle>
           <DocumentStatusBadge status={doc.status} compact />
         </div>
         <p className="text-sm text-muted-foreground">
-          {doc.locationCode ? `${doc.locationCode}` : doc.branchCode}
-          {doc.locationName ? ` · ${doc.locationName}` : ` · ${doc.branchName}`}
+          {locationCodeLabel(doc)} · {locationNameLabel(doc)}
           {doc.hubShortName
             ? ` · Hub ${doc.hubShortName}`
             : doc.isCentral
               ? " · HQ กลาง"
               : ""}
         </p>
+        {mode === "completed" && (
+          <div className="pt-1">
+            <ExpressPushBadge at={doc.lastExpressPushAt} />
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -87,23 +127,28 @@ function DocumentCard({
           </div>
         </dl>
       </CardContent>
-      <CardFooter className="flex flex-col gap-2">
+      <CardFooter className="flex flex-row flex-wrap gap-2">
         {mode === "completed" ? (
           <>
             <Link
               href={`/print/documents/${doc.id}`}
-              className={cn(buttonVariants(), "w-full")}
+              className={cn(buttonVariants({ size: "sm" }), "flex-1")}
               target="_blank"
               rel="noreferrer"
             >
-              พิมพ์เอกสาร
+              พิมพ์
             </Link>
-            <PushExpressButton documentId={doc.id} fullWidth />
+            <PushExpressButton
+              documentId={doc.id}
+              className="flex-1"
+              alreadyPushed={pushed}
+              onPushed={(message) => onPushed(doc.id, message)}
+            />
           </>
         ) : (
           <Link
             href={`/supervisor/review/${doc.id}`}
-            className={cn(buttonVariants(), "w-full")}
+            className={cn(buttonVariants({ size: "sm" }), "w-full")}
           >
             ตรวจสอบ
           </Link>
@@ -119,6 +164,7 @@ export default function SupervisorDocumentsPage() {
   const [tab, setTab] = useState<TabKey>("pending");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +212,17 @@ export default function SupervisorDocumentsPage() {
   );
   const visible = tab === "completed" ? completed : pending;
 
+  function handlePushed(documentId: string, message: string) {
+    setPushNotice(message);
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === documentId
+          ? { ...doc, lastExpressPushAt: new Date().toISOString() }
+          : doc,
+      ),
+    );
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     router.push("/login");
@@ -177,10 +234,26 @@ export default function SupervisorDocumentsPage() {
       subtitle="Supervisor — รอตรวจ และเอกสารเสร็จสิ้น (พิมพ์ได้)"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<SupervisorNav />}
+      className="[&_main]:max-w-7xl [&_header>div]:max-w-7xl"
     >
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {pushNotice && (
+        <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-950">
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>{pushNotice}</span>
+            <button
+              type="button"
+              className="text-xs font-medium underline-offset-2 hover:underline"
+              onClick={() => setPushNotice(null)}
+            >
+              ปิด
+            </button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -194,7 +267,7 @@ export default function SupervisorDocumentsPage() {
             รอตรวจ ({pending.length})
           </TabsTrigger>
           <TabsTrigger value="completed">
-            เสร็จสิ้น / พิมพ์ ({completed.length})
+            เสร็จสิ้น ({completed.length})
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -213,72 +286,124 @@ export default function SupervisorDocumentsPage() {
         <>
           <div className="flex flex-col gap-3 md:hidden">
             {visible.map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} mode={tab} />
+              <DocumentCard
+                key={doc.id}
+                doc={doc}
+                mode={tab}
+                onPushed={handlePushed}
+              />
             ))}
           </div>
 
           <Card className="hidden md:block">
-            <CardContent className="pt-6">
-              <Table>
+            <CardContent className="pt-4">
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>เลขเอกสาร</TableHead>
-                    <TableHead>สาขา</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                    <TableHead>เวอร์ชัน</TableHead>
-                    <TableHead>ส่งโดย</TableHead>
-                    <TableHead>ส่งเมื่อ</TableHead>
-                    <TableHead>รายการ</TableHead>
-                    <TableHead>หมายเหตุ</TableHead>
-                    <TableHead />
+                    <TableHead className="w-[38%]">เอกสาร</TableHead>
+                    {tab === "pending" && (
+                      <TableHead className="w-[12%]">สถานะ</TableHead>
+                    )}
+                    {tab === "completed" && (
+                      <TableHead className="w-[12%]">Express</TableHead>
+                    )}
+                    <TableHead className="w-[10%]">รายการ</TableHead>
+                    <TableHead className="w-[18%]">ส่ง</TableHead>
+                    <TableHead className="w-[22%] text-right">
+                      การทำงาน
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visible.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.documentNo}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {doc.locationCode ?? doc.branchCode}
-                        {doc.locationName
-                          ? ` · ${doc.locationName}`
-                          : ` ${doc.branchName}`}
-                      </TableCell>
-                      <TableCell>
-                        <DocumentStatusBadge status={doc.status} compact />
-                      </TableCell>
-                      <TableCell>V{doc.currentVersionNo || "—"}</TableCell>
-                      <TableCell>{doc.submittedByName ?? "—"}</TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {formatDateTimeShortTH(doc.submittedAt)}
-                      </TableCell>
-                      <TableCell>
-                        {doc.countedLines}/{doc.totalLines}
-                      </TableCell>
-                      <TableCell>{doc.hasDocumentNote ? "มี" : "—"}</TableCell>
-                      <TableCell>
-                        {tab === "completed" ? (
-                          <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/print/documents/${doc.id}`}
-                              className={buttonVariants({ size: "sm" })}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              พิมพ์เอกสาร
-                            </Link>
-                            <PushExpressButton documentId={doc.id} />
-                          </div>
-                        ) : (
-                          <Link
-                            href={`/supervisor/review/${doc.id}`}
-                            className={buttonVariants({ size: "sm" })}
-                          >
-                            ตรวจสอบ
-                          </Link>
+                  {visible.map((doc) => {
+                    const pushed = Boolean(doc.lastExpressPushAt);
+                    return (
+                      <TableRow
+                        key={doc.id}
+                        className={cn(
+                          pushed &&
+                            tab === "completed" &&
+                            "bg-emerald-50/50",
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      >
+                        <TableCell className="max-w-0 whitespace-normal">
+                          <div className="min-w-0 space-y-0.5">
+                            <p
+                              className="truncate font-medium"
+                              title={doc.documentNo}
+                            >
+                              {doc.documentNo}
+                            </p>
+                            <p
+                              className="truncate text-xs text-muted-foreground"
+                              title={`${locationCodeLabel(doc)} · ${locationNameLabel(doc)}`}
+                            >
+                              {locationCodeLabel(doc)} ·{" "}
+                              {locationNameLabel(doc)}
+                              {doc.hubShortName
+                                ? ` · ${doc.hubShortName}`
+                                : ""}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              V{doc.currentVersionNo || "—"}
+                              {doc.hasDocumentNote ? " · มีหมายเหตุ" : ""}
+                            </p>
+                          </div>
+                        </TableCell>
+                        {tab === "pending" && (
+                          <TableCell>
+                            <DocumentStatusBadge status={doc.status} compact />
+                          </TableCell>
+                        )}
+                        {tab === "completed" && (
+                          <TableCell className="whitespace-normal">
+                            <ExpressPushBadge at={doc.lastExpressPushAt} />
+                          </TableCell>
+                        )}
+                        <TableCell className="tabular-nums">
+                          {doc.countedLines}/{doc.totalLines}
+                        </TableCell>
+                        <TableCell className="whitespace-normal">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {doc.submittedByName ?? "—"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDateTimeShortTH(doc.submittedAt)}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {tab === "completed" ? (
+                            <div className="inline-flex flex-nowrap items-center justify-end gap-1.5">
+                              <Link
+                                href={`/print/documents/${doc.id}`}
+                                className={buttonVariants({ size: "sm" })}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                พิมพ์
+                              </Link>
+                              <PushExpressButton
+                                documentId={doc.id}
+                                alreadyPushed={pushed}
+                                onPushed={(message) =>
+                                  handlePushed(doc.id, message)
+                                }
+                              />
+                            </div>
+                          ) : (
+                            <Link
+                              href={`/supervisor/review/${doc.id}`}
+                              className={buttonVariants({ size: "sm" })}
+                            >
+                              ตรวจสอบ
+                            </Link>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

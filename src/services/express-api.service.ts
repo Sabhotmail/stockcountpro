@@ -261,7 +261,7 @@ export async function putExpressCountByLocation(
   countDate: string,
   locationCode: string,
   details: ExpressPushCountDetail[],
-): Promise<{ success: true } | { error: string }> {
+): Promise<{ success: true; response: unknown } | { error: string }> {
   const code = locationCode.trim().toUpperCase();
   if (!code) return { error: "locationCode is required" };
   if (details.length === 0) return { error: "details are required" };
@@ -277,7 +277,7 @@ export async function putExpressCountByLocation(
     return { error: result.message ?? "Express push failed" };
   }
 
-  return { success: true };
+  return { success: true, response: result };
 }
 
 export function summarizeExpressCountDate(data: ExpressCountDateResponse) {

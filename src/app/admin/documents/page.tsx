@@ -225,24 +225,27 @@ export default function AdminDocumentsPage() {
                   V{doc.currentVersionNo || "—"} · {doc.countedLines}/
                   {doc.totalLines} รายการ
                 </CardContent>
-                <CardFooter className="flex flex-col gap-2">
+                <CardFooter className="flex flex-row flex-wrap gap-2">
                   <Link
                     href={`/admin/documents/${doc.id}`}
-                    className={cn(buttonVariants(), "w-full")}
+                    className={cn(buttonVariants({ size: "sm" }), "flex-1")}
                   >
-                    ดูประวัติ
+                    ประวัติ
                   </Link>
                   {doc.status === DocumentStatus.COMPLETED && (
                     <>
                       <Link
                         href={`/print/documents/${doc.id}`}
-                        className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                        className={cn(
+                          buttonVariants({ size: "sm", variant: "outline" }),
+                          "flex-1",
+                        )}
                         target="_blank"
                         rel="noreferrer"
                       >
-                        พิมพ์เอกสาร
+                        พิมพ์
                       </Link>
-                      <PushExpressButton documentId={doc.id} fullWidth />
+                      <PushExpressButton documentId={doc.id} className="flex-1" />
                     </>
                   )}
                 </CardFooter>
@@ -271,7 +274,14 @@ export default function AdminDocumentsPage() {
                       className="cursor-pointer"
                       onClick={() => router.push(`/admin/documents/${doc.id}`)}
                     >
-                      <TableCell className="font-medium">{doc.documentNo}</TableCell>
+                      <TableCell className="max-w-[16rem]">
+                        <p
+                          className="truncate font-medium"
+                          title={doc.documentNo}
+                        >
+                          {doc.documentNo}
+                        </p>
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {doc.documentDate}
                       </TableCell>
@@ -286,23 +296,30 @@ export default function AdminDocumentsPage() {
                         {doc.countedLines}/{doc.totalLines}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-2">
+                        <div
+                          className="inline-flex flex-nowrap items-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Link
                             href={`/admin/documents/${doc.id}`}
-                            className={buttonVariants({ size: "sm" })}
-                            onClick={(e) => e.stopPropagation()}
+                            className={cn(
+                              buttonVariants({ size: "sm" }),
+                              "shrink-0",
+                            )}
                           >
-                            ดูประวัติ
+                            ประวัติ
                           </Link>
                           {doc.status === DocumentStatus.COMPLETED && (
                             <>
                               <Link
                                 href={`/print/documents/${doc.id}`}
-                                className={buttonVariants({
-                                  size: "sm",
-                                  variant: "outline",
-                                })}
-                                onClick={(e) => e.stopPropagation()}
+                                className={cn(
+                                  buttonVariants({
+                                    size: "sm",
+                                    variant: "outline",
+                                  }),
+                                  "shrink-0",
+                                )}
                                 target="_blank"
                                 rel="noreferrer"
                               >

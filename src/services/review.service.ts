@@ -56,8 +56,32 @@ async function getHub(hubId: string | null) {
   return hub ? mapHub(hub) : null;
 }
 
+async function getLastSuccessfulExpressPushes(
+  documentIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (documentIds.length === 0) return map;
+
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      documentId: { in: documentIds },
+      action: "PUSH_TO_EXPRESS",
+      detail: { startsWith: "ok;" },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { documentId: true, createdAt: true },
+  });
+
+  for (const log of logs) {
+    if (!log.documentId || map.has(log.documentId)) continue;
+    map.set(log.documentId, log.createdAt.toISOString());
+  }
+  return map;
+}
+
 async function enrichSupervisorDocument(
   doc: CountDocument,
+  lastExpressPushAt: string | null = null,
 ): Promise<SupervisorDocumentListItem> {
   const branch = await getBranch(doc.branchId);
   const hub = await getHub(doc.hubId);
@@ -81,6 +105,7 @@ async function enrichSupervisorDocument(
     submittedByName: submitter?.name ?? null,
     submittedAt: version?.submittedAt?.toISOString() ?? null,
     hasDocumentNote: Boolean(doc.note?.trim()),
+    lastExpressPushAt,
   };
 }
 
@@ -108,8 +133,13 @@ export async function listSupervisorDocuments(
     });
 
   const result: SupervisorDocumentListItem[] = [];
+  const pushMap = await getLastSuccessfulExpressPushes(
+    filtered.map((doc) => doc.id),
+  );
   for (const doc of filtered) {
-    result.push(await enrichSupervisorDocument(doc));
+    result.push(
+      await enrichSupervisorDocument(doc, pushMap.get(doc.id) ?? null),
+    );
   }
 
   return result.sort((a, b) => {

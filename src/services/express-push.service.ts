@@ -31,6 +31,7 @@ export type PushExpressResult =
       countDate: string;
       lineCount: number;
       userIdSent: string;
+      expressResponse: unknown;
     }
   | { error: string; status: 400 | 403 | 404 };
 
@@ -146,6 +147,8 @@ export async function pushDocumentToExpress(
     return { error: pushResult.error, status: 400 };
   }
 
+  const expressResponse = pushResult.response;
+
   await logPushToExpress(
     session.userId,
     session.userName,
@@ -160,5 +163,6 @@ export async function pushDocumentToExpress(
     countDate,
     lineCount: details.length,
     userIdSent,
+    expressResponse,
   };
 }

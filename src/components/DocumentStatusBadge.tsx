@@ -26,11 +26,16 @@ export function DocumentStatusBadge({
   compact?: boolean;
 }) {
   const config = statusConfig[status];
+  const isCompleted = status === DocumentStatus.COMPLETED;
 
   return (
     <Badge
       variant={config.variant}
-      className={cn(compact ? "text-xs" : "text-sm")}
+      className={cn(
+        compact ? "text-xs" : "text-sm",
+        isCompleted &&
+          "border-transparent bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
+      )}
     >
       {config.label}
     </Badge>

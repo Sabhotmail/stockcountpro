@@ -105,6 +105,8 @@ export interface CountDocumentListItem extends CountDocument {
   hubCode: string | null;
   hubName: string | null;
   hubShortName: string | null;
+  /** ISO time of last successful PUSH_TO_EXPRESS, if any */
+  lastExpressPushAt?: string | null;
 }
 
 export interface LineLockInfo {
@@ -186,6 +188,8 @@ export interface SupervisorDocumentListItem extends CountDocumentListItem {
   submittedByName: string | null;
   submittedAt: string | null;
   hasDocumentNote: boolean;
+  /** ISO time of last successful PUSH_TO_EXPRESS, if any */
+  lastExpressPushAt: string | null;
 }
 
 export interface ReviewLineItem {
