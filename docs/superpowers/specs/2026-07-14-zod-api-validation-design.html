@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zod API Request Validation — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --pre-bg: #1e293b; --pre-text: #e2e8f0;
+      --danger: #b91c1c; --danger-bg: #fef2f2; --ok: #047857; --ok-bg: #d1fae5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--pre-bg); color: var(--pre-text); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+    .mockup-row { display: flex; gap: 1rem; align-items: stretch; flex-wrap: wrap; }
+    .mockup-col { flex: 1 1 240px; }
+    .mockup-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .mockup-box { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; font-family: Consolas, monospace; font-size: 0.8rem; background: #fff; min-height: 4.5rem; white-space: pre-wrap; }
+    .mockup-box.err { border-color: #fecaca; background: var(--danger-bg); color: var(--danger); }
+    .mockup-box.ok { border-color: #a7f3d0; background: var(--ok-bg); color: var(--ok); }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; }
+    .badge-amber { background: #fef3c7; color: #b45309; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-green { background: #d1fae5; color: #047857; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .flow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0; }
+    .flow-step { background: var(--accent-soft); border: 1px solid #99f6e4; border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.85rem; font-weight: 600; }
+    .flow-arrow { color: var(--muted); }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Zod API Request Validation</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-07-14</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Validate JSON request bodies at Next.js Route Handlers with Zod</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>ติดตั้ง <code>zod</code> เป็น dependency โดยตรงของโปรเจกต์</li>
+        <li>parse + validate body ที่ขอบ API ด้วย <code>safeParse</code> แทน <code>as</code> / เช็ก <code>typeof</code> มือ</li>
+        <li>คงรูป error เดิม: <code>{ "error": string }</code> + HTTP 400 เมื่อ shape ไม่ถูกต้อง</li>
+        <li>business rules (permission, quantity, lock) ยังอยู่ใน service เหมือนเดิม</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ validate response ของ Express upstream ด้วย Zod ในรอบนี้</li>
+        <li>ไม่เปลี่ยน UI / ไม่เปลี่ยน message ที่ service สร้างเอง</li>
+        <li>ไม่บังคับ client-side Zod forms ในรอบนี้</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li><code>zod</code> ยังไม่ได้อยู่ใน <code>package.json</code> — resolve จากแอปไม่ได้</li>
+        <li>Route ที่รับ body ใช้ <code>(await request.json()) as …</code> หรือเช็กมือ (เช่น branches, sync locations)</li>
+        <li>มี ~15 handlers ที่อ่าน JSON body: auth, express sync, entries, note, recount, approve, push bulk, admin CRUD</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow (developer / request path)</h2>
+      <ol>
+        <li>Client ส่ง JSON ไปยัง Route Handler</li>
+        <li>Handler อ่าน raw body (ดัก invalid JSON → 400)</li>
+        <li>รัน Zod schema ที่ตรงกับ endpoint</li>
+        <li>ถ้า fail → 400 <code>{ error }</code> ไม่เรียก service</li>
+        <li>ถ้าผ่าน → ส่ง typed data เข้า service เหมือนเดิม</li>
+      </ol>
+      <div class="flow">
+        <span class="flow-step">request.json()</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">schema.safeParse</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">service / 400</span>
+      </div>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>ไม่มีหน้า UI ใหม่ — แสดงพฤติกรรมที่ client เห็นเมื่อ body ไม่ผ่าน validation (toast / network error จาก API เดิม)</p>
+
+      <h3>Invalid body — API 400 · ทุก role ที่เรียก endpoint</h3>
+      <div class="mockup">
+        <div class="mockup-header">POST /api/express/sync · Staff / Counter / Manager / Admin / HQ</div>
+        <div class="mockup-row">
+          <div class="mockup-col">
+            <div class="mockup-label">Request</div>
+            <div class="mockup-box">{
+  "date": "2026-07-14",
+  "locations": "WH01"
+}</div>
+          </div>
+          <div class="mockup-col">
+            <div class="mockup-label">Response 400</div>
+            <div class="mockup-box err">{
+  "error": "locations: Expected array, received string"
+}</div>
+          </div>
+        </div>
+        <p class="mockup-note">หน้า Sync แสดง error จาก response เหมือนกรณี validation อื่น — ไม่มี dialog ใหม่</p>
+      </div>
+
+      <h3>Login missing fields — /login · Guest</h3>
+      <div class="mockup">
+        <div class="mockup-header">POST /api/auth/login</div>
+        <div class="mockup-card">
+          <span class="badge badge-red">400</span>
+          <code style="margin-left:0.5rem">{"error":"Username and password are required"}</code>
+        </div>
+        <p class="mockup-note">คงข้อความภาษาอังกฤษเดิมที่ login ใช้อยู่แล้ว เพื่อไม่เปลี่ยน UI copy ของหน้า login</p>
+      </div>
+
+      <h3>Approve optional body — Supervisor</h3>
+      <div class="mockup">
+        <div class="mockup-header">POST /api/supervisor/count-documents/[id]/approve</div>
+        <div class="mockup-card">
+          <span class="badge badge-green">OK</span>
+          empty / non-JSON body → <code>pushToExpress = false</code> (พฤติกรรมเดิม)
+        </div>
+        <p class="mockup-note">เฉพาะ endpoint นี้ที่ยอม empty body; endpoint อื่น invalid JSON = 400</p>
+      </div>
+    </section>
+
+    <section id="data-model">
+      <h2>Data model / API</h2>
+      <h3>Shared helpers</h3>
+      <ul>
+        <li><code>src/lib/api/parse-body.ts</code> — <code>readJsonBody</code>, <code>parseWithSchema</code>, map Zod issues → <code>{ error }</code></li>
+        <li><code>src/lib/api/schemas.ts</code> — schemas ต่อ endpoint (login, sync, entry, batch, note, recount, approve, push-bulk, admin*)</li>
+      </ul>
+      <h3>Endpoints in scope</h3>
+      <table>
+        <thead>
+          <tr><th>Method + path</th><th>Schema focus</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>POST /api/auth/login</code></td><td>username, password</td></tr>
+          <tr><td><code>POST /api/express/sync</code></td><td>date + locations (string[] หรือ {code,name?}[])</td></tr>
+          <tr><td><code>PATCH …/entries/[lineId]</code></td><td>qty*, baseRevision, clientMutationId</td></tr>
+          <tr><td><code>POST …/entries/batch</code></td><td>items[] non-empty</td></tr>
+          <tr><td><code>PATCH …/note</code></td><td>note string | null</td></tr>
+          <tr><td><code>POST …/request-recount</code></td><td>baseVersionId, reason</td></tr>
+          <tr><td><code>POST …/approve</code></td><td>optional pushToExpress</td></tr>
+          <tr><td><code>POST …/push-express-bulk</code></td><td>documentIds: string[]</td></tr>
+          <tr><td>Admin branches / hubs / settings / users</td><td>แทน manual typeof checks</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <ul>
+        <li>Invalid JSON → 400 <code>Invalid JSON body</code> (ยกเว้น approve)</li>
+        <li>Schema fail → 400 พร้อม message จาก field แรก (สั้น อ่านง่าย)</li>
+        <li>Unit tests แบบ node assert สำหรับ helper + schemas หลัก (sync locations, login, entry)</li>
+        <li><code>npm run build</code> ผ่านหลังเปลี่ยน route handlers</li>
+        <li>Manual smoke: login, sync preview POST, save entry, create branch</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · design spec · open in browser</footer>
+  </div>
+</body>
+</html>
