@@ -162,20 +162,21 @@ body {
     break-after: auto;
     page-break-after: auto;
   }
-  /* Thin light grid — printers often darken gray borders */
+  /* Light grid that still prints; keep outer frame via table border */
   .print-page table {
     width: calc(100% - 1px) !important;
     max-width: calc(100% - 1px) !important;
     border-collapse: separate !important;
     border-spacing: 0 !important;
-    border: 0.4pt solid #d4d4d4 !important;
+    border: 1px solid #bdbdbd !important;
     box-sizing: border-box !important;
   }
   .print-page th,
   .print-page td {
-    border-color: #d4d4d4 !important;
+    border-color: #bdbdbd !important;
     border-style: solid !important;
-    border-width: 0 0.4pt 0.4pt 0 !important;
+    /* right + bottom only — outer frame comes from table border */
+    border-width: 0 1px 1px 0 !important;
   }
   .print-page tr > :first-child {
     border-left-width: 0 !important;
@@ -192,6 +193,6 @@ body {
   }
   .print-page section.border,
   .print-page .border {
-    border-color: #d4d4d4 !important;
+    border-color: #bdbdbd !important;
   }
 }

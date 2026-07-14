@@ -330,22 +330,22 @@ export default function PrintDocumentPage() {
             variant="compact"
           />
         </div>
-        <table className="w-full border-separate border-spacing-0 border border-neutral-300 text-[11.5px] leading-snug">
+        <table className="w-full border-separate border-spacing-0 border border-neutral-400 text-[11.5px] leading-snug">
           <thead>
             <tr data-m="thead" className="bg-neutral-100">
-              <th className="w-12 border border-neutral-300 px-1.5 py-1 text-center font-semibold">
+              <th className="w-12 border border-neutral-400 px-1.5 py-1 text-center font-semibold">
                 ลำดับ
               </th>
-              <th className="w-24 border border-neutral-300 px-1.5 py-1 text-left font-semibold">
+              <th className="w-24 border border-neutral-400 px-1.5 py-1 text-left font-semibold">
                 รหัสสินค้า
               </th>
-              <th className="border border-neutral-300 px-1.5 py-1 text-left font-semibold">
+              <th className="border border-neutral-400 px-1.5 py-1 text-left font-semibold">
                 ชื่อสินค้า
               </th>
-              <th className="w-16 border border-neutral-300 px-1.5 py-1 text-right font-semibold">
+              <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
                 ลัง
               </th>
-              <th className="w-16 border border-neutral-300 px-1.5 py-1 text-right font-semibold">
+              <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
                 ชิ้น
               </th>
             </tr>
@@ -353,19 +353,19 @@ export default function PrintDocumentPage() {
           <tbody>
             {doc.lines.map((line) => (
               <tr key={`m-${line.lineNo}-${line.productCode}`} data-m-row>
-                <td className="border border-neutral-300 px-1.5 py-0.5 text-center align-top">
+                <td className="border border-neutral-400 px-1.5 py-0.5 text-center align-top">
                   {line.lineNo}
                 </td>
-                <td className="border border-neutral-300 px-1.5 py-0.5 align-top">
+                <td className="border border-neutral-400 px-1.5 py-0.5 align-top">
                   {line.productCode}
                 </td>
-                <td className="border border-neutral-300 px-1.5 py-0.5 align-top">
+                <td className="border border-neutral-400 px-1.5 py-0.5 align-top">
                   {line.productName}
                 </td>
-                <td className="border border-neutral-300 px-1.5 py-0.5 text-right align-top tabular-nums">
+                <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
                   {formatQty(line.qtyCase)}
                 </td>
-                <td className="border border-neutral-300 px-1.5 py-0.5 text-right align-top tabular-nums">
+                <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
                   {formatQty(line.qtyPiece)}
                 </td>
               </tr>
@@ -373,7 +373,7 @@ export default function PrintDocumentPage() {
             <tr data-m="summary" className="bg-neutral-50">
               <td
                 colSpan={5}
-                className="border border-neutral-300 px-1.5 py-1 text-[11px]"
+                className="border border-neutral-400 px-1.5 py-1 text-[11px]"
               >
                 รวมทั้งสิ้น <strong>{doc.lines.length}</strong> รายการ
               </td>
@@ -384,7 +384,7 @@ export default function PrintDocumentPage() {
           <SignatureBlock printedAt={printedAt || "—"} />
         </div>
         <div data-m="footer">
-          <p className="mt-2 border-t border-neutral-300 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
+          <p className="mt-2 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
             1/1
           </p>
         </div>
@@ -438,7 +438,7 @@ export default function PrintDocumentPage() {
                   {showSignatures && <SignatureBlock printedAt={printedAt} />}
                 </div>
 
-                <p className="mt-2 shrink-0 border-t border-neutral-300 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
+                <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
                   {pageNo}/{totalPages}
                 </p>
               </section>
@@ -467,7 +467,7 @@ export default function PrintDocumentPage() {
                 </div>
                 <SignatureBlock printedAt={printedAt} />
               </div>
-              <p className="mt-2 shrink-0 border-t border-neutral-300 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
+              <p className="mt-2 shrink-0 border-t border-neutral-400 pt-1 text-center text-[11px] font-medium tabular-nums tracking-wide">
                 {totalPages}/{totalPages}
               </p>
             </section>
@@ -517,42 +517,42 @@ function DocumentHeader({
 
       <table
         className={cn(
-          "w-full border-separate border-spacing-0 border border-neutral-300 text-[12px]",
+          "w-full border-separate border-spacing-0 border border-neutral-400 text-[12px]",
           variant === "full" ? "mt-3" : "mt-2",
         )}
       >
         <tbody>
           <tr>
-            <th className="w-[18%] border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <th className="w-[18%] border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               เลขที่เอกสาร
             </th>
-            <td className="border border-neutral-300 px-2 py-1 font-medium">
+            <td className="border border-neutral-400 px-2 py-1 font-medium">
               {documentNo}
             </td>
-            <th className="w-[14%] border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <th className="w-[14%] border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               วันที่นับ
             </th>
-            <td className="border border-neutral-300 px-2 py-1">{documentDate}</td>
+            <td className="border border-neutral-400 px-2 py-1">{documentDate}</td>
           </tr>
           <tr>
-            <th className="border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <th className="border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               รหัสคลัง
             </th>
-            <td className="border border-neutral-300 px-2 py-1">{locationCode}</td>
-            <th className="border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <td className="border border-neutral-400 px-2 py-1">{locationCode}</td>
+            <th className="border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               ชื่อคลัง
             </th>
-            <td className="border border-neutral-300 px-2 py-1">{locationName}</td>
+            <td className="border border-neutral-400 px-2 py-1">{locationName}</td>
           </tr>
           <tr>
-            <th className="border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <th className="border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               Hub / กลุ่ม
             </th>
-            <td className="border border-neutral-300 px-2 py-1">{hubLabel}</td>
-            <th className="border border-neutral-300 bg-neutral-100 px-2 py-1 text-left font-semibold">
+            <td className="border border-neutral-400 px-2 py-1">{hubLabel}</td>
+            <th className="border border-neutral-400 bg-neutral-100 px-2 py-1 text-left font-semibold">
               เวอร์ชัน
             </th>
-            <td className="border border-neutral-300 px-2 py-1">
+            <td className="border border-neutral-400 px-2 py-1">
               V{versionNo} · สถานะเสร็จสิ้น
             </td>
           </tr>
@@ -572,22 +572,22 @@ function LinesTable({
   totalLines: number;
 }) {
   return (
-    <table className="w-full border-separate border-spacing-0 border border-neutral-300 text-[11.5px] leading-snug">
+    <table className="w-full border-separate border-spacing-0 border border-neutral-400 text-[11.5px] leading-snug">
       <thead>
         <tr className="bg-neutral-100">
-          <th className="w-12 border border-neutral-300 px-1.5 py-1 text-center font-semibold">
+          <th className="w-12 border border-neutral-400 px-1.5 py-1 text-center font-semibold">
             ลำดับ
           </th>
-          <th className="w-24 border border-neutral-300 px-1.5 py-1 text-left font-semibold">
+          <th className="w-24 border border-neutral-400 px-1.5 py-1 text-left font-semibold">
             รหัสสินค้า
           </th>
-          <th className="border border-neutral-300 px-1.5 py-1 text-left font-semibold">
+          <th className="border border-neutral-400 px-1.5 py-1 text-left font-semibold">
             ชื่อสินค้า
           </th>
-          <th className="w-16 border border-neutral-300 px-1.5 py-1 text-right font-semibold">
+          <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
             ลัง
           </th>
-          <th className="w-16 border border-neutral-300 px-1.5 py-1 text-right font-semibold">
+          <th className="w-16 border border-neutral-400 px-1.5 py-1 text-right font-semibold">
             ชิ้น
           </th>
         </tr>
@@ -595,19 +595,19 @@ function LinesTable({
       <tbody>
         {rows.map((line) => (
           <tr key={`${line.lineNo}-${line.productCode}`}>
-            <td className="border border-neutral-300 px-1.5 py-0.5 text-center align-top">
+            <td className="border border-neutral-400 px-1.5 py-0.5 text-center align-top">
               {line.lineNo}
             </td>
-            <td className="border border-neutral-300 px-1.5 py-0.5 align-top">
+            <td className="border border-neutral-400 px-1.5 py-0.5 align-top">
               {line.productCode}
             </td>
-            <td className="border border-neutral-300 px-1.5 py-0.5 align-top">
+            <td className="border border-neutral-400 px-1.5 py-0.5 align-top">
               {line.productName}
             </td>
-            <td className="border border-neutral-300 px-1.5 py-0.5 text-right align-top tabular-nums">
+            <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
               {formatQty(line.qtyCase)}
             </td>
-            <td className="border border-neutral-300 px-1.5 py-0.5 text-right align-top tabular-nums">
+            <td className="border border-neutral-400 px-1.5 py-0.5 text-right align-top tabular-nums">
               {formatQty(line.qtyPiece)}
             </td>
           </tr>
@@ -616,7 +616,7 @@ function LinesTable({
           <tr className="bg-neutral-50">
             <td
               colSpan={5}
-              className="border border-neutral-300 px-1.5 py-1 text-[11px]"
+              className="border border-neutral-400 px-1.5 py-1 text-[11px]"
             >
               รวมทั้งสิ้น <strong>{totalLines}</strong> รายการ
               <span className="ml-3 text-neutral-700">· หน่วยนับ: ลัง / ชิ้น</span>
@@ -636,7 +636,7 @@ function SignatureBlock({ printedAt }: { printedAt: string }) {
         กรุณาลงลายมือชื่อให้ครบทุกช่องก่อนเก็บเข้าแฟ้ม
       </p>
 
-      <section className="mt-3 border border-neutral-300 px-2 py-2">
+      <section className="mt-3 border border-neutral-400 px-2 py-2">
         <p className="mb-3 text-center text-[12px] font-bold">
           ส่วนลงนามรับรอง
         </p>
