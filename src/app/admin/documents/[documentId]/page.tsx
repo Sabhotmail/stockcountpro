@@ -216,16 +216,22 @@ export default function AdminDocumentHistoryPage() {
       subtitle={`${document.documentDate} · ${location} · V${document.currentVersionNo || "—"}`}
       actions={<LogoutButton onClick={handleLogout} />}
       nav={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <Link
             href="/admin/documents"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "w-fit shrink-0",
+            )}
           >
             ← กลับรายการ
           </Link>
-          <AdminNav />
+          <div className="min-w-0 lg:max-w-[70%]">
+            <AdminNav />
+          </div>
         </div>
       }
+      className="[&_main]:max-w-7xl [&_header>div]:max-w-7xl"
     >
       {pushNotice && (
         <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-950">
@@ -291,20 +297,20 @@ export default function AdminDocumentHistoryPage() {
           <TabsTrigger value="versions">เปรียบเทียบเวอร์ชัน</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="audit">
+        <TabsContent value="audit" keepMounted className="outline-none">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                Audit Log ({auditLogs.length})
+                Audit Log ({auditLogs?.length ?? 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <AuditLogPanel logs={auditLogs} />
+              <AuditLogPanel logs={auditLogs ?? []} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="versions" className="space-y-4">
+        <TabsContent value="versions" keepMounted className="space-y-4 outline-none">
           {versionsLoading && <DetailSkeleton />}
 
           {!versionsLoading && (

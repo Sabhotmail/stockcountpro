@@ -26,7 +26,8 @@ const actionLabels: Record<AuditAction, string> = {
 };
 
 export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
-  if (logs.length === 0) {
+  const rows = logs ?? [];
+  if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
         ยังไม่มี audit log
@@ -46,13 +47,13 @@ export function AuditLogPanel({ logs }: { logs: AuditLog[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {logs.map((log, index) => (
+          {rows.map((log, index) => (
             <TableRow key={`${log.id}-${log.createdAt}-${index}`}>
               <TableCell className="whitespace-nowrap text-muted-foreground">
                 {formatDateTimeShortTH(log.createdAt)}
               </TableCell>
               <TableCell className="font-medium">
-                {actionLabels[log.action]}
+                {actionLabels[log.action] ?? log.action}
               </TableCell>
               <TableCell>{log.userName}</TableCell>
               <TableCell className="text-muted-foreground">

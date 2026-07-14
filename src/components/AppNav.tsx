@@ -26,10 +26,10 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   const pathname = usePathname();
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-5 sm:gap-y-2">
       {groups.map((group) => (
-        <div key={group.label} className="space-y-1.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div key={group.label} className="min-w-0 space-y-1">
+          <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
             {group.label}
           </p>
           <nav className="flex flex-wrap gap-1.5">

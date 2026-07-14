@@ -25,7 +25,10 @@ export function DocumentStatusBadge({
   status: DocumentStatus;
   compact?: boolean;
 }) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? {
+    label: String(status),
+    variant: "secondary" as const,
+  };
   const isCompleted = status === DocumentStatus.COMPLETED;
 
   return (
