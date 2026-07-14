@@ -1,4 +1,5 @@
 import { getDocumentForSession } from "@/lib/document-access";
+import { logExpressPush } from "@/lib/express-push-log";
 import {
   getFinalCountEntries,
   resolveEffectiveEntries,
@@ -17,6 +18,7 @@ import { logPushToExpress } from "@/services/audit-log.service";
 import {
   putExpressCountByLocation,
   type ExpressPushCountDetail,
+  type ExpressPushRequestLog,
 } from "@/services/express-api.service";
 import { getUserById } from "@/services/user.service";
 import { DocumentStatus } from "@/types/count";
@@ -33,6 +35,7 @@ export type PushExpressResult =
       lineCount: number;
       userIdSent: string;
       expressResponse: unknown;
+      expressRequest: ExpressPushRequestLog;
     }
   | { error: string; status: 400 | 403 | 404 };
 
@@ -131,6 +134,16 @@ export async function pushDocumentToExpress(
     };
   }
 
+  logExpressPush("document payload ready", {
+    documentId,
+    documentNo: doc.documentNo,
+    locationCode,
+    countDate,
+    userIdSent,
+    lineCount: details.length,
+    changedDate,
+  });
+
   const pushResult = await putExpressCountByLocation(
     countDate,
     locationCode,
@@ -149,6 +162,7 @@ export async function pushDocumentToExpress(
   }
 
   const expressResponse = pushResult.response;
+  const expressRequest = pushResult.requestLog;
 
   await logPushToExpress(
     session.userId,
@@ -165,6 +179,7 @@ export async function pushDocumentToExpress(
     lineCount: details.length,
     userIdSent,
     expressResponse,
+    expressRequest,
   };
 }
 
@@ -179,6 +194,7 @@ export type BulkPushExpressItemResult =
       lineCount: number;
       userIdSent: string;
       expressResponse: unknown;
+      expressRequest: ExpressPushRequestLog;
     }
   | {
       documentId: string;
@@ -274,6 +290,7 @@ export async function pushDocumentsToExpressBulk(
       lineCount: pushResult.lineCount,
       userIdSent: pushResult.userIdSent,
       expressResponse: pushResult.expressResponse,
+      expressRequest: pushResult.expressRequest,
     });
   }
 

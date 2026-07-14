@@ -21,6 +21,7 @@ type SuccessPayload = {
   userIdSent: string;
   countDate?: string;
   expressResponse: unknown;
+  expressRequest?: unknown;
 };
 
 function formatExpressResponse(value: unknown): string {
@@ -89,6 +90,7 @@ export function PushExpressButton({
         userIdSent?: string;
         countDate?: string;
         expressResponse?: unknown;
+        expressRequest?: unknown;
       };
 
       if (!res.ok) {
@@ -106,6 +108,7 @@ export function PushExpressButton({
         userIdSent: data.userIdSent ?? "—",
         countDate: data.countDate,
         expressResponse: data.expressResponse,
+        expressRequest: data.expressRequest,
       });
       setPhase("success");
     } catch {
@@ -216,6 +219,15 @@ export function PushExpressButton({
                     <dd className="font-medium">{success.countDate ?? "—"}</dd>
                   </div>
                 </dl>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Request ที่ส่งไป Express
+                  </p>
+                  <pre className="max-h-64 overflow-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
+                    {formatExpressResponse(success.expressRequest)}
+                  </pre>
+                </div>
 
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">

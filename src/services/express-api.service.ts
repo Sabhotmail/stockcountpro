@@ -5,6 +5,7 @@ import type {
   ExpressLocationsResponse,
   ExpressLoginResponse,
 } from "@/types/express";
+import { isExpressPushDebug, logExpressPush } from "@/lib/express-push-log";
 
 function getExpressConfig():
   | { baseUrl: string; username: string; password: string }
@@ -257,27 +258,115 @@ export interface ExpressPushCountDetail {
   ChangedDate: string;
 }
 
+export type ExpressPushRequestLog = {
+  method: "PUT";
+  url: string;
+  locationCode: string;
+  countDate: string;
+  lineCount: number;
+  /** First rows sent (for UI / quick inspection). */
+  sampleDetails: ExpressPushCountDetail[];
+  /** Full payload when EXPRESS_PUSH_DEBUG=1. */
+  details?: ExpressPushCountDetail[];
+};
+
 export async function putExpressCountByLocation(
   countDate: string,
   locationCode: string,
   details: ExpressPushCountDetail[],
-): Promise<{ success: true; response: unknown } | { error: string }> {
+): Promise<
+  | { success: true; response: unknown; requestLog: ExpressPushRequestLog }
+  | { error: string }
+> {
   const code = locationCode.trim().toUpperCase();
   if (!code) return { error: "locationCode is required" };
   if (details.length === 0) return { error: "details are required" };
 
-  const result = await expressPutJson<{ success?: boolean; message?: string }>(
-    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locationcode/${encodeURIComponent(code)}`,
-    { details },
-    "Express push countdate by location",
-  );
+  const config = getExpressConfig();
+  if ("error" in config) return { error: config.error };
 
-  if ("error" in result) return result;
-  if (result.success === false) {
-    return { error: result.message ?? "Express push failed" };
+  const tokenResult = await getExpressToken();
+  if ("error" in tokenResult) return tokenResult;
+
+  const path = `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locationcode/${encodeURIComponent(code)}`;
+  const url = `${config.baseUrl}${path}`;
+  const body = { details };
+  const requestLog: ExpressPushRequestLog = {
+    method: "PUT",
+    url,
+    locationCode: code,
+    countDate,
+    lineCount: details.length,
+    sampleDetails: details.slice(0, 3),
+    ...(isExpressPushDebug() ? { details } : {}),
+  };
+
+  logExpressPush("request", {
+    url,
+    lineCount: details.length,
+    locationCode: code,
+    countDate,
+    userId: details[0]?.UserID,
+    changedDate: details[0]?.ChangedDate,
+    countFlag: details[0]?.CountFlag,
+    sample: requestLog.sampleDetails,
+    ...(isExpressPushDebug() ? { body } : {}),
+  });
+
+  const doFetch = async (token: string) =>
+    fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+  let res = await doFetch(tokenResult.token);
+  if (res.status === 401) {
+    cachedToken = null;
+    const retryToken = await loginExpressApi();
+    if ("error" in retryToken) return retryToken;
+    res = await doFetch(retryToken.token);
   }
 
-  return { success: true, response: result };
+  const responseText = await res.text();
+  let parsed: { success?: boolean; message?: string } | null = null;
+  if (responseText) {
+    try {
+      parsed = JSON.parse(responseText) as { success?: boolean; message?: string };
+    } catch {
+      parsed = null;
+    }
+  }
+
+  logExpressPush("response", {
+    status: res.status,
+    ok: res.ok,
+    contentType: res.headers.get("content-type"),
+    body: responseText.slice(0, isExpressPushDebug() ? 8000 : 2000),
+    parsed,
+  });
+
+  if (!res.ok) {
+    const detail = responseText ? `: ${responseText.slice(0, 300)}` : "";
+    return {
+      error: `Express push countdate by location failed (${res.status}) for ${path}${detail}`,
+    };
+  }
+
+  if (parsed?.success === false) {
+    return { error: parsed.message ?? "Express push failed" };
+  }
+
+  const response =
+    parsed ??
+    (responseText ? { raw: responseText } : { success: true, emptyBody: true });
+
+  return { success: true, response, requestLog };
 }
 
 export function summarizeExpressCountDate(data: ExpressCountDateResponse) {

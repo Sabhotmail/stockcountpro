@@ -111,6 +111,18 @@ Server behavior:
 6. Writes audit `PUSH_TO_EXPRESS` (success or failure detail).
 7. Re-send is allowed.
 
+### Debugging push (200 but values not updating)
+
+Set in `.env.local`:
+
+```env
+EXPRESS_PUSH_DEBUG=1
+```
+
+Restart dev server, then push again. Server console logs `[Express push] request` / `response` with URL, sample rows, and full body. The push success dialog also shows **Request ที่ส่งไป Express** (URL + sample 3 rows; full `details[]` when debug is on).
+
+Compare `CountDate`, `LocationCode`, `ProductCode`, `CaseQty`, `PieceQty`, `PhysicalBalance` with what Express expects.
+
 ## Field mapping (sync)
 
 | Express | App |
