@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { appSettingsBodySchema } from "@/lib/api/schemas";
 import {
   getAppSettingsForAdmin,
   updateAppSettingsForAdmin,
@@ -25,16 +27,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as { lineLockTtlSeconds?: number };
-  if (body.lineLockTtlSeconds === undefined) {
-    return NextResponse.json(
-      { error: "lineLockTtlSeconds is required" },
-      { status: 400 },
-    );
-  }
+  const parsed = await parseRequestBody(request, appSettingsBodySchema);
+  if (!parsed.ok) return parsed.response;
 
   const result = await updateAppSettingsForAdmin(session, {
-    lineLockTtlSeconds: body.lineLockTtlSeconds,
+    lineLockTtlSeconds: parsed.data.lineLockTtlSeconds,
   });
 
   if ("error" in result) {

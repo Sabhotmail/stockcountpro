@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { readJsonBody, parseWithSchema, validationErrorResponse } from "@/lib/api/parse-body";
+import { approveBodySchema } from "@/lib/api/schemas";
 import { approveDocument } from "@/services/review.service";
 import { getServerSession } from "@/services/mock-session.service";
 
@@ -14,12 +16,13 @@ export async function POST(
   const { documentId } = await params;
 
   let pushToExpress = false;
-  try {
-    const body = (await request.json()) as { pushToExpress?: unknown };
-    pushToExpress = body.pushToExpress === true;
-  } catch {
-    // empty / non-JSON body → approve only
+  const raw = await readJsonBody(request);
+  if (raw.ok) {
+    const parsed = parseWithSchema(approveBodySchema, raw.data);
+    if (!parsed.ok) return validationErrorResponse(parsed.error);
+    pushToExpress = parsed.data.pushToExpress === true;
   }
+  // empty / non-JSON body → approve only (legacy behavior)
 
   const result = await approveDocument(session, documentId, { pushToExpress });
 

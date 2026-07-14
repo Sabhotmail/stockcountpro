@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { saveEntryBodySchema } from "@/lib/api/schemas";
 import { saveEntry } from "@/services/count-entry.service";
 import { getServerSession } from "@/services/mock-session.service";
-import type { SaveEntryPayload } from "@/types/count";
 
 export async function PATCH(
   request: Request,
@@ -17,8 +18,16 @@ export async function PATCH(
   }
 
   const { documentId, versionId, lineId } = await params;
-  const payload = (await request.json()) as SaveEntryPayload;
-  const result = await saveEntry(session, documentId, versionId, lineId, payload);
+  const parsed = await parseRequestBody(request, saveEntryBodySchema);
+  if (!parsed.ok) return parsed.response;
+
+  const result = await saveEntry(
+    session,
+    documentId,
+    versionId,
+    lineId,
+    parsed.data,
+  );
 
   if ("error" in result) {
     if (result.error === "CONFLICT" || result.error === "LOCKED") {

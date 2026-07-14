@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { createAdminUserBodySchema } from "@/lib/api/schemas";
 import { listUsersForAdmin } from "@/services/admin.service";
-import { createUserForAdmin, type CreateAdminUserInput } from "@/services/admin-user.service";
+import { createUserForAdmin } from "@/services/admin-user.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function GET() {
@@ -23,18 +25,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseRequestBody(req, createAdminUserBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-
-  const result = await createUserForAdmin(session, body as CreateAdminUserInput);
+  const result = await createUserForAdmin(session, parsed.data);
   if ("error" in result) {
     const status = result.error === "Access denied" ? 403 : 400;
     return NextResponse.json({ error: result.error }, { status });

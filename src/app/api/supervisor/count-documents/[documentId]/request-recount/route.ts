@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { recountRequestBodySchema } from "@/lib/api/schemas";
 import { requestRecount } from "@/services/review.service";
 import { getServerSession } from "@/services/mock-session.service";
-import type { RecountRequestPayload } from "@/types/count";
 
 export async function POST(
   request: Request,
@@ -13,8 +14,10 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  const payload = (await request.json()) as RecountRequestPayload;
-  const result = await requestRecount(session, documentId, payload);
+  const parsed = await parseRequestBody(request, recountRequestBodySchema);
+  if (!parsed.ok) return parsed.response;
+
+  const result = await requestRecount(session, documentId, parsed.data);
 
   if ("error" in result) {
     const status =

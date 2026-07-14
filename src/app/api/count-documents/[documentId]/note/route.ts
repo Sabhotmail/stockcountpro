@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { saveDocumentNoteBodySchema } from "@/lib/api/schemas";
 import { saveDocumentNote } from "@/services/count-document.service";
 import { getServerSession } from "@/services/mock-session.service";
-import type { SaveDocumentNotePayload } from "@/types/count";
 
 export async function PATCH(
   request: Request,
@@ -13,8 +14,14 @@ export async function PATCH(
   }
 
   const { documentId } = await params;
-  const payload = (await request.json()) as SaveDocumentNotePayload;
-  const result = await saveDocumentNote(session, documentId, payload.note ?? null);
+  const parsed = await parseRequestBody(request, saveDocumentNoteBodySchema);
+  if (!parsed.ok) return parsed.response;
+
+  const result = await saveDocumentNote(
+    session,
+    documentId,
+    parsed.data.note ?? null,
+  );
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
