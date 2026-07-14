@@ -19,6 +19,7 @@ import {
   filterDocumentsForSupervisor,
   filterDocumentsForSupervisorPrint,
 } from "@/lib/permissions";
+import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import { prisma } from "@/lib/prisma";
 import { isEntryCounted } from "@/lib/unit-converter";
 import { hasComparableExpectedQty } from "@/lib/express-expected-qty";
@@ -54,29 +55,6 @@ async function getHub(hubId: string | null) {
   if (!hubId) return null;
   const hub = await prisma.hub.findUnique({ where: { id: hubId } });
   return hub ? mapHub(hub) : null;
-}
-
-async function getLastSuccessfulExpressPushes(
-  documentIds: string[],
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  if (documentIds.length === 0) return map;
-
-  const logs = await prisma.auditLog.findMany({
-    where: {
-      documentId: { in: documentIds },
-      action: "PUSH_TO_EXPRESS",
-      detail: { startsWith: "ok;" },
-    },
-    orderBy: { createdAt: "desc" },
-    select: { documentId: true, createdAt: true },
-  });
-
-  for (const log of logs) {
-    if (!log.documentId || map.has(log.documentId)) continue;
-    map.set(log.documentId, log.createdAt.toISOString());
-  }
-  return map;
 }
 
 async function enrichSupervisorDocument(

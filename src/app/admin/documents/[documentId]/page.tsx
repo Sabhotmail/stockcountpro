@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { PushExpressButton } from "@/components/PushExpressButton";
@@ -50,6 +51,7 @@ export default function AdminDocumentHistoryPage() {
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("audit");
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,6 +193,22 @@ export default function AdminDocumentHistoryPage() {
   const location =
     `${document.locationCode ?? document.branchCode}` +
     (document.locationName ? ` · ${document.locationName}` : ` · ${document.branchName}`);
+  const alreadyPushed = Boolean(document.lastExpressPushAt);
+
+  function handlePushed(message: string) {
+    setPushNotice(message);
+    setHistory((prev) =>
+      prev
+        ? {
+            ...prev,
+            document: {
+              ...prev.document,
+              lastExpressPushAt: new Date().toISOString(),
+            },
+          }
+        : prev,
+    );
+  }
 
   return (
     <PageShell
@@ -201,15 +219,20 @@ export default function AdminDocumentHistoryPage() {
           <DocumentStatusBadge status={document.status} compact />
           {document.status === DocumentStatus.COMPLETED && (
             <>
+              <ExpressPushBadge at={document.lastExpressPushAt} />
               <Link
                 href={`/print/documents/${documentId}`}
                 className={buttonVariants({ size: "sm" })}
                 target="_blank"
                 rel="noreferrer"
               >
-                พิมพ์เอกสาร
+                พิมพ์
               </Link>
-              <PushExpressButton documentId={documentId} />
+              <PushExpressButton
+                documentId={documentId}
+                alreadyPushed={alreadyPushed}
+                onPushed={handlePushed}
+              />
             </>
           )}
           <LogoutButton onClick={handleLogout} />
@@ -227,10 +250,31 @@ export default function AdminDocumentHistoryPage() {
         </div>
       }
     >
+      {pushNotice && (
+        <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-950">
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>{pushNotice}</span>
+            <button
+              type="button"
+              className="text-xs font-medium underline-offset-2 hover:underline"
+              onClick={() => setPushNotice(null)}
+            >
+              ปิด
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {document.status === DocumentStatus.COMPLETED ? (
         <Alert className="mb-4 border-green-200 bg-green-50 text-green-950">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span>เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้ หรือส่งผลกลับ Express</span>
+            <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <span>
+                เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้
+                หรือส่งผลกลับ Express
+              </span>
+              <ExpressPushBadge at={document.lastExpressPushAt} />
+            </span>
             <div className="flex flex-wrap gap-2">
               <Link
                 href={`/print/documents/${documentId}`}
@@ -238,9 +282,13 @@ export default function AdminDocumentHistoryPage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                พิมพ์เอกสาร
+                พิมพ์
               </Link>
-              <PushExpressButton documentId={documentId} />
+              <PushExpressButton
+                documentId={documentId}
+                alreadyPushed={alreadyPushed}
+                onPushed={handlePushed}
+              />
             </div>
           </AlertDescription>
         </Alert>

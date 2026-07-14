@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { PushExpressButton } from "@/components/PushExpressButton";
@@ -41,28 +42,6 @@ function locationCodeLabel(doc: SupervisorDocumentListItem): string {
 
 function locationNameLabel(doc: SupervisorDocumentListItem): string {
   return doc.locationName ?? doc.branchName;
-}
-
-function ExpressPushBadge({ at }: { at: string | null }) {
-  if (!at) {
-    return (
-      <span className="inline-flex whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
-        ยังไม่ส่ง
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className="inline-flex flex-col gap-0.5 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium leading-tight text-emerald-800"
-      title={`ส่ง Express แล้ว · ${formatDateTimeShortTH(at)}`}
-    >
-      <span>ส่งแล้ว</span>
-      <span className="font-normal text-emerald-700/80">
-        {formatDateTimeShortTH(at)}
-      </span>
-    </span>
-  );
 }
 
 function DocumentCard({

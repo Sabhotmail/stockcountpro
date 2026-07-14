@@ -2,15 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { PushExpressButton } from "@/components/PushExpressButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,6 +66,7 @@ export default function AdminDocumentsPage() {
   const [applied, setApplied] = useState({ q: "", documentDate: "", status: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
 
   const loadDocuments = useCallback(
     async (filters: { q: string; documentDate: string; status: string }) => {
@@ -99,12 +107,23 @@ export default function AdminDocumentsPage() {
     void loadDocuments({ q: "", documentDate: "", status: "" });
   }, [loadDocuments]);
 
+  function handlePushed(documentId: string, message: string) {
+    setPushNotice(message);
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === documentId
+          ? { ...doc, lastExpressPushAt: new Date().toISOString() }
+          : doc,
+      ),
+    );
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     router.push("/login");
   }
 
-  function handleSearch(e: React.FormEvent) {
+  function handleSearch(e: FormEvent) {
     e.preventDefault();
     void loadDocuments({
       q: q.trim(),
@@ -126,10 +145,26 @@ export default function AdminDocumentsPage() {
       subtitle="ประวัติเอกสารนับสต็อก — ค้นหาแล้วเปิดดูประวัติ"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<AdminNav />}
+      className="[&_main]:max-w-7xl [&_header>div]:max-w-7xl"
     >
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {pushNotice && (
+        <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-950">
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>{pushNotice}</span>
+            <button
+              type="button"
+              className="text-xs font-medium underline-offset-2 hover:underline"
+              onClick={() => setPushNotice(null)}
+            >
+              ปิด
+            </button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -210,128 +245,173 @@ export default function AdminDocumentsPage() {
           </p>
 
           <div className="flex flex-col gap-3 md:hidden">
-            {documents.map((doc) => (
-              <Card key={doc.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-base">{doc.documentNo}</CardTitle>
-                    <DocumentStatusBadge status={doc.status} compact />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {doc.documentDate} · {locationLabel(doc)}
-                  </p>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  V{doc.currentVersionNo || "—"} · {doc.countedLines}/
-                  {doc.totalLines} รายการ
-                </CardContent>
-                <CardFooter className="flex flex-row flex-wrap gap-2">
-                  <Link
-                    href={`/admin/documents/${doc.id}`}
-                    className={cn(buttonVariants({ size: "sm" }), "flex-1")}
-                  >
-                    ประวัติ
-                  </Link>
-                  {doc.status === DocumentStatus.COMPLETED && (
-                    <>
-                      <Link
-                        href={`/print/documents/${doc.id}`}
-                        className={cn(
-                          buttonVariants({ size: "sm", variant: "outline" }),
-                          "flex-1",
-                        )}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        พิมพ์
-                      </Link>
-                      <PushExpressButton documentId={doc.id} className="flex-1" />
-                    </>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
+            {documents.map((doc) => {
+              const pushed = Boolean(doc.lastExpressPushAt);
+              const completed = doc.status === DocumentStatus.COMPLETED;
+              return (
+                <Card
+                  key={doc.id}
+                  className={cn(pushed && completed && "border-emerald-200")}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <CardTitle className="text-base leading-snug break-words">
+                        {doc.documentNo}
+                      </CardTitle>
+                      <DocumentStatusBadge status={doc.status} compact />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {doc.documentDate} · {locationLabel(doc)}
+                    </p>
+                    {completed && (
+                      <div className="pt-1">
+                        <ExpressPushBadge at={doc.lastExpressPushAt} />
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    V{doc.currentVersionNo || "—"} · {doc.countedLines}/
+                    {doc.totalLines} รายการ
+                  </CardContent>
+                  <CardFooter className="flex flex-row flex-wrap gap-2">
+                    <Link
+                      href={`/admin/documents/${doc.id}`}
+                      className={cn(buttonVariants({ size: "sm" }), "flex-1")}
+                    >
+                      ประวัติ
+                    </Link>
+                    {completed && (
+                      <>
+                        <Link
+                          href={`/print/documents/${doc.id}`}
+                          className={cn(
+                            buttonVariants({ size: "sm", variant: "outline" }),
+                            "flex-1",
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          พิมพ์
+                        </Link>
+                        <PushExpressButton
+                          documentId={doc.id}
+                          className="flex-1"
+                          alreadyPushed={pushed}
+                          onPushed={(message) => handlePushed(doc.id, message)}
+                        />
+                      </>
+                    )}
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
 
           <Card className="hidden md:block">
-            <CardContent className="pt-6">
-              <Table>
+            <CardContent className="pt-4">
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>เลขเอกสาร</TableHead>
-                    <TableHead>วันที่</TableHead>
-                    <TableHead>คลัง</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                    <TableHead>เวอร์ชัน</TableHead>
-                    <TableHead>รายการ</TableHead>
-                    <TableHead />
+                    <TableHead className="w-[28%]">เอกสาร</TableHead>
+                    <TableHead className="w-[10%]">วันที่</TableHead>
+                    <TableHead className="w-[12%]">สถานะ</TableHead>
+                    <TableHead className="w-[12%]">Express</TableHead>
+                    <TableHead className="w-[8%]">รายการ</TableHead>
+                    <TableHead className="w-[30%] text-right">การทำงาน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow
-                      key={doc.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/admin/documents/${doc.id}`)}
-                    >
-                      <TableCell className="max-w-[16rem]">
-                        <p
-                          className="truncate font-medium"
-                          title={doc.documentNo}
-                        >
-                          {doc.documentNo}
-                        </p>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {doc.documentDate}
-                      </TableCell>
-                      <TableCell className="max-w-[16rem] truncate">
-                        {locationLabel(doc)}
-                      </TableCell>
-                      <TableCell>
-                        <DocumentStatusBadge status={doc.status} compact />
-                      </TableCell>
-                      <TableCell>V{doc.currentVersionNo || "—"}</TableCell>
-                      <TableCell>
-                        {doc.countedLines}/{doc.totalLines}
-                      </TableCell>
-                      <TableCell>
-                        <div
-                          className="inline-flex flex-nowrap items-center gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Link
-                            href={`/admin/documents/${doc.id}`}
-                            className={cn(
-                              buttonVariants({ size: "sm" }),
-                              "shrink-0",
-                            )}
-                          >
-                            ประวัติ
-                          </Link>
-                          {doc.status === DocumentStatus.COMPLETED && (
-                            <>
-                              <Link
-                                href={`/print/documents/${doc.id}`}
-                                className={cn(
-                                  buttonVariants({
-                                    size: "sm",
-                                    variant: "outline",
-                                  }),
-                                  "shrink-0",
-                                )}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                พิมพ์
-                              </Link>
-                              <PushExpressButton documentId={doc.id} />
-                            </>
+                  {documents.map((doc) => {
+                    const pushed = Boolean(doc.lastExpressPushAt);
+                    const completed = doc.status === DocumentStatus.COMPLETED;
+                    return (
+                      <TableRow
+                        key={doc.id}
+                        className={cn(
+                          "cursor-pointer",
+                          pushed && completed && "bg-emerald-50/50",
+                        )}
+                        onClick={() => router.push(`/admin/documents/${doc.id}`)}
+                      >
+                        <TableCell className="max-w-0 whitespace-normal">
+                          <div className="min-w-0 space-y-0.5">
+                            <p
+                              className="truncate font-medium"
+                              title={doc.documentNo}
+                            >
+                              {doc.documentNo}
+                            </p>
+                            <p
+                              className="truncate text-xs text-muted-foreground"
+                              title={locationLabel(doc)}
+                            >
+                              {locationLabel(doc)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              V{doc.currentVersionNo || "—"}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                          {doc.documentDate}
+                        </TableCell>
+                        <TableCell>
+                          <DocumentStatusBadge status={doc.status} compact />
+                        </TableCell>
+                        <TableCell className="whitespace-normal">
+                          {completed ? (
+                            <ExpressPushBadge at={doc.lastExpressPushAt} />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {doc.countedLines}/{doc.totalLines}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div
+                            className="inline-flex flex-nowrap items-center justify-end gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Link
+                              href={`/admin/documents/${doc.id}`}
+                              className={cn(
+                                buttonVariants({ size: "sm" }),
+                                "shrink-0",
+                              )}
+                            >
+                              ประวัติ
+                            </Link>
+                            {completed && (
+                              <>
+                                <Link
+                                  href={`/print/documents/${doc.id}`}
+                                  className={cn(
+                                    buttonVariants({
+                                      size: "sm",
+                                      variant: "outline",
+                                    }),
+                                    "shrink-0",
+                                  )}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  พิมพ์
+                                </Link>
+                                <PushExpressButton
+                                  documentId={doc.id}
+                                  alreadyPushed={pushed}
+                                  onPushed={(message) =>
+                                    handlePushed(doc.id, message)
+                                  }
+                                />
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

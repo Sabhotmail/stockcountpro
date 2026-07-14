@@ -1,5 +1,6 @@
 import { mapAuditLog, mapBranch, mapCountDocument, mapHub } from "@/lib/db/mappers";
 import { getDocumentForSession } from "@/lib/document-access";
+import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import {
   normalizeExpressLocationPrefix,
   validateExpressLocationPrefix,
@@ -323,6 +324,7 @@ async function enrichAdminDocumentListItem(
   if (!row) return null;
 
   const doc = mapCountDocument(row);
+  const pushMap = await getLastSuccessfulExpressPushes([docId]);
   return {
     ...doc,
     branchCode: row.branch.code,
@@ -331,6 +333,7 @@ async function enrichAdminDocumentListItem(
     hubCode: row.hub?.code ?? null,
     hubName: row.hub?.name ?? null,
     hubShortName: row.hub?.shortName ?? null,
+    lastExpressPushAt: pushMap.get(docId) ?? null,
   };
 }
 
@@ -349,7 +352,7 @@ export async function listCountDocumentsForAdmin(
     orderBy: [{ documentDate: "desc" }, { documentNo: "asc" }],
   });
 
-  const result: CountDocumentListItem[] = [];
+  const accessible: typeof rows = [];
   for (const row of rows) {
     const doc = mapCountDocument(row);
     if (
@@ -374,8 +377,16 @@ export async function listCountDocumentsForAdmin(
         .toLowerCase();
       if (!haystack.includes(q)) continue;
     }
+    accessible.push(row);
+  }
 
-    result.push({
+  const pushMap = await getLastSuccessfulExpressPushes(
+    accessible.map((row) => row.id),
+  );
+
+  return accessible.map((row) => {
+    const doc = mapCountDocument(row);
+    return {
       ...doc,
       branchCode: row.branch.code,
       branchName: row.branch.name,
@@ -383,10 +394,9 @@ export async function listCountDocumentsForAdmin(
       hubCode: row.hub?.code ?? null,
       hubName: row.hub?.name ?? null,
       hubShortName: row.hub?.shortName ?? null,
-    });
-  }
-
-  return result;
+      lastExpressPushAt: pushMap.get(row.id) ?? null,
+    };
+  });
 }
 
 export type AdminDocumentHistory = {
