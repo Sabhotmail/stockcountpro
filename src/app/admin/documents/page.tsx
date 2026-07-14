@@ -184,7 +184,7 @@ export default function AdminDocumentsPage() {
   return (
     <PageShell
       title="เอกสาร"
-      subtitle="ประวัติเอกสารนับสต็อก — ค้นหาแล้วเปิดดูประวัติ"
+      subtitle="ค้นหา ประวัติ พิมพ์ และส่ง Express"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<AdminNav />}
       className="[&_main]:max-w-7xl [&_header>div]:max-w-7xl"
@@ -210,13 +210,13 @@ export default function AdminDocumentsPage() {
         </Alert>
       )}
 
-      <Card className="mb-4">
-        <CardContent className="pt-6">
+      <Card className="mb-4 border-dashed shadow-none">
+        <CardContent className="pt-5">
           <form
             onSubmit={handleSearch}
             className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
           >
-            <div className="min-w-[200px] flex-1 space-y-2">
+            <div className="min-w-[200px] flex-1 space-y-1.5">
               <Label htmlFor="doc-search">ค้นหา</Label>
               <Input
                 id="doc-search"
@@ -225,7 +225,7 @@ export default function AdminDocumentsPage() {
                 placeholder="เลขเอกสาร หรือรหัส/ชื่อคลัง เช่น 2411"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="doc-date">วันที่</Label>
               <Input
                 id="doc-date"
@@ -235,7 +235,7 @@ export default function AdminDocumentsPage() {
                 className="w-full sm:w-44"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="doc-status">สถานะ</Label>
               <select
                 id="doc-status"
@@ -251,8 +251,15 @@ export default function AdminDocumentsPage() {
               </select>
             </div>
             <div className="flex gap-2">
-              <Button type="submit">ค้นหา</Button>
-              <Button type="button" variant="outline" onClick={handleClear}>
+              <Button type="submit" size="sm">
+                ค้นหา
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleClear}
+              >
                 ล้าง
               </Button>
             </div>
@@ -321,29 +328,34 @@ export default function AdminDocumentsPage() {
                             aria-label={`เลือก ${doc.documentNo}`}
                           />
                         )}
-                        <CardTitle className="text-base leading-snug break-words">
-                          {doc.documentNo}
-                        </CardTitle>
+                        <div className="min-w-0 space-y-1">
+                          <CardTitle className="text-base leading-snug break-words">
+                            {doc.documentNo}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            {doc.documentDate} · {locationLabel(doc)}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <DocumentStatusBadge status={doc.status} compact />
+                            {completed && (
+                              <ExpressPushBadge at={doc.lastExpressPushAt} />
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <DocumentStatusBadge status={doc.status} compact />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {doc.documentDate} · {locationLabel(doc)}
-                    </p>
-                    {completed && (
-                      <div className="pt-1">
-                        <ExpressPushBadge at={doc.lastExpressPushAt} />
-                      </div>
-                    )}
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
+                  <CardContent className="pt-0 text-sm text-muted-foreground">
                     V{doc.currentVersionNo || "—"} · {doc.countedLines}/
                     {doc.totalLines} รายการ
                   </CardContent>
                   <CardFooter className="flex flex-row flex-wrap gap-2">
                     <Link
                       href={`/admin/documents/${doc.id}`}
-                      className={cn(buttonVariants({ size: "sm" }), "flex-1")}
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "outline" }),
+                        "flex-1",
+                      )}
                     >
                       ประวัติ
                     </Link>
@@ -352,7 +364,7 @@ export default function AdminDocumentsPage() {
                         <Link
                           href={`/print/documents/${doc.id}`}
                           className={cn(
-                            buttonVariants({ size: "sm", variant: "outline" }),
+                            buttonVariants({ size: "sm" }),
                             "flex-1",
                           )}
                           target="_blank"
@@ -382,12 +394,11 @@ export default function AdminDocumentsPage() {
                     <TableHead className="w-[5%]">
                       <span className="sr-only">เลือก</span>
                     </TableHead>
-                    <TableHead className="w-[25%]">เอกสาร</TableHead>
+                    <TableHead className="w-[34%]">เอกสาร</TableHead>
                     <TableHead className="w-[10%]">วันที่</TableHead>
-                    <TableHead className="w-[12%]">สถานะ</TableHead>
-                    <TableHead className="w-[12%]">Express</TableHead>
+                    <TableHead className="w-[18%]">สถานะ</TableHead>
                     <TableHead className="w-[8%]">รายการ</TableHead>
-                    <TableHead className="w-[28%] text-right">การทำงาน</TableHead>
+                    <TableHead className="w-[25%] text-right">การทำงาน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -438,15 +449,13 @@ export default function AdminDocumentsPage() {
                         <TableCell className="whitespace-nowrap text-muted-foreground">
                           {doc.documentDate}
                         </TableCell>
-                        <TableCell>
-                          <DocumentStatusBadge status={doc.status} compact />
-                        </TableCell>
                         <TableCell className="whitespace-normal">
-                          {completed ? (
-                            <ExpressPushBadge at={doc.lastExpressPushAt} />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                          <div className="flex flex-col items-start gap-1">
+                            <DocumentStatusBadge status={doc.status} compact />
+                            {completed ? (
+                              <ExpressPushBadge at={doc.lastExpressPushAt} />
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {doc.countedLines}/{doc.totalLines}
@@ -459,7 +468,7 @@ export default function AdminDocumentsPage() {
                             <Link
                               href={`/admin/documents/${doc.id}`}
                               className={cn(
-                                buttonVariants({ size: "sm" }),
+                                buttonVariants({ size: "sm", variant: "outline" }),
                                 "shrink-0",
                               )}
                             >
@@ -470,10 +479,7 @@ export default function AdminDocumentsPage() {
                                 <Link
                                   href={`/print/documents/${doc.id}`}
                                   className={cn(
-                                    buttonVariants({
-                                      size: "sm",
-                                      variant: "outline",
-                                    }),
+                                    buttonVariants({ size: "sm" }),
                                     "shrink-0",
                                   )}
                                   target="_blank"

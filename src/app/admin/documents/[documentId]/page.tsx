@@ -214,30 +214,7 @@ export default function AdminDocumentHistoryPage() {
     <PageShell
       title={document.documentNo}
       subtitle={`${document.documentDate} · ${location} · V${document.currentVersionNo || "—"}`}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <DocumentStatusBadge status={document.status} compact />
-          {document.status === DocumentStatus.COMPLETED && (
-            <>
-              <ExpressPushBadge at={document.lastExpressPushAt} />
-              <Link
-                href={`/print/documents/${documentId}`}
-                className={buttonVariants({ size: "sm" })}
-                target="_blank"
-                rel="noreferrer"
-              >
-                พิมพ์
-              </Link>
-              <PushExpressButton
-                documentId={documentId}
-                alreadyPushed={alreadyPushed}
-                onPushed={handlePushed}
-              />
-            </>
-          )}
-          <LogoutButton onClick={handleLogout} />
-        </div>
-      }
+      actions={<LogoutButton onClick={handleLogout} />}
       nav={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
@@ -265,41 +242,35 @@ export default function AdminDocumentHistoryPage() {
         </Alert>
       )}
 
-      {document.status === DocumentStatus.COMPLETED ? (
-        <Alert className="mb-4 border-green-200 bg-green-50 text-green-950">
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-              <span>
-                เอกสารเสร็จสิ้นแล้ว — พิมพ์ใบตรวจนับพร้อมช่องลายเซ็นได้
-                หรือส่งผลกลับ Express
-              </span>
-              <ExpressPushBadge at={document.lastExpressPushAt} />
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/print/documents/${documentId}`}
-                className={buttonVariants({ size: "sm" })}
-                target="_blank"
-                rel="noreferrer"
-              >
-                พิมพ์
-              </Link>
-              <PushExpressButton
-                documentId={documentId}
-                alreadyPushed={alreadyPushed}
-                onPushed={handlePushed}
-              />
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Alert className="mb-4">
-          <AlertDescription>
-            ปุ่มพิมพ์จะแสดงเมื่อเอกสารสถานะเสร็จสิ้น (หลัง Supervisor
-            อนุมัติแล้ว)
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <DocumentStatusBadge status={document.status} compact />
+          {document.status === DocumentStatus.COMPLETED ? (
+            <ExpressPushBadge at={document.lastExpressPushAt} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              พิมพ์ / ส่ง Express ได้เมื่อสถานะเสร็จสิ้น
+            </p>
+          )}
+        </div>
+        {document.status === DocumentStatus.COMPLETED && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/print/documents/${documentId}`}
+              className={buttonVariants({ size: "sm" })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              พิมพ์
+            </Link>
+            <PushExpressButton
+              documentId={documentId}
+              alreadyPushed={alreadyPushed}
+              onPushed={handlePushed}
+            />
+          </div>
+        )}
+      </div>
 
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -308,12 +279,10 @@ export default function AdminDocumentHistoryPage() {
       )}
 
       {latestRecountReason && (
-        <Alert className="mb-4 border-orange-200 bg-orange-50 text-orange-950">
-          <AlertDescription>
-            <span className="font-medium">เหตุผลขอนับใหม่ล่าสุด: </span>
-            {latestRecountReason}
-          </AlertDescription>
-        </Alert>
+        <p className="mb-4 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">ขอนับใหม่ล่าสุด:</span>{" "}
+          {latestRecountReason}
+        </p>
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -324,7 +293,7 @@ export default function AdminDocumentHistoryPage() {
 
         <TabsContent value="audit">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">
                 Audit Log ({auditLogs.length})
               </CardTitle>
