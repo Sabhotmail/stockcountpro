@@ -1,6 +1,19 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { UserRole, type MockSession } from "@/types/user";
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  [UserRole.ADMIN]: "Admin",
+  [UserRole.HQ]: "HQ",
+  [UserRole.SUPERVISOR]: "Supervisor",
+  [UserRole.BRANCH_MANAGER]: "Branch Manager",
+  [UserRole.STAFF]: "Staff",
+  [UserRole.COUNTER]: "Counter",
+  [UserRole.VIEWER]: "Viewer",
+};
 
 export function PageShell({
   title,
@@ -62,9 +75,43 @@ export function PageShell({
 }
 
 export function LogoutButton({ onClick }: { onClick: () => void }) {
+  const [user, setUser] = useState<MockSession | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch("/api/me", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { user?: MockSession };
+        if (!cancelled && data.user) setUser(data.user);
+      } catch {
+        // ignore — logout still works without label
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
-    <Button type="button" variant="outline" size="sm" onClick={onClick}>
-      ออกจากระบบ
-    </Button>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {user && (
+        <div className="min-w-0 text-right leading-tight">
+          <p className="truncate text-sm font-medium">
+            {user.userName}
+          </p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            login เป็น · {ROLE_LABEL[user.role] ?? user.role}
+          </p>
+        </div>
+      )}
+      <Button type="button" variant="outline" size="sm" onClick={onClick}>
+        ออกจากระบบ
+      </Button>
+    </div>
   );
 }
