@@ -253,7 +253,12 @@ export default function TabletDocumentsPage() {
         ))}
 
         {!loading && filtered.length === 0 && (
-          <p className="py-12 text-center text-muted-foreground">ไม่มีเอกสาร</p>
+          <div className="rounded-lg border border-dashed px-4 py-10 text-center">
+            <p className="font-medium">ยังไม่มีเอกสาร</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              เลือกวันที่ด้านบน แล้วกด 「โหลดคลัง」 และ Sync จาก Express
+            </p>
+          </div>
         )}
       </div>
     </PageShell>

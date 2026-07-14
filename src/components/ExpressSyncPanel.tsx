@@ -107,6 +107,8 @@ export function ExpressSyncPanel({
         current.filter((code) => nextSelectableCodes.has(code)),
       );
     } catch (err) {
+      setLocations([]);
+      setSelectedCodes([]);
       setError(err instanceof Error ? err.message : "โหลดคลังไม่สำเร็จ");
     } finally {
       setLoadingLocations(false);
@@ -138,8 +140,11 @@ export function ExpressSyncPanel({
     });
   }
 
+  const canSync =
+    selectedLocationsAreSelectable && !loadingLocations && !syncing;
+
   async function handleSync() {
-    if (!selectedLocationsAreSelectable) return;
+    if (!canSync) return;
 
     setSyncing(true);
     setError(null);
@@ -202,17 +207,25 @@ export function ExpressSyncPanel({
               id="express-sync-date"
               type="date"
               value={countDate}
-              onChange={(event) => setCountDate(event.target.value)}
+              onChange={(event) => {
+                setCountDate(event.target.value);
+                setError(null);
+                setSyncMessage(null);
+                setSyncResults(null);
+              }}
             />
+            <p className="text-xs text-muted-foreground">
+              ขั้นตอน: เลือกวัน → โหลดคลัง → เลือกคลัง → Sync
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant={locations.length === 0 && !error ? "default" : "outline"}
               onClick={() => void loadLocations()}
               disabled={loadingLocations || syncing}
             >
-              {loadingLocations ? "กำลังโหลดคลัง..." : "โหลดคลัง"}
+              {loadingLocations ? "กำลังโหลดคลัง..." : "1. โหลดคลัง"}
             </Button>
             <Button
               type="button"
@@ -224,23 +237,28 @@ export function ExpressSyncPanel({
             </Button>
             <Button
               type="button"
+              variant={canSync ? "default" : "outline"}
               onClick={() => void handleSync()}
-              disabled={
-                syncing ||
-                loadingLocations ||
-                selectedCodes.length === 0 ||
-                !selectedLocationsAreSelectable
-              }
-              size="lg"
+              disabled={!canSync}
             >
-              {syncing ? "กำลัง Sync..." : "Sync จาก Express"}
+              {syncing
+                ? "กำลัง Sync..."
+                : selectedCodes.length > 0
+                  ? `2. Sync ที่เลือก (${selectedCodes.length})`
+                  : "2. Sync จาก Express"}
             </Button>
           </div>
         </div>
 
         {error && (
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="space-y-1">
+              <p className="font-medium">{error}</p>
+              <p className="text-sm opacity-90">
+                ลองเปลี่ยนวันที่ตรวจนับ (รูปแบบ {countDate || "YYYY-MM-DD"})
+                แล้วกด 「โหลดคลัง」อีกครั้ง
+              </p>
+            </AlertDescription>
           </Alert>
         )}
 
@@ -254,11 +272,26 @@ export function ExpressSyncPanel({
           {loadingLocations ? (
             <ListPanelSkeleton rows={6} className="rounded-none border-0" />
           ) : locations.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {error
-                ? "ยังไม่มีรายการคลังให้เลือก"
-                : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
-            </p>
+            <div className="space-y-2 px-4 py-8 text-center">
+              <p className="text-sm font-medium text-foreground">
+                {error
+                  ? "ยังไม่มีคลังให้เลือกสำหรับวันนี้"
+                  : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                เลือกวันที่มีใบตรวจนับใน Express แล้วกด 「โหลดคลัง」
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-1"
+                onClick={() => void loadLocations()}
+                disabled={loadingLocations || syncing}
+              >
+                โหลดคลังอีกครั้ง
+              </Button>
+            </div>
           ) : (
             <div className="divide-y">
               {locations.map((location) => {
@@ -331,6 +364,24 @@ export function ExpressSyncPanel({
             </div>
           )}
         </div>
+
+        {locations.length > 0 && selectableCodes.length === 0 && !loadingLocations && (
+          <Alert>
+            <AlertDescription>
+              มีคลังใน Express แต่ยังเลือก Sync ไม่ได้ — ตรวจการ map สาขา/Hub
+              หรือว่าเอกสารถูกนับไปแล้ว
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {locations.length > 0 &&
+          selectableCodes.length > 0 &&
+          selectedCodes.length === 0 &&
+          !loadingLocations && (
+            <p className="text-sm text-muted-foreground">
+              เลือกอย่างน้อย 1 คลังด้านบน แล้วกด Sync
+            </p>
+          )}
 
         {syncResults && syncResults.length > 0 && (
           <div className="space-y-3">
