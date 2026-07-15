@@ -1,6 +1,8 @@
 import { getServerSession } from "@/services/mock-session.service";
 import { updateHubForAdmin } from "@/services/admin.service";
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { updateHubBodySchema } from "@/lib/api/schemas";
 
 type RouteContext = {
   params: Promise<{ hubId: string }>;
@@ -13,14 +15,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { hubId } = await context.params;
-  const body = (await request.json()) as {
-    name?: string;
-    shortName?: string | null;
-    suffixLetter?: string | null;
-    isActive?: boolean;
-  };
+  const parsed = await parseRequestBody(request, updateHubBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  const result = await updateHubForAdmin(session, hubId, body);
+  const result = await updateHubForAdmin(session, hubId, parsed.data);
   if ("error" in result) {
     const status =
       result.error === "Access denied"

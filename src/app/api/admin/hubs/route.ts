@@ -2,9 +2,10 @@ import { getServerSession } from "@/services/mock-session.service";
 import {
   createHubForAdmin,
   listHubsForAdmin,
-  updateHubForAdmin,
 } from "@/services/admin.service";
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { createHubBodySchema } from "@/lib/api/schemas";
 
 export async function GET(request: Request) {
   const session = await getServerSession();
@@ -29,24 +30,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as {
-    branchId?: string;
-    code?: string;
-    name?: string;
-    shortName?: string | null;
-    suffixLetter?: string | null;
-  };
-
-  if (!body.branchId || !body.code || !body.name) {
-    return NextResponse.json({ error: "branchId, code, and name are required" }, { status: 400 });
-  }
+  const parsed = await parseRequestBody(request, createHubBodySchema);
+  if (!parsed.ok) return parsed.response;
 
   const result = await createHubForAdmin(session, {
-    branchId: body.branchId,
-    code: body.code,
-    name: body.name,
-    shortName: body.shortName,
-    suffixLetter: body.suffixLetter,
+    branchId: parsed.data.branchId,
+    code: parsed.data.code,
+    name: parsed.data.name,
+    shortName: parsed.data.shortName,
+    suffixLetter: parsed.data.suffixLetter,
   });
 
   if ("error" in result) {

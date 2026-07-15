@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  resetPasswordForAdmin,
-  type ResetAdminUserPasswordInput,
-} from "@/services/admin-user.service";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { resetAdminPasswordBodySchema } from "@/lib/api/schemas";
+import { resetPasswordForAdmin } from "@/services/admin-user.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function POST(
@@ -15,23 +14,10 @@ export async function POST(
   }
 
   const { userId } = await params;
+  const parsed = await parseRequestBody(req, resetAdminPasswordBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-
-  const result = await resetPasswordForAdmin(
-    session,
-    userId,
-    body as ResetAdminUserPasswordInput,
-  );
+  const result = await resetPasswordForAdmin(session, userId, parsed.data);
   if ("error" in result) {
     const status = result.error === "Access denied" ? 403 : 400;
     return NextResponse.json({ error: result.error }, { status });

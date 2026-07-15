@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { expressSyncBodySchema } from "@/lib/api/schemas";
 import {
   previewExpressCountDate,
   syncExpressCountDate,
-  type ExpressSyncLocationInput,
 } from "@/services/express-sync.service";
 import { getServerSession } from "@/services/mock-session.service";
 
@@ -33,61 +34,20 @@ export async function GET(request: Request) {
   return NextResponse.json(result);
 }
 
-function parseLocationsBody(
-  locations: unknown,
-): ExpressSyncLocationInput[] | null {
-  if (!Array.isArray(locations) || locations.length === 0) return null;
-
-  if (locations.every((item) => typeof item === "string")) {
-    return locations.map((code) => ({ code }));
-  }
-
-  if (
-    locations.every(
-      (item) =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as { code?: unknown }).code === "string",
-    )
-  ) {
-    return locations.map((item) => {
-      const row = item as { code: string; name?: unknown };
-      return {
-        code: row.code,
-        name: typeof row.name === "string" ? row.name : null,
-      };
-    });
-  }
-
-  return null;
-}
-
 export async function POST(request: Request) {
   const session = await getServerSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as {
-    date?: string;
-    locations?: unknown;
-  };
-  if (!body.date) {
-    return NextResponse.json({ error: "date is required" }, { status: 400 });
-  }
+  const parsed = await parseRequestBody(request, expressSyncBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  const locations = parseLocationsBody(body.locations);
-  if (!locations) {
-    return NextResponse.json(
-      {
-        error:
-          "locations must be an array of strings or { code, name } objects",
-      },
-      { status: 400 },
-    );
-  }
-
-  const result = await syncExpressCountDate(session, body.date, locations);
+  const result = await syncExpressCountDate(
+    session,
+    parsed.data.date,
+    parsed.data.locations,
+  );
   if ("error" in result) {
     const message = result.error ?? "Sync failed";
     const status =

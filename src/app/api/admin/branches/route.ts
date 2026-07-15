@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { createBranchBodySchema } from "@/lib/api/schemas";
 import {
   createBranchForAdmin,
   listBranchesForAdmin,
@@ -25,53 +27,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-
-  const { code, name, expressLocationPrefix } = body as {
-    code?: unknown;
-    name?: unknown;
-    expressLocationPrefix?: unknown;
-  };
-
-  if (typeof code !== "string" || typeof name !== "string") {
-    return NextResponse.json(
-      { error: "code and name are required strings" },
-      { status: 400 },
-    );
-  }
-
-  if (
-    expressLocationPrefix !== undefined &&
-    expressLocationPrefix !== null &&
-    typeof expressLocationPrefix !== "string"
-  ) {
-    return NextResponse.json(
-      { error: "expressLocationPrefix must be a string or null" },
-      { status: 400 },
-    );
-  }
+  const parsed = await parseRequestBody(request, createBranchBodySchema);
+  if (!parsed.ok) return parsed.response;
 
   const result = await createBranchForAdmin(session, {
-    code,
-    name,
-    expressLocationPrefix:
-      expressLocationPrefix === undefined ? null : expressLocationPrefix,
+    code: parsed.data.code,
+    name: parsed.data.name,
+    expressLocationPrefix: parsed.data.expressLocationPrefix ?? null,
   });
 
   if ("error" in result) {
-    const status =
-      result.error === "Access denied"
-        ? 403
-        : 400;
+    const status = result.error === "Access denied" ? 403 : 400;
     return NextResponse.json({ error: result.error }, { status });
   }
 

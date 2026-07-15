@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { loginBodySchema } from "@/lib/api/schemas";
 import { clearLegacySessionCookie } from "@/lib/auth/session";
 import { logLogin } from "@/services/audit-log.service";
 import { authenticateUser } from "@/services/auth.service";
@@ -9,19 +11,18 @@ import {
 } from "@/services/mock-session.service";
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
-    username?: string;
-    password?: string;
-  };
-
-  if (!body.username?.trim() || !body.password) {
+  const parsed = await parseRequestBody(request, loginBodySchema);
+  if (!parsed.ok) {
     return NextResponse.json(
       { error: "Username and password are required" },
       { status: 400 },
     );
   }
 
-  const session = await authenticateUser(body.username, body.password);
+  const session = await authenticateUser(
+    parsed.data.username,
+    parsed.data.password,
+  );
   if (!session) {
     return NextResponse.json(
       { error: "Invalid username or password" },

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseRequestBody } from "@/lib/api/parse-body";
+import { batchSaveEntriesBodySchema } from "@/lib/api/schemas";
 import { saveEntriesBatch } from "@/services/count-entry.service";
 import { getServerSession } from "@/services/mock-session.service";
-import type { BatchSaveEntryItem } from "@/types/count";
 
 export async function POST(
   request: Request,
@@ -15,17 +16,15 @@ export async function POST(
   }
 
   const { documentId, versionId } = await params;
-  const body = await request.json();
-  const items = body.items as BatchSaveEntryItem[] | undefined;
+  const parsed = await parseRequestBody(request, batchSaveEntriesBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  if (!Array.isArray(items) || items.length === 0) {
-    return NextResponse.json(
-      { error: "items array is required" },
-      { status: 400 },
-    );
-  }
-
-  const result = await saveEntriesBatch(session, documentId, versionId, items);
+  const result = await saveEntriesBatch(
+    session,
+    documentId,
+    versionId,
+    parsed.data.items,
+  );
 
   if ("error" in result) {
     const status =
