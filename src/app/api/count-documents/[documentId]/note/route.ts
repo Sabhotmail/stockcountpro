@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { parseRequestBody } from "@/lib/api/parse-body";
 import { saveDocumentNoteBodySchema } from "@/lib/api/schemas";
 import { saveDocumentNote } from "@/services/count-document.service";
@@ -24,7 +25,10 @@ export async function PATCH(
   );
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json({ note: result.note });

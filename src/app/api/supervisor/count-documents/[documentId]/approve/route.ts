@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { readJsonBody, parseWithSchema, validationErrorResponse } from "@/lib/api/parse-body";
 import { approveBodySchema } from "@/lib/api/schemas";
 import { approveDocument } from "@/services/review.service";
@@ -27,13 +28,10 @@ export async function POST(
   const result = await approveDocument(session, documentId, { pushToExpress });
 
   if ("error" in result) {
-    const status =
-      result.error === "Access denied"
-        ? 403
-        : result.error === "Document not found"
-          ? 404
-          : 400;
-    return NextResponse.json({ error: result.error }, { status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json(result);

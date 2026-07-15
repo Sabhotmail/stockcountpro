@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { parseRequestBody } from "@/lib/api/parse-body";
 import { batchSaveEntriesBodySchema } from "@/lib/api/schemas";
 import { saveEntriesBatch } from "@/services/count-entry.service";
@@ -27,15 +28,10 @@ export async function POST(
   );
 
   if ("error" in result) {
-    const status =
-      result.error === "Access denied"
-        ? 403
-        : result.error === "Document not found" ||
-            result.error === "Version not found" ||
-            result.error === "Line not found"
-          ? 404
-          : 400;
-    return NextResponse.json({ error: result.error }, { status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json(result);
