@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security MVP — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --pre-bg: #1e293b; --pre-text: #e2e8f0;
+      --danger: #b91c1c; --danger-bg: #fef2f2; --ok: #047857; --ok-bg: #d1fae5;
+      --amber: #b45309; --amber-bg: #fef3c7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.25rem 0 0.6rem; font-size: 1.08rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--pre-bg); color: var(--pre-text); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .btn { display: inline-block; padding: 0.55rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; }
+    .btn-green { background: #059669; color: #fff; }
+    .btn-green.disabled { opacity: 0.45; }
+    .alert { background: var(--amber-bg); color: var(--amber); border-radius: 8px; padding: 0.6rem 0.8rem; font-size: 0.9rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Security MVP</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-07-15</span>
+        <span><strong>Status:</strong> <span class="badge badge-ok">Approved</span></span>
+        <span><strong>Scope:</strong> Count integrity + authz polish (no offline Dexie)</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ol>
+        <li><code>clientMutationId</code> idempotency — กัน retry ซ้ำ save / audit</li>
+        <li>Block submit จนกว่า autosave จะครบ (client flush + readiness)</li>
+        <li>HTTP status: deny → 403, not found → 404</li>
+        <li>Approve + <code>FinalCountEntry</code> ใน transaction เดียว</li>
+      </ol>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>Offline IndexedDB / Dexie</li>
+        <li>Express change-warning entity</li>
+        <li>Full audit forensic fields (ip / userAgent)</li>
+        <li>Role consolidation</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>Zod รับ <code>clientMutationId</code> แล้ว แต่ service ไม่ใช้</li>
+        <li>Summary ส่งได้แม้หน้านับยังมี save ค้าง</li>
+        <li>หลาย route map error → 400 เสมอ</li>
+        <li><code>snapshotFinalCountEntries</code> อยู่นอก transaction เดียวกับ COMPLETED</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow (ที่ต้องไม่พัง)</h2>
+      <ol>
+        <li>พนักงานกรอกจำนวน → autosave (retry ได้โดยไม่ซ้ำ audit)</li>
+        <li>กดไปหน้าสรุป → ระบบรอ flush queue ก่อน</li>
+        <li>ยืนยันส่งหัวหน้า → ได้เฉพาะ DRAFT ที่บันทึกครบ</li>
+        <li>หัวหน้าอนุมัติ → COMPLETED + final snapshot พร้อมกัน</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <h3>หน้าสรุปก่อนส่ง — /tablet/count/[id]/summary</h3>
+      <div class="mockup">
+        <div class="mockup-header">Staff · สรุปก่อนส่ง</div>
+        <div class="mockup-card">
+          <div class="alert">ยังมีรายการที่กำลังบันทึก — กลับไปหน้านับให้บันทึกครบก่อน</div>
+          <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+            <span class="btn" style="border:1px solid #cbd5e1;">แก้ไขการนับ</span>
+            <span class="btn btn-green disabled">ยืนยันส่งให้หัวหน้างาน</span>
+          </div>
+        </div>
+      </div>
+      <p class="mockup-note">ปุ่มส่ง disable ถ้ามี syncStatus = saving / failed หรือ flush ไม่สำเร็จ</p>
+    </section>
+
+    <section id="data-api">
+      <h2>Data model / API</h2>
+      <h3>ProcessedMutation</h3>
+      <pre><code>model ProcessedMutation {
+  id               String   @id @default(cuid())
+  clientMutationId String
+  userId           String
+  documentId       String
+  lineId           String?
+  responseJson     String
+  createdAt        DateTime @default(now())
+  @@unique([userId, clientMutationId])
+}</code></pre>
+      <h3>APIs</h3>
+      <table>
+        <tr><th>Method</th><th>Path</th><th>Change</th></tr>
+        <tr><td>PATCH</td><td>/api/count-documents/.../entries/:lineId</td><td>idempotent when clientMutationId set</td></tr>
+        <tr><td>POST</td><td>.../entries/batch</td><td>per-item idempotency</td></tr>
+        <tr><td>GET</td><td>/api/count-documents/:id/submit-readiness</td><td>new — version DRAFT + counts</td></tr>
+        <tr><td>POST</td><td>.../submit</td><td>403/404 mapping</td></tr>
+        <tr><td>POST</td><td>/api/supervisor/.../approve</td><td>atomic snapshot + COMPLETED</td></tr>
+      </table>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <tr><th>Signal</th><th>HTTP</th></tr>
+        <tr><td>Access denied</td><td>403</td></tr>
+        <tr><td>Not found</td><td>404</td></tr>
+        <tr><td>CONFLICT revision</td><td>409 (existing shape)</td></tr>
+        <tr><td>Validation / business</td><td>400</td></tr>
+      </table>
+      <ul>
+        <li>Retry same clientMutationId → one revision bump, one AUTO_SAVE audit</li>
+        <li>Submit blocked while pending saves / failed sync</li>
+        <li>Guess documentId across branch → 403/404</li>
+        <li>Approve never COMPLETED without FinalCountEntry rows in same commit</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · Security MVP design · Approved 2026-07-15</footer>
+  </div>
+</body>
+</html>
