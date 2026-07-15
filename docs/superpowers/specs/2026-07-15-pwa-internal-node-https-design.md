@@ -8,13 +8,16 @@ Scope: Installable internal PWA over LAN IP using a custom Node HTTPS server. Of
 
 StockCount Pro should be installable on internal warehouse tablets from a LAN IP address, without Caddy or a public domain. The app should open like a standalone app from the tablet home screen while keeping the existing online counting workflow unchanged.
 
+The server IP is not finalized yet. The design must not hardcode any specific IP in application code. The IP is provided at runtime and at certificate-generation time, so switching IP later means regenerating the certificate and updating one config value, with no code change.
+
 Success means:
 
-- Tablet users can open `https://100.106.34.125:3443` and install StockCount Pro.
+- Tablet users can open `https://<server-ip>:3443` and install StockCount Pro.
 - Installed app starts at `/login` in standalone display mode.
 - The app has a recognizable box-and-check icon.
 - Login, document list, counting, review, printing, and Express push continue to require network access.
 - If the app shell is opened while offline, users see a clear Thai offline page instead of a blank failure.
+- Changing the server IP later requires only a new certificate plus a config value, not a code edit.
 
 ## Non-Goals
 
@@ -31,7 +34,7 @@ Chrome and Android require a secure context for installable PWA behavior when no
 
 ```text
 Tablet Chrome / Installed PWA
-  -> https://100.106.34.125:3443
+  -> https://<server-ip>:3443
   -> server.mjs (Node HTTPS)
   -> Next.js request handler
   -> StockCount Pro
@@ -41,16 +44,20 @@ Implementation shape:
 
 - Add `server.mjs` at the project root.
 - `server.mjs` loads certificate files from `certs/`.
+- The server binds to all interfaces, so it serves whatever LAN IP the host currently has. No IP is hardcoded in code.
 - The server prepares Next.js and delegates all requests to Next's request handler.
 - Add `npm run start:https` to run production HTTPS after `npm run build`.
 - Keep existing `npm run dev`, `npm run build`, and `npm run start` unchanged for normal debugging.
 
 Certificate expectations:
 
-- Certificate must include IP SAN for `100.106.34.125`.
+- The certificate is generated for whatever server IP is chosen at deployment time. The IP is a generation-time input, not a code constant.
+- The certificate may include multiple IP SANs so the same certificate keeps working if the server IP changes to a known candidate.
 - Certificate should also include `localhost` and `127.0.0.1` for local checks.
 - Private key files under `certs/` must be ignored by git.
 - Internal tablets must trust the certificate authority or certificate used by the server.
+
+Because the IP is still undecided, the certificate generation step happens during deployment, not now. The code and scripts must work for any IP without modification.
 
 Recommended file names:
 
@@ -82,7 +89,7 @@ Manifest values:
 - `name`: `StockCount Pro`
 - `short_name`: `StockCount`
 - `description`: Thai/English short description for internal stock counting
-- `start_url`: `/login`
+- `start_url`: `/login` (relative, so it works on any IP)
 - `scope`: `/`
 - `display`: `standalone`
 - `orientation`: `portrait-primary`
@@ -148,7 +155,7 @@ The page must not imply offline counting is available.
 
 Add `docs/pwa-internal-https.md` covering:
 
-1. Generate or place certificate files for IP `100.106.34.125`.
+1. Decide the server IP for this deployment, then generate certificate files that include that IP (plus `localhost` / `127.0.0.1`).
 2. Put cert/key in `certs/` using the expected names.
 3. Trust the certificate or internal CA on Android tablets.
 4. Build and start:
@@ -158,9 +165,11 @@ npm run build
 npm run start:https
 ```
 
-5. Open `https://100.106.34.125:3443/login`.
+5. Open `https://<server-ip>:3443/login` using the deployment IP.
 6. Install from Chrome menu or native install prompt.
 7. Verify standalone launch from Home Screen.
+
+The doc must use `<server-ip>` as a placeholder and explain how to regenerate the certificate if the IP changes later.
 
 ## Security And Data Rules
 
@@ -178,7 +187,7 @@ Manual checks:
 - `npm run build` succeeds.
 - `npm run start:https` starts on port `3443`.
 - Desktop Chrome can open `https://localhost:3443/login` when the cert is trusted.
-- Tablet Chrome can open `https://100.106.34.125:3443/login` when the cert is trusted.
+- Tablet Chrome can open `https://<server-ip>:3443/login` when the cert is trusted.
 - Chrome DevTools Application panel shows:
   - Manifest is valid.
   - Icons are loaded.
