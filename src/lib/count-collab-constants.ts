@@ -1,6 +1,8 @@
 export const DEFAULT_LINE_LOCK_TTL_SECONDS = 30;
 export const LINE_LOCK_TTL_MS = DEFAULT_LINE_LOCK_TTL_SECONDS * 1000;
 export const COUNT_POLL_INTERVAL_MS = 10_000;
+/** Renew active edit lock before TTL expires while a qty field stays focused. */
+export const LOCK_HEARTBEAT_INTERVAL_MS = 12_000;
 
 export const LINE_LOCK_TTL_MIN_SECONDS = 5;
 export const LINE_LOCK_TTL_MAX_SECONDS = 600;
