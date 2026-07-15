@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { serializeSaveResponse, parseSaveResponse } from "@/lib/processed-mutation";
+import {
+  replayIfPresent,
+  serializeSaveResponse,
+  parseSaveResponse,
+} from "@/lib/processed-mutation";
 import type { SaveEntryResponse } from "@/types/count";
 
 function testRoundTrip() {
@@ -24,5 +28,29 @@ function testRoundTrip() {
   assert.equal(parsed.entry.revision, 2);
 }
 
+function testReplayIfPresent() {
+  assert.equal(replayIfPresent(null), null);
+  const row = {
+    responseJson: serializeSaveResponse({
+      status: "SAVED",
+      entry: {
+        lineId: "line_1",
+        qtyCase: 0,
+        qtyPack: null,
+        qtyPiece: 1,
+        totalBaseQty: 1,
+        note: null,
+        revision: 1,
+        updatedAt: "2026-07-15T00:00:00.000Z",
+        updatedBy: "user_admin",
+      },
+    }),
+  };
+  const replayed = replayIfPresent(row);
+  assert.ok(replayed);
+  assert.equal(replayed.entry.qtyPiece, 1);
+}
+
 testRoundTrip();
+testReplayIfPresent();
 console.log("processed-mutation.test: OK");

@@ -12,6 +12,13 @@ export function parseSaveResponse(json: string): SaveEntryResponse {
   return JSON.parse(json) as SaveEntryResponse;
 }
 
+export function replayIfPresent(
+  row: { responseJson: string } | null,
+): SaveEntryResponse | null {
+  if (!row) return null;
+  return parseSaveResponse(row.responseJson);
+}
+
 export async function findProcessedMutation(
   userId: string,
   clientMutationId: string,
