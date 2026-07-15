@@ -645,13 +645,26 @@ export default function TabletCountPage() {
           return next;
         });
         setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saved" }));
+
+        // If focus already left this line, free the lock immediately so another
+        // counter (e.g. staff after supervisor) can edit without waiting for TTL.
+        if (activeEditLineIdRef.current !== lineId) {
+          void releaseLock(lineId);
+        }
       } catch {
         setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
       } finally {
         savingLinesRef.current.delete(lineId);
       }
     },
-    [documentId, ensureLock, productCodeByLineId, pushToast, versionId],
+    [
+      documentId,
+      ensureLock,
+      productCodeByLineId,
+      pushToast,
+      releaseLock,
+      versionId,
+    ],
   );
 
   const saveDocumentNote = useCallback(

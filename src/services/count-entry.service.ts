@@ -13,10 +13,7 @@ import {
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
-import {
-  acquireOrRenewLineLock,
-  assertCallerHoldsActiveLock,
-} from "@/services/count-line-lock.service";
+import { assertCallerHoldsActiveLock } from "@/services/count-line-lock.service";
 import { logAutoSave } from "@/services/audit-log.service";
 import { buildAutoSaveDetail } from "@/lib/audit-log-detail";
 import { getUserById } from "@/services/user.service";
@@ -260,7 +257,8 @@ async function applyEntrySave(
     ),
   );
 
-  await acquireOrRenewLineLock(session, documentId, lineId);
+  // Do not renew the line lock here — lifetime is managed by tablet
+  // acquire / heartbeat / release so a finished save cannot block others.
 
   const entry = await enrichEntryWithUserName(saved);
   return { status: "SAVED", entry };
