@@ -30,8 +30,9 @@ Prerequisites:
 4. User A saves an entry
    - Call assertCallerHoldsActiveLock(sessionA, documentId, lineId)
    - Expect: { ok: true }
+   - Expect: save does NOT renew expiresAt (renew only via acquire/heartbeat)
 
-5. User A releases lock (navigates away / closes editor)
+5. User A releases lock (navigates away / closes editor; tablet also releases after save when unfocused)
    - Call releaseLineLock(sessionA, documentId, lineId)
    - Expect: lock removed from DB
 
