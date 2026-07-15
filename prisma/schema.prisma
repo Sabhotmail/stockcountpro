@@ -285,3 +285,16 @@ model AppSetting {
   updatedAt          DateTime
   updatedBy          String?
 }
+
+model ProcessedMutation {
+  id               String   @id @default(cuid())
+  clientMutationId String
+  userId           String
+  documentId       String
+  lineId           String?
+  responseJson     String
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, clientMutationId])
+  @@index([documentId, createdAt])
+}
