@@ -277,22 +277,36 @@ export async function approveDocument(
     : null;
   if (!version) return { error: "Version not found" };
 
-  await snapshotFinalCountEntries(documentId, version.id);
-
   const now = new Date();
-  await prisma.$transaction([
-    prisma.countVersion.update({
-      where: { id: version.id },
-      data: { status: VersionStatus.APPROVED },
-    }),
-    prisma.countDocument.update({
-      where: { id: documentId },
-      data: {
-        status: DocumentStatus.COMPLETED,
-        updatedAt: now,
-      },
-    }),
-  ]);
+  try {
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.countDocument.findUnique({
+        where: { id: documentId },
+      });
+      if (!fresh || fresh.status !== DocumentStatus.SUBMITTED) {
+        throw new Error("ONLY_SUBMITTED");
+      }
+
+      await snapshotFinalCountEntries(documentId, version.id, tx);
+
+      await tx.countVersion.update({
+        where: { id: version.id },
+        data: { status: VersionStatus.APPROVED },
+      });
+      await tx.countDocument.update({
+        where: { id: documentId },
+        data: {
+          status: DocumentStatus.COMPLETED,
+          updatedAt: now,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "ONLY_SUBMITTED") {
+      return { error: "Only submitted documents can be approved" };
+    }
+    throw error;
+  }
 
   await logApproveVersion(
     session.userId,

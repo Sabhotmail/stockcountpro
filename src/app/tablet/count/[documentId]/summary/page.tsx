@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
@@ -14,6 +14,25 @@ import { formatCountQtyCasePiece } from "@/lib/count-qty";
 import { filterCountableLines } from "@/lib/line-filter";
 import { cn } from "@/lib/utils";
 import { type CountSummary, type CountSummaryLine } from "@/types/count";
+
+type SubmitReadiness =
+  | {
+      ok: true;
+      countedLines: number;
+      totalLines: number;
+      versionStatus: string;
+      versionId: string;
+    }
+  | {
+      ok: false;
+      reasons: string[];
+      countedLines: number;
+      totalLines: number;
+      versionStatus: string | null;
+    };
+
+const PENDING_FLUSH_MESSAGE =
+  "ยังมีรายการที่กำลังบันทึก — กลับไปหน้านับให้บันทึกครบก่อน";
 
 function formatLineQty(line: CountSummaryLine): string {
   return formatCountQtyCasePiece({
@@ -98,9 +117,12 @@ function SummaryLineCard({ line }: { line: CountSummaryLine }) {
 export default function TabletSummaryPage() {
   const params = useParams<{ documentId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const documentId = params.documentId;
+  const hasPendingFlush = searchParams.get("pending") === "1";
 
   const [summary, setSummary] = useState<CountSummary | null>(null);
+  const [readiness, setReadiness] = useState<SubmitReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,18 +133,41 @@ export default function TabletSummaryPage() {
   useEffect(() => {
     let cancelled = false;
 
+    async function loadReadiness(): Promise<SubmitReadiness | null> {
+      const res = await fetch(
+        `/api/count-documents/${documentId}/submit-readiness`,
+      );
+      if (res.status === 401) {
+        router.push("/login");
+        return null;
+      }
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Failed to load submit readiness");
+      }
+      return (await res.json()) as SubmitReadiness;
+    }
+
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/count-documents/${documentId}/summary`);
-        if (res.status === 401) {
+        const [summaryRes, readinessData] = await Promise.all([
+          fetch(`/api/count-documents/${documentId}/summary`),
+          loadReadiness(),
+        ]);
+
+        if (summaryRes.status === 401) {
           router.push("/login");
           return;
         }
-        if (!res.ok) throw new Error("Failed to load summary");
-        const data = await res.json();
-        if (!cancelled) setSummary(data.summary);
+        if (!summaryRes.ok) throw new Error("Failed to load summary");
+
+        const data = await summaryRes.json();
+        if (!cancelled) {
+          setSummary(data.summary);
+          setReadiness(readinessData);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Load failed");
@@ -154,6 +199,25 @@ export default function TabletSummaryPage() {
     setSubmitting(true);
     setError(null);
     try {
+      const readinessRes = await fetch(
+        `/api/count-documents/${documentId}/submit-readiness`,
+      );
+      if (readinessRes.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!readinessRes.ok) {
+        const data = await readinessRes.json();
+        throw new Error(data.error ?? "ตรวจสอบความพร้อมส่งไม่สำเร็จ");
+      }
+
+      const readinessData = (await readinessRes.json()) as SubmitReadiness;
+      setReadiness(readinessData);
+      if (!readinessData.ok) {
+        setError(readinessData.reasons.join(" · "));
+        return;
+      }
+
       const res = await fetch(
         `/api/count-documents/${documentId}/versions/${versionId}/submit`,
         { method: "POST" },
@@ -194,6 +258,10 @@ export default function TabletSummaryPage() {
     document.version?.status,
   );
   const hasUncounted = summary.uncountedLines > 0;
+  const canSubmit =
+    isEditable &&
+    !hasPendingFlush &&
+    readiness?.ok === true;
 
   return (
     <div className="min-h-screen bg-muted/40 pb-28">
@@ -267,7 +335,21 @@ export default function TabletSummaryPage() {
           </Alert>
         )}
 
-        {hasUncounted && isEditable && (
+        {hasPendingFlush && (
+          <Alert className="mb-4 border-orange-200/80 bg-orange-50 text-orange-950">
+            <AlertDescription>{PENDING_FLUSH_MESSAGE}</AlertDescription>
+          </Alert>
+        )}
+
+        {readiness && !readiness.ok && (
+          <Alert className="mb-4 border-destructive/30 bg-destructive/5 text-destructive">
+            <AlertDescription>
+              {readiness.reasons.join(" · ")}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {hasUncounted && isEditable && readiness?.ok && (
           <Alert className="mb-4 border-orange-200/80 bg-orange-50 text-orange-950">
             <AlertDescription>
               ยังมี {summary.uncountedLines} รายการที่ยังไม่นับ — ส่งได้
@@ -381,7 +463,7 @@ export default function TabletSummaryPage() {
             size="lg"
             className="min-h-11 flex-1 bg-emerald-600 hover:bg-emerald-700"
             onClick={handleSubmit}
-            disabled={!isEditable || submitting}
+            disabled={!canSubmit || submitting}
           >
             {submitting ? "กำลังส่ง..." : "ยืนยันส่งให้หัวหน้างาน"}
           </Button>

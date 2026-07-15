@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { parseRequestBody } from "@/lib/api/parse-body";
 import { recountRequestBodySchema } from "@/lib/api/schemas";
 import { requestRecount } from "@/services/review.service";
@@ -20,13 +21,10 @@ export async function POST(
   const result = await requestRecount(session, documentId, parsed.data);
 
   if ("error" in result) {
-    const status =
-      result.error === "Access denied"
-        ? 403
-        : result.error === "Document not found"
-          ? 404
-          : 400;
-    return NextResponse.json({ error: result.error }, { status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json({

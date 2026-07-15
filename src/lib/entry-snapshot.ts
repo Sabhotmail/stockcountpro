@@ -7,6 +7,9 @@ import {
 } from "@/lib/db/mappers";
 import type { CountEntry, CountVersion } from "@/types/count";
 import type { CountDocument } from "@/types/count";
+import type { Prisma } from "@prisma/client";
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 function getVersionChain(
   versions: CountVersion[],
@@ -29,8 +32,9 @@ function getVersionChain(
 async function getRawEntriesForVersion(
   document: CountDocument,
   versionId: string,
+  db: Db = prisma,
 ): Promise<CountEntry[]> {
-  const snapshots = await prisma.entrySnapshot.findMany({
+  const snapshots = await db.entrySnapshot.findMany({
     where: { versionId },
   });
 
@@ -39,7 +43,7 @@ async function getRawEntriesForVersion(
   }
 
   if (document.currentVersionId === versionId) {
-    const lines = await prisma.productLine.findMany({
+    const lines = await db.productLine.findMany({
       where: { documentId: document.id },
       include: { entry: true },
     });
@@ -66,15 +70,16 @@ async function getRawEntriesForVersion(
 export async function resolveEffectiveEntries(
   documentId: string,
   versionId: string,
+  db: Db = prisma,
 ): Promise<CountEntry[]> {
-  const documentRow = await prisma.countDocument.findUnique({
+  const documentRow = await db.countDocument.findUnique({
     where: { id: documentId },
   });
   if (!documentRow) return [];
 
   const document = mapCountDocument(documentRow);
   const versions = (
-    await prisma.countVersion.findMany({
+    await db.countVersion.findMany({
       where: { documentId },
       orderBy: { versionNo: "asc" },
     })
@@ -84,7 +89,7 @@ export async function resolveEffectiveEntries(
   const effective = new Map<string, CountEntry>();
 
   for (const version of chain) {
-    const entries = await getRawEntriesForVersion(document, version.id);
+    const entries = await getRawEntriesForVersion(document, version.id, db);
     for (const entry of entries) {
       effective.set(entry.lineId, entry);
     }
@@ -96,12 +101,13 @@ export async function resolveEffectiveEntries(
 export async function snapshotDocumentEntries(
   documentId: string,
   versionId: string,
+  db: Db = prisma,
 ): Promise<CountEntry[]> {
-  const entries = await resolveEffectiveEntries(documentId, versionId);
+  const entries = await resolveEffectiveEntries(documentId, versionId, db);
 
-  await prisma.entrySnapshot.deleteMany({ where: { versionId } });
+  await db.entrySnapshot.deleteMany({ where: { versionId } });
   if (entries.length > 0) {
-    await prisma.entrySnapshot.createMany({
+    await db.entrySnapshot.createMany({
       data: entries.map((entry) => ({
         versionId,
         lineId: entry.lineId,
@@ -123,12 +129,13 @@ export async function snapshotDocumentEntries(
 export async function snapshotFinalCountEntries(
   documentId: string,
   versionId: string,
+  db: Db = prisma,
 ): Promise<CountEntry[]> {
-  const entries = await snapshotDocumentEntries(documentId, versionId);
+  const entries = await snapshotDocumentEntries(documentId, versionId, db);
 
-  await prisma.finalCountEntry.deleteMany({ where: { documentId } });
+  await db.finalCountEntry.deleteMany({ where: { documentId } });
   if (entries.length > 0) {
-    await prisma.finalCountEntry.createMany({
+    await db.finalCountEntry.createMany({
       data: entries.map((entry) => ({
         documentId,
         lineId: entry.lineId,

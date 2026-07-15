@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { submitVersion } from "@/services/count-document.service";
 import { getServerSession } from "@/services/mock-session.service";
 
@@ -17,7 +18,10 @@ export async function POST(
   const result = await submitVersion(session, documentId, versionId);
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json({ success: true });
