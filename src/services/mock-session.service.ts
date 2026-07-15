@@ -1,9 +1,10 @@
 import {
   SESSION_COOKIE,
   clearLegacySessionCookie,
-  clearSessionCookie,
+  clearSessionCookieHeaders,
   createSessionToken,
   serializeSessionCookie,
+  shouldUseSecureCookies,
   verifySessionToken,
 } from "@/lib/auth/session";
 import type { MockSession } from "@/types/user";
@@ -49,10 +50,13 @@ export async function setSessionCookie(session: MockSession): Promise<string> {
   return createSessionToken(session);
 }
 
-export function buildSessionSetCookieHeader(token: string): string {
-  return serializeSessionCookie(token);
+export function buildSessionSetCookieHeader(
+  token: string,
+  request?: Request,
+): string {
+  return serializeSessionCookie(token, shouldUseSecureCookies(request));
 }
 
 export function buildSessionClearCookieHeaders(): string[] {
-  return [clearSessionCookie(), clearLegacySessionCookie()];
+  return [...clearSessionCookieHeaders(), clearLegacySessionCookie()];
 }
