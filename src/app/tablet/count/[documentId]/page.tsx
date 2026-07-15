@@ -254,7 +254,8 @@ export default function TabletCountPage() {
     window.addEventListener("pagehide", flushHeldLocks);
     return () => {
       window.removeEventListener("pagehide", flushHeldLocks);
-      flushHeldLocks();
+      // Do not flush on effect cleanup — that races React remounts and clears
+      // locks while the page is still open. pagehide covers real navigation.
     };
   }, [documentId]);
 
@@ -869,6 +870,7 @@ export default function TabletCountPage() {
       requiresQtySaveConfirmation(
         value,
         isExpressFieldNotCountedForLine(line, field),
+        currentValue,
       )
     ) {
       const gotLock = await ensureLock(line.lineId);

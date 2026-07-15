@@ -4,9 +4,17 @@ export const COUNT_QTY_NOT_COUNTED = -1;
 export function requiresQtySaveConfirmation(
   value: number | null,
   expressFieldNotCounted: boolean,
+  previousValue: number | null = null,
 ): boolean {
   if (value === null || value === COUNT_QTY_NOT_COUNTED) return false;
   if (expressFieldNotCounted) return false;
+  // Corrections to an already-counted field autosave; only the first count needs confirm.
+  if (
+    previousValue !== null &&
+    previousValue !== COUNT_QTY_NOT_COUNTED
+  ) {
+    return false;
+  }
   return true;
 }
 
