@@ -64,18 +64,51 @@ export async function verifySessionToken(
   }
 }
 
-export function serializeSessionCookie(token: string): string {
-  const secure =
-    process.env.NODE_ENV === "production" ? "; Secure" : "";
+/**
+ * Decide Secure cookie flag.
+ * - AUTH_COOKIE_SECURE=true|false overrides
+ * - else use request https / x-forwarded-proto (LAN http://IP works with npm start)
+ * - else fall back to NODE_ENV===production
+ */
+export function shouldUseSecureCookies(request?: Request): boolean {
+  const forced = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+  if (forced === "true" || forced === "1") return true;
+  if (forced === "false" || forced === "0") return false;
 
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}${secure}`;
+  if (request) {
+    const forwarded = request.headers
+      .get("x-forwarded-proto")
+      ?.split(",")[0]
+      ?.trim()
+      .toLowerCase();
+    if (forwarded === "https") return true;
+    if (forwarded === "http") return false;
+    try {
+      return new URL(request.url).protocol === "https:";
+    } catch {
+      // fall through
+    }
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
+export function serializeSessionCookie(
+  token: string,
+  secure = shouldUseSecureCookies(),
+): string {
+  const secureFlag = secure ? "; Secure" : "";
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}${secureFlag}`;
+}
+
+/** Clear both Secure and non-Secure variants so leftover cookies cannot stick. */
+export function clearSessionCookieHeaders(): string[] {
+  const base = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return [base, `${base}; Secure`];
 }
 
 export function clearSessionCookie(): string {
-  const secure =
-    process.env.NODE_ENV === "production" ? "; Secure" : "";
-
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
+  return clearSessionCookieHeaders()[0];
 }
 
 export function clearLegacySessionCookie(): string {

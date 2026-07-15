@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseRequestBody } from "@/lib/api/parse-body";
 import { loginBodySchema } from "@/lib/api/schemas";
-import { clearLegacySessionCookie } from "@/lib/auth/session";
 import { logLogin } from "@/services/audit-log.service";
 import { authenticateUser } from "@/services/auth.service";
 import {
@@ -42,8 +41,13 @@ export async function POST(request: Request) {
     },
   });
 
-  response.headers.append("Set-Cookie", buildSessionSetCookieHeader(token));
-  response.headers.append("Set-Cookie", clearLegacySessionCookie());
+  for (const cookie of buildSessionClearCookieHeaders()) {
+    response.headers.append("Set-Cookie", cookie);
+  }
+  response.headers.append(
+    "Set-Cookie",
+    buildSessionSetCookieHeader(token, request),
+  );
 
   return response;
 }
