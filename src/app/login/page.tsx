@@ -9,10 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getHomePathForRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { ADMIN_SEED_PASSWORD } from "@/mock/users";
 import { UserRole } from "@/types/user";
-
-const ADMIN_SEED_USERNAME = "admin";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -141,10 +138,7 @@ export default function LoginPage() {
         </section>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          บัญชีเริ่มต้นหลัง seed:{" "}
-          <span className="font-mono text-foreground">
-            {ADMIN_SEED_USERNAME} / {ADMIN_SEED_PASSWORD}
-          </span>
+          ระบบตรวจนับสต็อก · ใช้งานบน Tablet ในคลัง
         </p>
       </div>
     </div>
