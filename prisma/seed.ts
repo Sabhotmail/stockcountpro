@@ -1,8 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import {
-  resolveAdminBootstrapConfig,
-  resolveSeedUserPassword,
-} from "../src/lib/auth/bootstrap-config";
+import { resolveAdminBootstrapConfig } from "../src/lib/auth/bootstrap-config";
 import { hashPassword } from "../src/lib/auth/password";
 import { mockBranches, mockHubs } from "../src/mock/branches";
 import { mockUsers } from "../src/mock/users";
@@ -10,6 +7,7 @@ import { mockUsers } from "../src/mock/users";
 /**
  * Local / staging wipe-and-seed. Do not use as the production bootstrap path.
  * Production: migrate deploy + `npm run db:bootstrap-admin` with secrets.
+ * Seed creates branch/hub masters + a single admin user only.
  */
 const prisma = new PrismaClient();
 
@@ -17,7 +15,6 @@ async function main() {
   const adminConfig = resolveAdminBootstrapConfig({
     requirePassword: process.env.NODE_ENV === "production",
   });
-  const seedUserPassword = resolveSeedUserPassword();
 
   await prisma.recountRequestItem.deleteMany();
   await prisma.recountRequest.deleteMany();
@@ -62,17 +59,15 @@ async function main() {
     });
   }
 
-  const defaultPasswordHash = await hashPassword(seedUserPassword);
   const adminPasswordHash = await hashPassword(adminConfig.password);
 
   for (const user of mockUsers) {
-    const isAdmin = user.username === "admin" || user.id === "user_admin";
     await prisma.user.create({
       data: {
-        id: isAdmin ? `user_${adminConfig.username}` : user.id,
-        username: isAdmin ? adminConfig.username : user.username,
-        name: isAdmin ? adminConfig.name : user.name,
-        passwordHash: isAdmin ? adminPasswordHash : defaultPasswordHash,
+        id: `user_${adminConfig.username}`,
+        username: adminConfig.username,
+        name: adminConfig.name,
+        passwordHash: adminPasswordHash,
         role: user.role,
         isActive: true,
         branches: {
@@ -94,7 +89,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded users. Admin username: "${adminConfig.username}" (password from ADMIN_BOOTSTRAP_PASSWORD or local fallback).`,
+    `Seeded masters + admin only. Username: "${adminConfig.username}" (password from ADMIN_BOOTSTRAP_PASSWORD or local fallback).`,
   );
 }
 

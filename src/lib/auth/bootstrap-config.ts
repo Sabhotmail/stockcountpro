@@ -65,14 +65,3 @@ export function resolveAdminBootstrapConfig(options?: {
   };
 }
 
-/** Password for non-admin demo users created by local `prisma db seed` only. */
-export function resolveSeedUserPassword(): string {
-  const fromEnv = readEnv("SEED_USER_PASSWORD");
-  if (fromEnv) return fromEnv;
-  if (isProductionNodeEnv()) {
-    throw new Error(
-      "SEED_USER_PASSWORD is required in production. Prefer db:bootstrap-admin instead of full seed.",
-    );
-  }
-  return "StockCount1!";
-}
