@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { newClientMutationId } from "@/lib/client-id";
 import {
   COUNT_POLL_INTERVAL_MS,
   LOCK_HEARTBEAT_INTERVAL_MS,
@@ -814,7 +815,7 @@ export default function TabletCountPage() {
       qtyPack,
       qtyPiece,
       baseRevision: existing?.revision,
-      clientMutationId: crypto.randomUUID(),
+      clientMutationId: newClientMutationId(),
     };
   }
 
