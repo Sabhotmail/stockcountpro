@@ -29,11 +29,14 @@ import {
   type CountDocumentDetail,
   type CountEntry,
   type ProductLine,
+  type SaveEntryPayload,
   type SyncStatus,
 } from "@/types/count";
 import { UserRole } from "@/types/user";
 
 const AUTO_SAVE_DELAY_MS = 1000;
+/** Max time to wait for in-flight autosaves during flush before treating as failure. */
+const FLUSH_PENDING_SAVES_MAX_MS = 30_000;
 /** Wait after blur before releasing so renew/save is not raced by DELETE. */
 const LOCK_RELEASE_GRACE_MS = 2500;
 
@@ -163,9 +166,7 @@ export default function TabletCountPage() {
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
-  const pendingSavesRef = useRef<
-    Record<string, Record<string, unknown>>
-  >({});
+  const pendingSavesRef = useRef<Record<string, SaveEntryPayload>>({});
   const noteSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyLinesRef = useRef(new Set<string>());
   const notifiedRevisionsRef = useRef(new Set<string>());
@@ -558,8 +559,11 @@ export default function TabletCountPage() {
   }, [lines, entries]);
 
   const saveEntry = useCallback(
-    async (lineId: string, payload: Record<string, unknown>) => {
-      if (!versionId) return;
+    async (lineId: string, payload: SaveEntryPayload) => {
+      if (!versionId) {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+        return;
+      }
 
       savingLinesRef.current.add(lineId);
       setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
@@ -658,8 +662,14 @@ export default function TabletCountPage() {
   );
 
   const scheduleSave = useCallback(
-    (lineId: string, payload: Record<string, unknown>) => {
+    (lineId: string, payload: SaveEntryPayload) => {
+      const existingPending = pendingSavesRef.current[lineId];
+      if (existingPending?.clientMutationId) {
+        payload.clientMutationId = existingPending.clientMutationId;
+      }
+
       pendingSavesRef.current[lineId] = payload;
+      setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "waiting" }));
 
       if (saveTimersRef.current[lineId]) {
         clearTimeout(saveTimersRef.current[lineId]);
@@ -668,13 +678,52 @@ export default function TabletCountPage() {
       saveTimersRef.current[lineId] = setTimeout(() => {
         const pending = pendingSavesRef.current[lineId];
         if (pending) {
-          saveEntry(lineId, pending);
+          void saveEntry(lineId, pending);
           delete pendingSavesRef.current[lineId];
         }
       }, AUTO_SAVE_DELAY_MS);
     },
     [saveEntry],
   );
+
+  const flushPendingSaves = useCallback(async (): Promise<boolean> => {
+    const lineIdsToFlush = new Set([
+      ...Object.keys(saveTimersRef.current),
+      ...Object.keys(pendingSavesRef.current),
+    ]);
+
+    const savePromises: Promise<void>[] = [];
+    for (const lineId of lineIdsToFlush) {
+      const timer = saveTimersRef.current[lineId];
+      if (timer) {
+        clearTimeout(timer);
+        delete saveTimersRef.current[lineId];
+      }
+
+      const pending = pendingSavesRef.current[lineId];
+      if (pending) {
+        delete pendingSavesRef.current[lineId];
+        savePromises.push(saveEntry(lineId, pending));
+      }
+    }
+
+    await Promise.all(savePromises);
+
+    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
+    while (true) {
+      const statuses = syncStatusByLineRef.current;
+      const stillActive =
+        Object.values(statuses).some(
+          (status) => status === "saving" || status === "waiting",
+        ) || savingLinesRef.current.size > 0;
+      if (!stillActive) break;
+      if (Date.now() >= deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    const finalStatuses = syncStatusByLineRef.current;
+    return !Object.values(finalStatuses).some((status) => status === "failed");
+  }, [saveEntry]);
 
   function buildPayload(
     line: ProductLine,
@@ -701,6 +750,7 @@ export default function TabletCountPage() {
       qtyPack,
       qtyPiece,
       baseRevision: existing?.revision,
+      clientMutationId: crypto.randomUUID(),
     };
   }
 
@@ -1019,6 +1069,18 @@ export default function TabletCountPage() {
               "min-h-11 w-full bg-green-600 hover:bg-green-700",
               !isEditable && "pointer-events-none opacity-40",
             )}
+            onClick={async (event) => {
+              if (!isEditable) return;
+              event.preventDefault();
+              const ok = await flushPendingSaves();
+              if (!ok) {
+                pushToast(
+                  "บันทึกบางรายการไม่สำเร็จ กรุณาตรวจสอบก่อนส่งสรุป",
+                );
+                return;
+              }
+              router.push(`/tablet/count/${documentId}/summary`);
+            }}
           >
             สรุปและส่งให้หัวหน้างาน ({countedSummary.counted}/
             {countedSummary.total})

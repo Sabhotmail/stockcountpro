@@ -3,12 +3,16 @@ import { getDocumentForSession } from "@/lib/document-access";
 import { canMutateCount } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
+  findProcessedMutation,
+  replayIfPresent,
+  storeProcessedMutation,
+} from "@/lib/processed-mutation";
+import {
   calculateTotalBaseQty,
   convertPieceOverflowToCase,
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
-import { countCountedLines } from "@/services/count-document.service";
 import {
   acquireOrRenewLineLock,
   assertCallerHoldsActiveLock,
@@ -27,6 +31,7 @@ import {
   type SaveEntryResponse,
 } from "@/types/count";
 import type { MockSession } from "@/types/user";
+import { Prisma } from "@prisma/client";
 
 async function enrichEntryWithUserName(
   entry: NonNullable<
@@ -36,6 +41,22 @@ async function enrichEntryWithUserName(
   const mapped = mapCountEntry(entry);
   const user = await getUserById(entry.updatedBy);
   return { ...mapped, updatedByName: user?.name ?? entry.updatedBy };
+}
+
+async function countCountedLinesInTx(
+  tx: Prisma.TransactionClient,
+  documentId: string,
+): Promise<number> {
+  const lines = await tx.productLine.findMany({
+    where: { documentId },
+    include: { entry: true },
+  });
+
+  return lines.filter((line) => {
+    const entry = line.entry;
+    if (!entry) return false;
+    return isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece);
+  }).length;
 }
 
 async function applyEntrySave(
@@ -60,6 +81,16 @@ async function applyEntrySave(
 
   if (version.status !== VersionStatus.DRAFT) {
     return { error: "Version is not editable" };
+  }
+
+  const mutationId = payload.clientMutationId?.trim();
+  if (mutationId) {
+    const existingMutation = await findProcessedMutation(
+      session.userId,
+      mutationId,
+    );
+    const replayed = replayIfPresent(existingMutation);
+    if (replayed) return replayed;
   }
 
   const line = await prisma.productLine.findFirst({
@@ -130,39 +161,78 @@ async function applyEntrySave(
   );
   const now = new Date();
 
-  const saved = await prisma.countEntry.upsert({
-    where: { lineId },
-    create: {
-      lineId,
-      qtyCase,
-      qtyPack,
-      qtyPiece,
-      totalBaseQty,
-      note: null,
-      revision: 1,
-      updatedAt: now,
-      updatedBy: session.userId,
-    },
-    update: {
-      qtyCase,
-      qtyPack,
-      qtyPiece,
-      totalBaseQty,
-      note: null,
-      revision: (existing?.revision ?? 0) + 1,
-      updatedAt: now,
-      updatedBy: session.userId,
-    },
-  });
+  let saved: NonNullable<
+    Awaited<ReturnType<typeof prisma.countEntry.findUnique>>
+  >;
 
-  const countedLines = await countCountedLines(documentId, versionId);
-  await prisma.countDocument.update({
-    where: { id: documentId },
-    data: {
-      countedLines,
-      updatedAt: now,
-    },
-  });
+  try {
+    saved = await prisma.$transaction(async (tx) => {
+      const upserted = await tx.countEntry.upsert({
+        where: { lineId },
+        create: {
+          lineId,
+          qtyCase,
+          qtyPack,
+          qtyPiece,
+          totalBaseQty,
+          note: null,
+          revision: 1,
+          updatedAt: now,
+          updatedBy: session.userId,
+        },
+        update: {
+          qtyCase,
+          qtyPack,
+          qtyPiece,
+          totalBaseQty,
+          note: null,
+          revision: (existing?.revision ?? 0) + 1,
+          updatedAt: now,
+          updatedBy: session.userId,
+        },
+      });
+
+      const countedLines = await countCountedLinesInTx(tx, documentId);
+      await tx.countDocument.update({
+        where: { id: documentId },
+        data: {
+          countedLines,
+          updatedAt: now,
+        },
+      });
+
+      if (mutationId) {
+        const entry = await enrichEntryWithUserName(upserted);
+        const saveResponse: SaveEntryResponse = { status: "SAVED", entry };
+        await storeProcessedMutation(
+          {
+            userId: session.userId,
+            clientMutationId: mutationId,
+            documentId,
+            lineId,
+            response: saveResponse,
+          },
+          tx,
+        );
+      }
+
+      return upserted;
+    });
+  } catch (error) {
+    if (
+      mutationId &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existingMutation = await findProcessedMutation(
+        session.userId,
+        mutationId,
+      );
+      const replayed = replayIfPresent(existingMutation);
+      if (replayed) return replayed;
+    }
+    throw error;
+  }
 
   await logAutoSave(
     session.userId,

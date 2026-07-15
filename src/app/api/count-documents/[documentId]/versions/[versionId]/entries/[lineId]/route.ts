@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { httpStatusForServiceError } from "@/lib/api/error-status";
 import { parseRequestBody } from "@/lib/api/parse-body";
 import { saveEntryBodySchema } from "@/lib/api/schemas";
 import { saveEntry } from "@/services/count-entry.service";
@@ -33,7 +34,10 @@ export async function PATCH(
     if (result.error === "CONFLICT" || result.error === "LOCKED") {
       return NextResponse.json(result, { status: 409 });
     }
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(
+      { error: result.error },
+      { status: httpStatusForServiceError(result.error) },
+    );
   }
 
   return NextResponse.json(result);
