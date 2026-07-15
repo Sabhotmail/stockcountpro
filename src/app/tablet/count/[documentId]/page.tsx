@@ -35,6 +35,8 @@ import {
 import { UserRole } from "@/types/user";
 
 const AUTO_SAVE_DELAY_MS = 1000;
+/** Max time to wait for in-flight autosaves during flush before treating as failure. */
+const FLUSH_PENDING_SAVES_MAX_MS = 30_000;
 /** Wait after blur before releasing so renew/save is not raced by DELETE. */
 const LOCK_RELEASE_GRACE_MS = 2500;
 
@@ -558,7 +560,10 @@ export default function TabletCountPage() {
 
   const saveEntry = useCallback(
     async (lineId: string, payload: SaveEntryPayload) => {
-      if (!versionId) return;
+      if (!versionId) {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+        return;
+      }
 
       savingLinesRef.current.add(lineId);
       setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
@@ -704,6 +709,7 @@ export default function TabletCountPage() {
 
     await Promise.all(savePromises);
 
+    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     while (true) {
       const statuses = syncStatusByLineRef.current;
       const stillActive =
@@ -711,6 +717,7 @@ export default function TabletCountPage() {
           (status) => status === "saving" || status === "waiting",
         ) || savingLinesRef.current.size > 0;
       if (!stillActive) break;
+      if (Date.now() >= deadline) return false;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
