@@ -4,7 +4,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 const protectedPrefixes = ["/tablet", "/supervisor", "/admin"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
