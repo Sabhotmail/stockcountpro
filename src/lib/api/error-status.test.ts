@@ -4,6 +4,13 @@ import { httpStatusForServiceError } from "@/lib/api/error-status";
 assert.equal(httpStatusForServiceError("Access denied"), 403);
 assert.equal(httpStatusForServiceError("Document not found"), 404);
 assert.equal(httpStatusForServiceError("Version not found"), 404);
+assert.equal(httpStatusForServiceError("Line not found"), 404);
+assert.equal(
+  httpStatusForServiceError(
+    "ไม่พบข้อมูลการนับจากรอบก่อน — ไม่สามารถขอนับใหม่ได้",
+  ),
+  400,
+);
 assert.equal(
   httpStatusForServiceError("Only submitted documents can be approved"),
   400,
