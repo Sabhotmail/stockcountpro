@@ -13,7 +13,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { COUNT_POLL_INTERVAL_MS } from "@/lib/count-collab-constants";
+import {
+  COUNT_POLL_INTERVAL_MS,
+  LOCK_HEARTBEAT_INTERVAL_MS,
+} from "@/lib/count-collab-constants";
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant, dateKeyToDmy } from "@/lib/datetime";
 import { canAccessAdmin, canSupervise, isCountDocumentEditable } from "@/lib/permissions";
@@ -37,7 +40,7 @@ import { UserRole } from "@/types/user";
 const AUTO_SAVE_DELAY_MS = 1000;
 /** Max time to wait for in-flight autosaves during flush before treating as failure. */
 const FLUSH_PENDING_SAVES_MAX_MS = 30_000;
-/** Wait after blur before releasing so renew/save is not raced by DELETE. */
+/** Wait after leaving a line's qty fields before releasing the lock. */
 const LOCK_RELEASE_GRACE_MS = 2500;
 
 type PendingQtyConfirm = {
@@ -177,6 +180,8 @@ export default function TabletCountPage() {
     Record<string, ReturnType<typeof setTimeout>>
   >({});
   const savingLinesRef = useRef(new Set<string>());
+  /** Line whose qty fields currently have focus (null when focus left the card). */
+  const activeEditLineIdRef = useRef<string | null>(null);
 
   const cancelScheduledRelease = useCallback((lineId: string) => {
     const timer = releaseTimersRef.current[lineId];
@@ -467,6 +472,18 @@ export default function TabletCountPage() {
     [cancelScheduledRelease, documentId, pushToast, versionId],
   );
 
+  useEffect(() => {
+    if (!isEditable || !versionId) return;
+
+    const intervalId = setInterval(() => {
+      const lineId = activeEditLineIdRef.current;
+      if (!lineId) return;
+      void ensureLock(lineId);
+    }, LOCK_HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [ensureLock, isEditable, versionId]);
+
   const releaseLock = useCallback(
     async (lineId: string) => {
       if (!versionId) return;
@@ -493,6 +510,9 @@ export default function TabletCountPage() {
 
       releaseTimersRef.current[lineId] = setTimeout(() => {
         delete releaseTimersRef.current[lineId];
+
+        // Focus returned to this line (or never left) — keep holding.
+        if (activeEditLineIdRef.current === lineId) return;
 
         if (
           saveTimersRef.current[lineId] ||
@@ -1040,9 +1060,13 @@ export default function TabletCountPage() {
               conflictMessage={conflictByLine[line.lineId] ?? null}
               onAcceptServer={() => acceptServerEntry(line.lineId)}
               onEditStart={() => {
+                activeEditLineIdRef.current = line.lineId;
                 void ensureLock(line.lineId);
               }}
               onEditEnd={() => {
+                if (activeEditLineIdRef.current === line.lineId) {
+                  activeEditLineIdRef.current = null;
+                }
                 scheduleReleaseLock(line.lineId);
               }}
               onQtyChange={(field, value) => {

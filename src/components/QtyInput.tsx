@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { COUNT_QTY_NOT_COUNTED } from "@/lib/count-qty";
@@ -13,7 +13,7 @@ interface QtyInputProps {
   disabled?: boolean;
   compact?: boolean;
   onFocus?: () => void;
-  onBlur?: () => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 function formatQtyValue(value: number | null): string {
@@ -56,7 +56,7 @@ export function QtyInput({
     }
   }, [focused, value]);
 
-  const commitDraft = () => {
+  const commitDraft = (event: FocusEvent<HTMLInputElement>) => {
     const committed = parseQtyInput(draft);
     const previous = value;
 
@@ -70,7 +70,7 @@ export function QtyInput({
       setDraft(formatQtyValue(value));
     }
 
-    onBlur?.();
+    onBlur?.(event);
   };
 
   const handleFocus = () => {
@@ -94,7 +94,7 @@ export function QtyInput({
     placeholder: "—",
     onFocus: handleFocus,
     onBlur: commitDraft,
-    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.currentTarget.blur();
       }

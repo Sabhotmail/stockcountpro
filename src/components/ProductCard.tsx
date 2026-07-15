@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef, type FocusEvent } from "react";
 import type { CountEntry, ProductLine, SyncStatus } from "@/types/count";
 import { ProductImage } from "@/components/ProductImage";
 import { QtyInput } from "@/components/QtyInput";
@@ -19,6 +20,7 @@ interface ProductCardProps {
     value: number | null,
   ) => void;
   onEditStart?: () => void;
+  /** Fired when focus leaves all qty inputs on this card (not when tabbing between them). */
   onEditEnd?: () => void;
 }
 
@@ -62,6 +64,7 @@ export function ProductCard({
   onEditStart,
   onEditEnd,
 }: ProductCardProps) {
+  const qtyAreaRef = useRef<HTMLDivElement>(null);
   const counted = entry
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
     : false;
@@ -75,6 +78,25 @@ export function ProductCard({
         entry.qtyPiece,
       )
     : null;
+
+  const handleQtyBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const next = event.relatedTarget;
+      if (next instanceof Node && qtyAreaRef.current?.contains(next)) {
+        // Still editing this line (e.g. Case → Piece) — keep the lock.
+        return;
+      }
+
+      // Mobile browsers often leave relatedTarget null when tapping another input.
+      // Defer and re-check where focus landed.
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && qtyAreaRef.current?.contains(active)) return;
+        onEditEnd?.();
+      });
+    },
+    [onEditEnd],
+  );
 
   return (
     <div
@@ -135,7 +157,10 @@ export function ProductCard({
             <SyncStatusBadge status={syncStatus} />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div
+            ref={qtyAreaRef}
+            className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2"
+          >
             <span className="text-sm font-medium text-slate-600">จำนวน</span>
             {line.allowCase && (
               <QtyInput
@@ -144,7 +169,7 @@ export function ProductCard({
                 value={entry?.qtyCase ?? null}
                 disabled={disabled}
                 onFocus={onEditStart}
-                onBlur={onEditEnd}
+                onBlur={handleQtyBlur}
                 onChange={(value) => onQtyChange("qtyCase", value)}
               />
             )}
@@ -155,7 +180,7 @@ export function ProductCard({
                 value={entry?.qtyPack ?? null}
                 disabled={disabled}
                 onFocus={onEditStart}
-                onBlur={onEditEnd}
+                onBlur={handleQtyBlur}
                 onChange={(value) => onQtyChange("qtyPack", value)}
               />
             )}
@@ -166,7 +191,7 @@ export function ProductCard({
                 value={entry?.qtyPiece ?? null}
                 disabled={disabled}
                 onFocus={onEditStart}
-                onBlur={onEditEnd}
+                onBlur={handleQtyBlur}
                 onChange={(value) => onQtyChange("qtyPiece", value)}
               />
             )}
