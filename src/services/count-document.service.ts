@@ -364,6 +364,76 @@ export async function saveDocumentNote(
   return { success: true, note: normalizedNote };
 }
 
+export type SubmitReadiness =
+  | {
+      ok: true;
+      countedLines: number;
+      totalLines: number;
+      versionStatus: string;
+      versionId: string;
+    }
+  | {
+      ok: false;
+      reasons: string[];
+      countedLines: number;
+      totalLines: number;
+      versionStatus: string | null;
+    };
+
+export async function getSubmitReadiness(
+  session: MockSession,
+  documentId: string,
+): Promise<SubmitReadiness | { error: string; status: 403 | 404 }> {
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { error: access.error, status: access.status };
+  }
+
+  const doc = access.document;
+  const countedLines = doc.countedLines;
+  const totalLines = doc.totalLines;
+  const reasons: string[] = [];
+
+  let versionStatus: string | null = null;
+
+  if (!doc.currentVersionId) {
+    reasons.push("เวอร์ชันไม่พร้อมส่ง");
+  } else {
+    const version = await prisma.countVersion.findUnique({
+      where: { id: doc.currentVersionId },
+    });
+    versionStatus = version?.status ?? null;
+    if (!version || version.status !== VersionStatus.DRAFT) {
+      reasons.push("เวอร์ชันไม่พร้อมส่ง");
+    }
+  }
+
+  if (
+    doc.status !== DocumentStatus.COUNTING &&
+    doc.status !== DocumentStatus.RECOUNT_REQUESTED
+  ) {
+    reasons.push("เอกสารไม่ได้อยู่สถานะนับ");
+  }
+
+  if (reasons.length > 0) {
+    return {
+      ok: false,
+      reasons,
+      countedLines,
+      totalLines,
+      versionStatus,
+    };
+  }
+
+  return {
+    ok: true,
+    countedLines,
+    totalLines,
+    versionStatus: versionStatus!,
+    versionId: doc.currentVersionId!,
+  };
+}
+
 export async function getDocumentSummary(
   session: MockSession,
   documentId: string,
