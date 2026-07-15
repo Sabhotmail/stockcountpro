@@ -13,7 +13,7 @@ import {
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
-import { assertCallerHoldsActiveLock } from "@/services/count-line-lock.service";
+import { acquireOrRenewLineLock } from "@/services/count-line-lock.service";
 import { logAutoSave } from "@/services/audit-log.service";
 import { buildAutoSaveDetail } from "@/lib/audit-log-detail";
 import { getUserById } from "@/services/user.service";
@@ -95,13 +95,12 @@ async function applyEntrySave(
   });
   if (!line) return { error: "Line not found" };
 
-  const lockCheck = await assertCallerHoldsActiveLock(
-    session,
-    documentId,
-    lineId,
-  );
-  if ("error" in lockCheck) {
-    return lockCheck;
+  // Claim/renew for this saver. Do not require a pre-held lock: with short TTL
+  // the client may expire between ensureLock and PATCH. Only block if another
+  // user currently holds an active lock.
+  const lockClaim = await acquireOrRenewLineLock(session, documentId, lineId);
+  if ("error" in lockClaim) {
+    return lockClaim;
   }
 
   const validationError = validateQuantities(

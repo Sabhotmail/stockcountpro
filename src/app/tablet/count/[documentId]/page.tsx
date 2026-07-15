@@ -182,6 +182,9 @@ export default function TabletCountPage() {
   const savingLinesRef = useRef(new Set<string>());
   /** Line whose qty fields currently have focus (null when focus left the card). */
   const activeEditLineIdRef = useRef<string | null>(null);
+  /** Lines this client currently holds (for pagehide / unmount release). */
+  const heldLocksRef = useRef(new Set<string>());
+  const versionIdRef = useRef<string | null | undefined>(undefined);
 
   const cancelScheduledRelease = useCallback((lineId: string) => {
     const timer = releaseTimersRef.current[lineId];
@@ -229,6 +232,31 @@ export default function TabletCountPage() {
       for (const timer of Object.values(saveTimers)) clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    versionIdRef.current = versionId;
+  }, [versionId]);
+
+  useEffect(() => {
+    const flushHeldLocks = () => {
+      const version = versionIdRef.current;
+      if (!version) return;
+      const lineIds = [...heldLocksRef.current];
+      heldLocksRef.current.clear();
+      for (const lineId of lineIds) {
+        void fetch(
+          `/api/count-documents/${documentId}/versions/${version}/locks/${lineId}`,
+          { method: "DELETE", keepalive: true },
+        );
+      }
+    };
+
+    window.addEventListener("pagehide", flushHeldLocks);
+    return () => {
+      window.removeEventListener("pagehide", flushHeldLocks);
+      flushHeldLocks();
+    };
+  }, [documentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -466,6 +494,7 @@ export default function TabletCountPage() {
       if (!res.ok) return false;
 
       const data = (await res.json()) as { lock: LineLockInfo };
+      heldLocksRef.current.add(lineId);
       setLocks((prev) => ({ ...prev, [lineId]: data.lock }));
       return true;
     },
@@ -495,6 +524,7 @@ export default function TabletCountPage() {
         { method: "DELETE" },
       );
 
+      heldLocksRef.current.delete(lineId);
       setLocks((prev) => {
         const next = { ...prev };
         delete next[lineId];
