@@ -104,6 +104,7 @@ function humanizeStoredDetail(detail: string, action: AuditAction): string {
     const match = /Full-document recount \((\d+) lines\): (.+)/.exec(trimmed);
     if (match) return `ขอนับใหม่ ${match[1]} รายการ · ${match[2]}`;
   }
+  // Legacy seed / early prototype detail text
   if (trimmed === "Mock login") return "เข้าสู่ระบบ";
   return trimmed;
 }

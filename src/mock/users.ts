@@ -1,9 +1,11 @@
 import type { User } from "@/types/user";
 import { UserRole } from "@/types/user";
 
-export const DEFAULT_SEED_PASSWORD = "StockCount1!";
-export const ADMIN_SEED_PASSWORD = "12345678";
-
+/**
+ * Local seed user roster for `prisma db seed` only.
+ * Passwords come from env via `src/lib/auth/bootstrap-config.ts` — not from this file.
+ * Production should use `npm run db:bootstrap-admin` instead of wiping seed.
+ */
 export const mockUsers: Array<User & { username: string }> = [
   {
     id: "user_admin",
