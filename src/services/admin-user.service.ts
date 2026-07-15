@@ -8,6 +8,12 @@ import { Prisma } from "@prisma/client";
 
 type PasswordMode = "set" | "generate";
 
+/** Same convention as bootstrap/seed: user_admin, user_chm_staff */
+function userIdFromUsername(username: string): string {
+  const slug = username.replace(/[^a-z0-9_]/gi, "_");
+  return `user_${slug || randomUUID()}`;
+}
+
 export type CreateAdminUserInput = {
   name: string;
   username: string;
@@ -132,7 +138,14 @@ export async function createUserForAdmin(
   }
 
   const passwordHash = await hashPassword(plainPassword);
-  const id = `user_${randomUUID()}`;
+  let id = userIdFromUsername(username);
+  const idTaken = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (idTaken) {
+    id = `user_${randomUUID()}`;
+  }
 
   try {
     const user = await prisma.user.create({
