@@ -32,6 +32,7 @@ export interface User {
   name: string;
   role: UserRole;
   isActive: boolean;
+  sessionVersion: number;
   branchIds: string[];
   hubIds: string[];
 }
@@ -42,4 +43,5 @@ export interface MockSession {
   role: UserRole;
   branchIds: string[];
   hubIds: string[];
+  sessionVersion: number;
 }

@@ -70,6 +70,7 @@ export function mapUser(
     name: user.name,
     role: user.role as UserRole,
     isActive: user.isActive,
+    sessionVersion: user.sessionVersion,
     branchIds: user.branches.map((item) => item.branchId),
     hubIds: user.hubs?.map((item) => item.hubId) ?? [],
   };

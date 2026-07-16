@@ -43,6 +43,7 @@ export async function buildSessionFromUserId(
     role: user.role,
     branchIds: user.branchIds,
     hubIds: user.hubIds,
+    sessionVersion: user.sessionVersion,
   };
 }
 
