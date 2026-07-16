@@ -53,6 +53,18 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  const { bumpSessionVersion } = await import("@/lib/auth/session-user");
+  const { getServerSession } = await import("@/services/mock-session.service");
+
+  const session = await getServerSession();
+  if (session) {
+    try {
+      await bumpSessionVersion(session.userId);
+    } catch {
+      // still clear cookies
+    }
+  }
+
   const response = NextResponse.json({ success: true });
   for (const cookie of buildSessionClearCookieHeaders()) {
     response.headers.append("Set-Cookie", cookie);

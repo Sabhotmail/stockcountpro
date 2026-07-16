@@ -270,7 +270,10 @@ export async function resetPasswordForAdmin(
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        sessionVersion: { increment: 1 },
+      },
     });
 
     if (input.passwordMode === "generate") {
