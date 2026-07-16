@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
   batchSaveEntriesBodySchema,
+  createAdminUserBodySchema,
   expressSyncBodySchema,
   loginBodySchema,
+  resetAdminPasswordBodySchema,
   saveEntryBodySchema,
 } from "@/lib/api/schemas";
 import { parseWithSchema } from "@/lib/api/parse-body";
@@ -18,6 +20,36 @@ function testLoginRequiresFields() {
   assert.equal(ok.ok, true);
   if (!ok.ok) return;
   assert.equal(ok.data.username, "admin");
+}
+
+function testPasswordMinLength() {
+  const short = parseWithSchema(createAdminUserBodySchema, {
+    name: "A",
+    username: "a",
+    role: "STAFF",
+    branchIds: ["b1"],
+    hubIds: [],
+    passwordMode: "set",
+    password: "1234567",
+  });
+  assert.equal(short.ok, false);
+
+  const ok = parseWithSchema(createAdminUserBodySchema, {
+    name: "A",
+    username: "a",
+    role: "STAFF",
+    branchIds: ["b1"],
+    hubIds: [],
+    passwordMode: "set",
+    password: "12345678",
+  });
+  assert.equal(ok.ok, true);
+
+  const resetShort = parseWithSchema(resetAdminPasswordBodySchema, {
+    passwordMode: "set",
+    password: "short",
+  });
+  assert.equal(resetShort.ok, false);
 }
 
 function testExpressSyncLocationsStringArray() {
@@ -68,6 +100,7 @@ function testBatchRequiresItems() {
 }
 
 testLoginRequiresFields();
+testPasswordMinLength();
 testExpressSyncLocationsStringArray();
 testExpressSyncLocationsObjectArray();
 testExpressSyncRejectsBadLocations();
