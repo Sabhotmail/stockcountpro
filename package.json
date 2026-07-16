@@ -6,7 +6,6 @@
     "dev": "cross-env TZ=Asia/Bangkok next dev",
     "build": "prisma generate && next build",
     "start": "cross-env TZ=Asia/Bangkok next start",
-    "start:https": "cross-env TZ=Asia/Bangkok NODE_ENV=production node server.mjs",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
