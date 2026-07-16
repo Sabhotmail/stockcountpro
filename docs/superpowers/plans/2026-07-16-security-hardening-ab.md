@@ -545,7 +545,7 @@ git commit -m "Rate-limit login failures and warn on insecure cookies."
 - [ ] **Step 1: Add failing schema tests**
 
 ```typescript
-import { createAdminUserBodySchema, resetAdminUserPasswordBodySchema } from "@/lib/api/schemas";
+import { createAdminUserBodySchema, resetAdminPasswordBodySchema } from "@/lib/api/schemas";
 
 function testPasswordMinLength() {
   const short = parseWithSchema(createAdminUserBodySchema, {
@@ -569,6 +569,12 @@ function testPasswordMinLength() {
     password: "12345678",
   });
   assert.equal(ok.ok, true);
+
+  const resetShort = parseWithSchema(resetAdminPasswordBodySchema, {
+    passwordMode: "set",
+    password: "short",
+  });
+  assert.equal(resetShort.ok, false);
 }
 ```
 
@@ -766,4 +772,4 @@ git commit -m "Sanitize Express location path segments and warn on HTTP."
 
 - No TBD steps
 - `bumpSessionVersion` / `assertSafeExpressLocationCodes` / `assertLoginAllowed` names consistent across tasks
-- Reset schema export name must be verified against `schemas.ts` during Task 5 (`resetAdminUserPasswordBodySchema` or actual name)
+- Reset schema export is `resetAdminPasswordBodySchema`
