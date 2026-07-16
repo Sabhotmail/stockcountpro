@@ -119,3 +119,13 @@ export function clearSessionCookie(): string {
 export function clearLegacySessionCookie(): string {
   return "stockcount_mock_session=; Path=/; Max-Age=0; SameSite=Lax";
 }
+
+let warnedInsecureCookie = false;
+
+export function warnInsecureSessionCookieOnce(): void {
+  if (warnedInsecureCookie) return;
+  warnedInsecureCookie = true;
+  console.warn(
+    "[auth] Session cookie set without Secure; JWT may be intercepted on the network.",
+  );
+}
