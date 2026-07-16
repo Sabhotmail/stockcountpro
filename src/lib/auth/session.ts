@@ -21,7 +21,10 @@ function parseSessionPayload(payload: Record<string, unknown>): MockSession | nu
     typeof payload.role !== "string" ||
     !Object.values(UserRole).includes(payload.role as UserRole) ||
     !Array.isArray(payload.branchIds) ||
-    !payload.branchIds.every((id) => typeof id === "string")
+    !payload.branchIds.every((id) => typeof id === "string") ||
+    typeof payload.sessionVersion !== "number" ||
+    !Number.isInteger(payload.sessionVersion) ||
+    payload.sessionVersion < 0
   ) {
     return null;
   }
@@ -36,6 +39,7 @@ function parseSessionPayload(payload: Record<string, unknown>): MockSession | nu
     role: payload.role as UserRole,
     branchIds: payload.branchIds,
     hubIds,
+    sessionVersion: payload.sessionVersion,
   };
 }
 
@@ -46,6 +50,7 @@ export async function createSessionToken(session: MockSession): Promise<string> 
     role: session.role,
     branchIds: session.branchIds,
     hubIds: session.hubIds,
+    sessionVersion: session.sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

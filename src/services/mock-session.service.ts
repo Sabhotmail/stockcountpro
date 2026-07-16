@@ -7,6 +7,7 @@ import {
   shouldUseSecureCookies,
   verifySessionToken,
 } from "@/lib/auth/session";
+import { getSessionAuthState } from "@/lib/auth/session-user";
 import type { MockSession } from "@/types/user";
 import { getUserById } from "@/services/user.service";
 import { cookies } from "next/headers";
@@ -19,6 +20,12 @@ export async function getServerSession(): Promise<MockSession | null> {
   const session = await verifySessionToken(token);
   if (!session) return null;
 
+  const authState = await getSessionAuthState(
+    session.userId,
+    session.sessionVersion,
+  );
+  if (authState !== "ok") return null;
+
   const user = await getUserById(session.userId);
   if (!user || !user.isActive) return null;
 
@@ -28,6 +35,7 @@ export async function getServerSession(): Promise<MockSession | null> {
     role: user.role,
     branchIds: user.branchIds,
     hubIds: user.hubIds,
+    sessionVersion: user.sessionVersion,
   };
 }
 
