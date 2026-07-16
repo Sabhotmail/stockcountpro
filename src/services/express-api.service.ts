@@ -381,6 +381,71 @@ export async function putExpressCountByLocation(
   return { success: true, response, requestLog };
 }
 
+export async function deleteExpressCountByLocation(
+  countDate: string,
+  locationCode: string,
+): Promise<{ success: true; response: unknown } | { error: string }> {
+  const code = locationCode.trim().toUpperCase();
+  if (!code) return { error: "locationCode is required" };
+
+  const safe = assertSafeExpressLocationCodes([code]);
+  if (!safe.ok) return { error: safe.error };
+
+  const config = getExpressConfig();
+  if ("error" in config) return { error: config.error };
+
+  const tokenResult = await getExpressToken();
+  if ("error" in tokenResult) return tokenResult;
+
+  const path = `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locationcode/${encodeURIComponent(code)}`;
+  const url = `${config.baseUrl}${path}`;
+
+  const doFetch = async (token: string) =>
+    fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+  let res = await doFetch(tokenResult.token);
+  if (res.status === 401) {
+    cachedToken = null;
+    const retryToken = await loginExpressApi();
+    if ("error" in retryToken) return retryToken;
+    res = await doFetch(retryToken.token);
+  }
+
+  const responseText = await res.text();
+  let parsed: { success?: boolean; message?: string } | null = null;
+  if (responseText) {
+    try {
+      parsed = JSON.parse(responseText) as { success?: boolean; message?: string };
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!res.ok) {
+    const detail = responseText ? `: ${responseText.slice(0, 300)}` : "";
+    return {
+      error: `Express delete countdate by location failed (${res.status}) for ${path}${detail}`,
+    };
+  }
+
+  if (parsed?.success === false) {
+    return { error: parsed.message ?? "Express delete failed" };
+  }
+
+  const response =
+    parsed ??
+    (responseText ? { raw: responseText } : { success: true, emptyBody: true });
+
+  return { success: true, response };
+}
+
 export function summarizeExpressCountDate(data: ExpressCountDateResponse) {
   const lines = data.stockCountData ?? [];
   const locations = new Set(lines.map((line) => line.LocationCode));

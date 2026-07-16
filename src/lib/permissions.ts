@@ -153,6 +153,15 @@ export function canDeleteImportedDocument(role: UserRole): boolean {
   return canSyncExpress(role);
 }
 
+/** Delete stock count from Express + app (Admin/HQ/Supervisor only). */
+export function canDeleteExpressStockCount(role: UserRole): boolean {
+  return (
+    role === UserRole.ADMIN ||
+    role === UserRole.HQ ||
+    role === UserRole.SUPERVISOR
+  );
+}
+
 /** Push completed counts back to Express (manual button). */
 export function canPushToExpress(role: UserRole): boolean {
   return canSupervise(role);

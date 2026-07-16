@@ -6,13 +6,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ListPanelSkeleton } from "@/components/loading/PageSkeletons";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DateInputDMY } from "@/components/DateInputDMY";
 import { Label } from "@/components/ui/label";
 import {
@@ -192,14 +185,15 @@ export function ExpressSyncPanel({
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          เลือกคลัง Express ที่ต้องการดึงใบตรวจนับ — เอกสารที่เริ่มนับแล้วจะไม่ถูกทับ
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <section className="mb-5 space-y-4 border-b border-border/70 pb-4">
+      <div>
+        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          เลือกวัน → โหลดคลัง → Sync
+        </p>
+      </div>
+
+      <div className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid w-full gap-2 lg:max-w-xs">
             <Label htmlFor="express-sync-date">วันที่ตรวจนับ</Label>
@@ -435,7 +429,7 @@ export function ExpressSyncPanel({
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

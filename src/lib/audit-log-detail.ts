@@ -142,6 +142,8 @@ export function deriveAuditLogDetail(
       return documentNo ? `เปิด ${documentNo}` : null;
     case AuditAction.DELETE_DOCUMENT:
       return null;
+    case AuditAction.DELETE_EXPRESS_STOCK_COUNT:
+      return null;
     case AuditAction.PUSH_TO_EXPRESS:
       return null;
     default:

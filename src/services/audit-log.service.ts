@@ -362,6 +362,21 @@ export async function logDeleteDocument(
   });
 }
 
+export async function logDeleteExpressStockCount(
+  userId: string,
+  userName: string,
+  branchId: string | undefined,
+  detail: string,
+): Promise<AuditLog> {
+  return createAuditLog({
+    action: AppAuditAction.DELETE_EXPRESS_STOCK_COUNT,
+    userId,
+    userName,
+    branchId,
+    detail,
+  });
+}
+
 export async function logPushToExpress(
   userId: string,
   userName: string,
