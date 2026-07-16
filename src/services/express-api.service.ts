@@ -5,7 +5,19 @@ import type {
   ExpressLocationsResponse,
   ExpressLoginResponse,
 } from "@/types/express";
+import { assertSafeExpressLocationCodes } from "@/lib/express-location";
 import { isExpressPushDebug, logExpressPush } from "@/lib/express-push-log";
+
+let warnedExpressHttp = false;
+
+function warnExpressHttpOnce(baseUrl: string): void {
+  if (warnedExpressHttp) return;
+  if (!baseUrl.toLowerCase().startsWith("http://")) return;
+  warnedExpressHttp = true;
+  console.warn(
+    "[express] EXPRESS_API_BASE_URL is http:// — credentials and bearer tokens travel in cleartext.",
+  );
+}
 
 function getExpressConfig():
   | { baseUrl: string; username: string; password: string }
@@ -18,7 +30,9 @@ function getExpressConfig():
     return { error: "Express API is not configured" };
   }
 
-  return { baseUrl: baseUrl.replace(/\/$/, ""), username, password };
+  const normalized = baseUrl.replace(/\/$/, "");
+  warnExpressHttpOnce(normalized);
+  return { baseUrl: normalized, username, password };
 }
 
 let cachedToken: { token: string; expiresAtMs: number } | null = null;
@@ -234,14 +248,11 @@ export async function fetchExpressCountDateByLocations(
 ): Promise<ExpressCountDateByLocationsResponse | { error: string }> {
   // Express expects literal commas in the path, e.g. .../locations/32F1,32G1
   // Do not encodeURIComponent the joined list (that turns "," into "%2C").
-  const joined = locationCodes
-    .map((c) => c.trim().toUpperCase())
-    .filter(Boolean)
-    .join(",");
-  if (!joined) return { error: "locations are required" };
+  const safe = assertSafeExpressLocationCodes(locationCodes);
+  if (!safe.ok) return { error: safe.error };
 
   return expressGet<ExpressCountDateByLocationsResponse>(
-    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${joined}`,
+    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${safe.joined}`,
     "Express countdate by locations",
   );
 }

@@ -14,6 +14,7 @@ export const mockUsers: Array<User & { username: string }> = [
     name: "Admin",
     role: UserRole.ADMIN,
     isActive: true,
+    sessionVersion: 0,
     branchIds: ["branch_bkk3"],
     hubIds: [],
   },
