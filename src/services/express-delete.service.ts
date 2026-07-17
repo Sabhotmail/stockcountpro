@@ -1,7 +1,17 @@
 import { mapBranch, mapCountDocument, mapHub } from "@/lib/db/mappers";
 import { dateKeyToUtcDateOnly } from "@/lib/datetime";
-import { assertSafeExpressLocationCodes } from "@/lib/express-location";
-import { canAccessDocument, canDeleteExpressStockCount } from "@/lib/permissions";
+import {
+  assertSafeExpressLocationCodes,
+  classifyLocationForBranch,
+  extractLocationPrefix,
+} from "@/lib/express-location";
+import {
+  canAccessBranch,
+  canAccessCentralDocuments,
+  canAccessDocument,
+  canAccessHub,
+  canDeleteExpressStockCount,
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
   deleteCountDocumentForExpressDelete,
@@ -75,6 +85,45 @@ function normalizeInputs(
 
 function expectedConfirmPhrase(countDate: string, locationCode: string): string {
   return `DELETE ${countDate} ${locationCode.trim().toUpperCase()}`;
+}
+
+/**
+ * Verify the session may act on an Express location by resolving its prefix to a
+ * branch (and hub/central) the user can access. Used when no local document is
+ * available to authorize against (e.g. Express-only retry).
+ */
+async function canAccessExpressLocation(
+  session: MockSession,
+  locationCode: string,
+): Promise<boolean> {
+  const prefix = extractLocationPrefix(locationCode);
+  if (!prefix) return false;
+
+  const branchRow = await prisma.branch.findFirst({
+    where: { expressLocationPrefix: prefix, isActive: true },
+  });
+  if (!branchRow) return false;
+
+  const branch = mapBranch(branchRow);
+  if (!canAccessBranch(session.role, session.branchIds, branch.id)) {
+    return false;
+  }
+
+  const hubRows = await prisma.hub.findMany({ where: { branchId: branch.id } });
+  const classification = classifyLocationForBranch(
+    locationCode,
+    branch.id,
+    branch.expressLocationPrefix,
+    hubRows.map(mapHub),
+  );
+
+  if (classification.kind === "central") {
+    return canAccessCentralDocuments(session.role);
+  }
+  if (classification.kind === "hub") {
+    return canAccessHub(session.role, session.hubIds, classification.hub.id);
+  }
+  return false;
 }
 
 async function mapDocumentPreview(
@@ -273,6 +322,14 @@ export async function retryExpressDelete(
 
   const normalized = normalizeInputs(countDate, locationCode);
   if (!normalized.ok) return { error: normalized.error, status: 400 };
+
+  const hasAccess = await canAccessExpressLocation(
+    session,
+    normalized.locationCode,
+  );
+  if (!hasAccess) {
+    return { error: "Access denied", status: 403 };
+  }
 
   const expressResult = await deleteExpressCountByLocation(
     normalized.countDate,
