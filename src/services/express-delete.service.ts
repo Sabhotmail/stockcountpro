@@ -212,12 +212,54 @@ async function writeExpressDeleteAudit(
   }
 }
 
+/**
+ * Injectable side-effect ports for the delete orchestration. Production wires the
+ * real Prisma/Express/audit functions via `defaultExpressDeleteDeps`; tests pass
+ * fakes to exercise the flow deterministically without a DB or Express server.
+ */
+export type ExpressDeleteDeps = {
+  preview: (
+    session: MockSession,
+    countDate: string,
+    locationCode: string,
+  ) => Promise<ExpressDeletePreviewResult | { error: string }>;
+  deleteAppDocument: (
+    session: MockSession,
+    documentId: string,
+  ) => Promise<
+    | { success: true; branchId: string; detail: string }
+    | { error: string; status: 403 | 404 | 400 }
+  >;
+  deleteExpress: (
+    countDate: string,
+    locationCode: string,
+  ) => Promise<{ success: true; response: unknown } | { error: string }>;
+  canAccessLocation: (
+    session: MockSession,
+    locationCode: string,
+  ) => Promise<boolean>;
+  writeAudit: (
+    session: MockSession,
+    branchId: string | undefined,
+    detail: string,
+  ) => Promise<void>;
+};
+
+export const defaultExpressDeleteDeps: ExpressDeleteDeps = {
+  preview: previewExpressDelete,
+  deleteAppDocument: deleteCountDocumentForExpressDelete,
+  deleteExpress: deleteExpressCountByLocation,
+  canAccessLocation: canAccessExpressLocation,
+  writeAudit: writeExpressDeleteAudit,
+};
+
 export async function executeExpressDelete(
   session: MockSession,
   countDate: string,
   locationCode: string,
   documentId: string,
   confirmPhrase: string,
+  deps: ExpressDeleteDeps = defaultExpressDeleteDeps,
 ): Promise<
   | ExpressDeleteSuccessResult
   | ExpressDeletePartialResult
@@ -241,7 +283,7 @@ export async function executeExpressDelete(
     };
   }
 
-  const preview = await previewExpressDelete(
+  const preview = await deps.preview(
     session,
     normalized.countDate,
     normalized.locationCode,
@@ -258,12 +300,12 @@ export async function executeExpressDelete(
     };
   }
 
-  const appDelete = await deleteCountDocumentForExpressDelete(session, documentId);
+  const appDelete = await deps.deleteAppDocument(session, documentId);
   if ("error" in appDelete) {
     return { error: appDelete.error, status: appDelete.status };
   }
 
-  const expressResult = await deleteExpressCountByLocation(
+  const expressResult = await deps.deleteExpress(
     normalized.countDate,
     normalized.locationCode,
   );
@@ -277,7 +319,7 @@ export async function executeExpressDelete(
       "express=failed",
       `error=${expressResult.error}`,
     ].join("; ");
-    await writeExpressDeleteAudit(session, appDelete.branchId, detail);
+    await deps.writeAudit(session, appDelete.branchId, detail);
 
     return {
       partial: true,
@@ -297,7 +339,7 @@ export async function executeExpressDelete(
     "express=deleted",
     appDelete.detail,
   ].join("; ");
-  await writeExpressDeleteAudit(session, appDelete.branchId, detail);
+  await deps.writeAudit(session, appDelete.branchId, detail);
 
   return {
     success: true,
@@ -312,6 +354,7 @@ export async function retryExpressDelete(
   session: MockSession,
   countDate: string,
   locationCode: string,
+  deps: ExpressDeleteDeps = defaultExpressDeleteDeps,
 ): Promise<
   | { success: true; countDate: string; locationCode: string; expressDeleted: true }
   | { error: string; status?: 400 | 403 | 502 }
@@ -323,7 +366,7 @@ export async function retryExpressDelete(
   const normalized = normalizeInputs(countDate, locationCode);
   if (!normalized.ok) return { error: normalized.error, status: 400 };
 
-  const hasAccess = await canAccessExpressLocation(
+  const hasAccess = await deps.canAccessLocation(
     session,
     normalized.locationCode,
   );
@@ -331,7 +374,7 @@ export async function retryExpressDelete(
     return { error: "Access denied", status: 403 };
   }
 
-  const expressResult = await deleteExpressCountByLocation(
+  const expressResult = await deps.deleteExpress(
     normalized.countDate,
     normalized.locationCode,
   );
@@ -339,7 +382,7 @@ export async function retryExpressDelete(
     return { error: expressResult.error, status: 502 };
   }
 
-  await writeExpressDeleteAudit(
+  await deps.writeAudit(
     session,
     undefined,
     [
