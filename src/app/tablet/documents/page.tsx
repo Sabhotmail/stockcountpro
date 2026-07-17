@@ -8,12 +8,28 @@ import { LogoutButton, PageShell } from "@/components/PageShell";
 import { SupervisorNav } from "@/components/SupervisorNav";
 import { TabletDocumentRow } from "@/components/TabletDocumentRow";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DocumentSearchInput } from "@/components/DocumentSearchInput";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canSupervise } from "@/lib/permissions";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 import { UserRole } from "@/types/user";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
+
+function matchesSearch(doc: CountDocumentListItem, term: string): boolean {
+  if (!term) return true;
+  const haystack = [
+    doc.documentNo,
+    doc.locationCode,
+    doc.locationName,
+    doc.hubShortName,
+    doc.hubName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(term);
+}
 
 function thaiLoadError(fallback: string): string {
   if (fallback === "Failed to load documents" || fallback === "Load failed") {
@@ -29,6 +45,7 @@ export default function TabletDocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<CountDocumentListItem[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
@@ -115,8 +132,11 @@ export default function TabletDocumentsPage() {
     [documents],
   );
 
+  const searchTerm = search.trim().toLowerCase();
+
   const filtered = useMemo(() => {
     return documents.filter((doc) => {
+      if (!matchesSearch(doc, searchTerm)) return false;
       if (filter === "all") return true;
       if (filter === "not_started") return doc.status === DocumentStatus.IMPORTED;
       if (filter === "counting") return doc.status === DocumentStatus.COUNTING;
@@ -124,7 +144,7 @@ export default function TabletDocumentsPage() {
         return doc.status === DocumentStatus.RECOUNT_REQUESTED;
       return true;
     });
-  }, [documents, filter]);
+  }, [documents, filter, searchTerm]);
 
   async function handleOpen(doc: CountDocumentListItem) {
     if (
@@ -201,6 +221,12 @@ export default function TabletDocumentsPage() {
     >
       <ExpressSyncPanel onSynced={() => void loadDocuments()} />
 
+      <DocumentSearchInput
+        value={search}
+        onChange={setSearch}
+        className="mb-3"
+      />
+
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as FilterKey)}
@@ -257,7 +283,16 @@ export default function TabletDocumentsPage() {
         </section>
       )}
 
-      {!loading && filtered.length === 0 && filter === "all" && (
+      {!loading && filtered.length === 0 && searchTerm && (
+        <div className="py-10 text-center">
+          <p className="font-medium">ไม่พบเอกสารที่ตรงกับ「{search.trim()}」</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            ลองแก้คำค้นหา หรือล้างการค้นหาเพื่อดูทั้งหมด
+          </p>
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && !searchTerm && filter === "all" && (
         <div className="py-10 text-center">
           <p className="font-medium">ยังไม่มีเอกสาร</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -266,7 +301,7 @@ export default function TabletDocumentsPage() {
         </div>
       )}
 
-      {!loading && filtered.length === 0 && filter !== "all" && (
+      {!loading && filtered.length === 0 && !searchTerm && filter !== "all" && (
         <div className="py-10 text-center">
           <p className="font-medium">ไม่พบเอกสารในสถานะนี้</p>
           <p className="mt-1 text-sm text-muted-foreground">

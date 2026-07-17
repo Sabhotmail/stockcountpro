@@ -1,6 +1,7 @@
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { Button } from "@/components/ui/button";
 import { dateKeyToDmy } from "@/lib/datetime";
+import { documentRowHighlightClass } from "@/lib/document-row-style";
 import { cn } from "@/lib/utils";
 import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 
@@ -50,8 +51,7 @@ export function TabletDocumentRow({
     <div
       className={cn(
         "flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between",
-        doc.status === DocumentStatus.RECOUNT_REQUESTED && "bg-amber-50/50",
-        doc.status === DocumentStatus.COUNTING && "bg-muted/30",
+        documentRowHighlightClass(doc.status),
       )}
     >
       <div className="min-w-0 flex-1">

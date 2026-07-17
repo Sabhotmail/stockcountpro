@@ -4,6 +4,7 @@ import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { PushExpressButton } from "@/components/PushExpressButton";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimeShortTH } from "@/lib/datetime";
+import { documentRowHighlightClass } from "@/lib/document-row-style";
 import { cn } from "@/lib/utils";
 import {
   DocumentStatus,
@@ -46,6 +47,7 @@ export function SupervisorDocumentRow({
     <div
       className={cn(
         "flex flex-col gap-3 border-b border-border/70 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between",
+        mode === "pending" && documentRowHighlightClass(doc.status),
         pushed && mode === "completed" && "bg-emerald-50/40",
       )}
     >

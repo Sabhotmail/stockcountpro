@@ -14,6 +14,7 @@ import {
   SupervisorDocumentRow,
 } from "@/components/SupervisorDocumentRow";
 import { SupervisorNav } from "@/components/SupervisorNav";
+import { DocumentSearchInput } from "@/components/DocumentSearchInput";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTimeShortTH } from "@/lib/datetime";
+import { documentRowHighlightClass } from "@/lib/document-row-style";
 import { cn } from "@/lib/utils";
 import {
   DocumentStatus,
@@ -33,6 +35,11 @@ import {
 } from "@/types/count";
 
 type TabKey = "pending" | "completed";
+type PendingStatusKey =
+  | "all"
+  | DocumentStatus.SUBMITTED
+  | DocumentStatus.REVIEWING
+  | DocumentStatus.RECOUNT_REQUESTED;
 
 function locationCodeLabel(doc: SupervisorDocumentListItem): string {
   return doc.locationCode ?? doc.branchCode;
@@ -46,10 +53,36 @@ function isBulkEligible(doc: SupervisorDocumentListItem) {
   return isSupervisorDocBulkEligible(doc);
 }
 
+function matchesSearch(doc: SupervisorDocumentListItem, term: string): boolean {
+  if (!term) return true;
+  const haystack = [
+    doc.documentNo,
+    doc.locationCode,
+    doc.locationName,
+    doc.branchCode,
+    doc.branchName,
+    doc.hubShortName,
+    doc.submittedByName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
+const PENDING_STATUS_FILTERS: { key: PendingStatusKey; label: string }[] = [
+  { key: "all", label: "ทั้งหมด" },
+  { key: DocumentStatus.SUBMITTED, label: "ส่งแล้ว" },
+  { key: DocumentStatus.REVIEWING, label: "กำลังตรวจ" },
+  { key: DocumentStatus.RECOUNT_REQUESTED, label: "ขอนับใหม่" },
+];
+
 export default function SupervisorDocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<SupervisorDocumentListItem[]>([]);
   const [tab, setTab] = useState<TabKey>("pending");
+  const [search, setSearch] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<PendingStatusKey>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pushNotice, setPushNotice] = useState<string | null>(null);
@@ -107,6 +140,8 @@ export default function SupervisorDocumentsPage() {
     };
   }, [router]);
 
+  const searchTerm = search.trim().toLowerCase();
+
   const pending = useMemo(
     () =>
       documents.filter((doc) => doc.status !== DocumentStatus.COMPLETED),
@@ -117,7 +152,33 @@ export default function SupervisorDocumentsPage() {
       documents.filter((doc) => doc.status === DocumentStatus.COMPLETED),
     [documents],
   );
-  const visible = tab === "completed" ? completed : pending;
+
+  const pendingStatusCounts = useMemo(() => {
+    const counts: Record<PendingStatusKey, number> = {
+      all: pending.length,
+      [DocumentStatus.SUBMITTED]: 0,
+      [DocumentStatus.REVIEWING]: 0,
+      [DocumentStatus.RECOUNT_REQUESTED]: 0,
+    };
+    for (const doc of pending) {
+      if (doc.status in counts) {
+        counts[doc.status as PendingStatusKey] += 1;
+      }
+    }
+    return counts;
+  }, [pending]);
+
+  const visible = useMemo(() => {
+    const base = tab === "completed" ? completed : pending;
+    return base.filter((doc) => {
+      if (!matchesSearch(doc, searchTerm)) return false;
+      if (tab === "pending" && pendingStatus !== "all") {
+        return doc.status === pendingStatus;
+      }
+      return true;
+    });
+  }, [tab, completed, pending, searchTerm, pendingStatus]);
+
   const eligibleDocs = useMemo(
     () => completed.filter(isBulkEligible),
     [completed],
@@ -196,13 +257,20 @@ export default function SupervisorDocumentsPage() {
         </Alert>
       )}
 
+      <DocumentSearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="ค้นหาเลขเอกสาร / คลัง / ผู้ส่ง"
+        className="mb-3 max-w-md"
+      />
+
       <Tabs
         value={tab}
         onValueChange={(value) => {
           setTab(value as TabKey);
           setSelectedIds([]);
         }}
-        className="mb-4"
+        className="mb-3"
       >
         <TabsList>
           <TabsTrigger value="pending">
@@ -214,13 +282,41 @@ export default function SupervisorDocumentsPage() {
         </TabsList>
       </Tabs>
 
+      {tab === "pending" && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {PENDING_STATUS_FILTERS.map(({ key, label }) => {
+            const active = pendingStatus === key;
+            const count = pendingStatusCounts[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPendingStatus(key)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-sm transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {label} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading && <TableRowsSkeleton rows={8} />}
 
       {!loading && visible.length === 0 && (
         <p className="py-12 text-center text-muted-foreground">
-          {tab === "completed"
-            ? "ยังไม่มีเอกสารเสร็จสิ้น — อนุมัติเอกสารก่อนจึงจะพิมพ์ได้"
-            : "ไม่มีเอกสารรอตรวจ"}
+          {searchTerm
+            ? `ไม่พบเอกสารที่ตรงกับ「${search.trim()}」`
+            : tab === "completed"
+              ? "ยังไม่มีเอกสารเสร็จสิ้น — อนุมัติเอกสารก่อนจึงจะพิมพ์ได้"
+              : pendingStatus !== "all"
+                ? "ไม่มีเอกสารในสถานะนี้"
+                : "ไม่มีเอกสารรอตรวจ"}
         </p>
       )}
 
@@ -285,6 +381,8 @@ export default function SupervisorDocumentsPage() {
                       <TableRow
                         key={doc.id}
                         className={cn(
+                          tab === "pending" &&
+                            documentRowHighlightClass(doc.status),
                           pushed &&
                             tab === "completed" &&
                             "bg-emerald-50/50",
