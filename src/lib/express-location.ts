@@ -13,6 +13,29 @@ export function validateExpressLocationPrefix(value: string): string | null {
   return null;
 }
 
+const LOCATION_CODE_RE = /^[A-Z0-9]+$/;
+
+export function assertSafeExpressLocationCodes(
+  codes: string[],
+): { ok: true; joined: string } | { ok: false; error: string } {
+  const normalized: string[] = [];
+  for (const raw of codes) {
+    const code = raw.trim().toUpperCase();
+    if (!code) continue;
+    if (!LOCATION_CODE_RE.test(code)) {
+      return {
+        ok: false,
+        error: `Invalid location code: ${raw.trim()}`,
+      };
+    }
+    normalized.push(code);
+  }
+  if (normalized.length === 0) {
+    return { ok: false, error: "locations are required" };
+  }
+  return { ok: true, joined: normalized.join(",") };
+}
+
 export function extractLocationPrefix(locationCode: string): string | null {
   const normalized = locationCode.trim().toUpperCase();
   if (normalized.length < 2) return null;

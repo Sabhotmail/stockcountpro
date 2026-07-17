@@ -14,6 +14,7 @@ const session: MockSession = {
   role: UserRole.STAFF,
   branchIds: ["branch_1"],
   hubIds: ["hub_1"],
+  sessionVersion: 0,
 };
 
 async function assertPreviewContract() {

@@ -29,6 +29,7 @@ function toSession(
     role: user.role as MockSession["role"],
     branchIds: user.branches.map((b) => b.branchId),
     hubIds: user.hubs.map((h) => h.hubId),
+    sessionVersion: 0,
   };
 }
 

@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { ExpressSyncPanel } from "@/components/ExpressSyncPanel";
 import { TableRowsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
@@ -15,6 +14,16 @@ import { DocumentStatus, type CountDocumentListItem } from "@/types/count";
 import { UserRole } from "@/types/user";
 
 type FilterKey = "all" | "not_started" | "counting" | "recount";
+
+function thaiLoadError(fallback: string): string {
+  if (fallback === "Failed to load documents" || fallback === "Load failed") {
+    return "โหลดเอกสารไม่สำเร็จ";
+  }
+  if (fallback === "Cannot start document" || fallback === "Start failed") {
+    return "เปิดเอกสารไม่สำเร็จ";
+  }
+  return fallback;
+}
 
 export default function TabletDocumentsPage() {
   const router = useRouter();
@@ -35,11 +44,13 @@ export default function TabletDocumentsPage() {
         router.push("/login");
         return;
       }
-      if (!res.ok) throw new Error("Failed to load documents");
+      if (!res.ok) throw new Error("โหลดเอกสารไม่สำเร็จ");
       const data = await res.json();
       setDocuments(data.documents);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
+      setError(
+        thaiLoadError(err instanceof Error ? err.message : "โหลดเอกสารไม่สำเร็จ"),
+      );
     } finally {
       setLoading(false);
     }
@@ -60,7 +71,7 @@ export default function TabletDocumentsPage() {
           router.push("/login");
           return;
         }
-        if (!docsRes.ok) throw new Error("Failed to load documents");
+        if (!docsRes.ok) throw new Error("โหลดเอกสารไม่สำเร็จ");
         const data = await docsRes.json();
         if (meRes.ok) {
           const meData = (await meRes.json()) as { user?: { role?: UserRole } };
@@ -71,7 +82,11 @@ export default function TabletDocumentsPage() {
         if (!cancelled) setDocuments(data.documents);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Load failed");
+          setError(
+            thaiLoadError(
+              err instanceof Error ? err.message : "โหลดเอกสารไม่สำเร็จ",
+            ),
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -85,6 +100,20 @@ export default function TabletDocumentsPage() {
   }, [router]);
 
   const showSupervisorNav = role ? canSupervise(role) : false;
+
+  const counts = useMemo(
+    () => ({
+      all: documents.length,
+      not_started: documents.filter((d) => d.status === DocumentStatus.IMPORTED)
+        .length,
+      counting: documents.filter((d) => d.status === DocumentStatus.COUNTING)
+        .length,
+      recount: documents.filter(
+        (d) => d.status === DocumentStatus.RECOUNT_REQUESTED,
+      ).length,
+    }),
+    [documents],
+  );
 
   const filtered = useMemo(() => {
     return documents.filter((doc) => {
@@ -109,10 +138,12 @@ export default function TabletDocumentsPage() {
         });
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error ?? "Cannot start document");
+          throw new Error(data.error ?? "เปิดเอกสารไม่สำเร็จ");
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Start failed");
+        setError(
+          thaiLoadError(err instanceof Error ? err.message : "เปิดเอกสารไม่สำเร็จ"),
+        );
         setStartingId(null);
         return;
       }
@@ -162,7 +193,9 @@ export default function TabletDocumentsPage() {
   return (
     <PageShell
       title="เอกสารนับสต็อก"
-      subtitle="รายการเอกสาร"
+      subtitle={
+        loading ? "กำลังโหลด..." : `${documents.length} เอกสาร`
+      }
       nav={showSupervisorNav ? <SupervisorNav /> : undefined}
       actions={<LogoutButton onClick={handleLogout} />}
     >
@@ -171,23 +204,32 @@ export default function TabletDocumentsPage() {
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as FilterKey)}
-        className="mb-4"
+        className="mb-3"
       >
-        <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto p-1">
-          <TabsTrigger value="all" className="min-h-11 flex-1 px-3 py-2.5">
-            ทั้งหมด
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-visible bg-transparent p-0 group-data-horizontal/tabs:h-auto">
+          <TabsTrigger
+            value="all"
+            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+          >
+            ทั้งหมด ({counts.all})
           </TabsTrigger>
           <TabsTrigger
             value="not_started"
-            className="min-h-11 flex-1 px-3 py-2.5"
+            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
           >
-            ยังไม่เริ่ม
+            ยังไม่เริ่ม ({counts.not_started})
           </TabsTrigger>
-          <TabsTrigger value="counting" className="min-h-11 flex-1 px-3 py-2.5">
-            กำลังนับ
+          <TabsTrigger
+            value="counting"
+            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+          >
+            กำลังนับ ({counts.counting})
           </TabsTrigger>
-          <TabsTrigger value="recount" className="min-h-11 flex-1 px-3 py-2.5">
-            ขอนับใหม่
+          <TabsTrigger
+            value="recount"
+            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+          >
+            ขอนับใหม่ ({counts.recount})
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -201,7 +243,7 @@ export default function TabletDocumentsPage() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <section className="rounded-lg border border-border/80 bg-background px-4 sm:px-5">
+        <section className="divide-y divide-border/70">
           {filtered.map((doc) => (
             <TabletDocumentRow
               key={doc.id}
@@ -215,11 +257,20 @@ export default function TabletDocumentsPage() {
         </section>
       )}
 
-      {!loading && filtered.length === 0 && (
-        <div className="rounded-lg border border-dashed px-4 py-8 text-center">
+      {!loading && filtered.length === 0 && filter === "all" && (
+        <div className="py-10 text-center">
           <p className="font-medium">ยังไม่มีเอกสาร</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            เลือกวันที่ด้านบน แล้วกด 「โหลดคลัง」 และ Sync จาก Express
+            เปิด Sync จาก Express ด้านบน แล้วโหลดคลังตามวันที่ตรวจนับ
+          </p>
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && filter !== "all" && (
+        <div className="py-10 text-center">
+          <p className="font-medium">ไม่พบเอกสารในสถานะนี้</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            เปลี่ยนแท็บหรือเลือก 「ทั้งหมด」 เพื่อดูรายการอื่น
           </p>
         </div>
       )}

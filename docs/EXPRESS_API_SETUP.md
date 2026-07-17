@@ -30,6 +30,7 @@ Restart `npm run dev` after changing env.
 | 2 | GET | `/api/stockcount/locations/countdate/{yyyy-MM-dd}` | Warehouses with stock-count data for a date (`locationData[]`) |
 | 3 | GET | `/api/stockcount/countdate/{yyyy-MM-dd}/locations/{codes}` | Stock-count lines for date + comma-separated location codes |
 | 4 | PUT | `/api/stockcount/countdate/{yyyy-MM-dd}/locationcode/{code}` | Push counted results back for one location |
+| 5 | DELETE | `/api/stockcount/countdate/{yyyy-MM-dd}/locationcode/{code}` | Delete stock-count data for one location |
 | — | GET | `/api/stockcount/countdate/{yyyy-MM-dd}` | Legacy full-day fetch (still available; sync no longer uses it) |
 
 ## Admin proxy endpoints
@@ -91,6 +92,29 @@ Users see **all** Express locations for the date; only locations mapped to branc
 5. Creates/updates documents with status `IMPORTED` only.
 6. Skips documents that already started counting (`COUNTING` or later).
 7. Writes audit log action `IMPORT_FROM_EXPRESS` (includes selected locations).
+
+## Delete stock count (Express + app)
+
+Admin / HQ — page: `/admin/express-delete`  
+Supervisor — page: `/supervisor/express-delete`
+
+```text
+GET   /api/express/delete?countDate=yyyy-MM-dd&locationCode=32F1   # preview matching documents
+POST  /api/express/delete                                           # body: { countDate, locationCode, documentId, confirmPhrase }
+PATCH /api/express/delete                                           # body: { countDate, locationCode } — retry Express only
+```
+
+Allowed roles: `ADMIN`, `HQ`, `SUPERVISOR` only.
+
+### Flow
+
+1. User enters count date + location code and previews matching local documents.
+2. If multiple deletable documents exist, user must select one.
+3. User confirms by typing `DELETE {countDate} {locationCode}` (e.g. `DELETE 2026-03-11 32F1`).
+4. Server deletes the StockCount Pro document first, then calls Express API #5.
+5. Deletable local statuses: `IMPORTED`, `COUNTING`, `RECOUNT_REQUESTED`.
+6. If Express delete fails after the app document was removed, API returns `207` with `canRetryExpress: true`; use PATCH to retry Express only.
+7. Writes audit log action `DELETE_EXPRESS_STOCK_COUNT` (and `DELETE_DOCUMENT` for the local removal).
 
 ## Push results back to Express
 

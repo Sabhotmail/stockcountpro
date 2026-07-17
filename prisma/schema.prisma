@@ -47,6 +47,7 @@ enum AuditAction {
   COMPLETE_DOCUMENT
   IMPORT_FROM_EXPRESS
   DELETE_DOCUMENT
+  DELETE_EXPRESS_STOCK_COUNT
   PUSH_TO_EXPRESS
 }
 
@@ -78,14 +79,15 @@ model Hub {
 }
 
 model User {
-  id           String       @id
-  username     String       @unique
-  name         String
-  passwordHash String
-  role         UserRole
-  isActive     Boolean      @default(true)
-  branches     UserBranch[]
-  hubs         UserHub[]
+  id             String       @id
+  username       String       @unique
+  name           String
+  passwordHash   String
+  role           UserRole
+  isActive       Boolean      @default(true)
+  sessionVersion Int          @default(0)
+  branches       UserBranch[]
+  hubs           UserHub[]
 }
 
 model UserBranch {

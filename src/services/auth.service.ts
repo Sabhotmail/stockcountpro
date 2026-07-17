@@ -31,5 +31,6 @@ export async function authenticateUser(
     role: user.role as UserRole,
     branchIds: user.branches.map((branch) => branch.branchId),
     hubIds: user.hubs.map((hub) => hub.hubId),
+    sessionVersion: user.sessionVersion,
   };
 }

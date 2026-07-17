@@ -51,6 +51,7 @@ export function SupervisorNav() {
           exact: true,
         },
         { href: "/tablet/documents", label: "นับสต็อก" },
+        { href: "/supervisor/express-delete", label: "ลบรายการนับ Express" },
       ],
     },
   ];

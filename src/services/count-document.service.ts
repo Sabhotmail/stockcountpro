@@ -522,6 +522,73 @@ export async function deleteImportedDocument(
     };
   }
 
+  return deleteCountDocumentRecord(session, doc);
+}
+
+const EXPRESS_DELETE_ALLOWED_STATUSES = new Set<DocumentStatus>([
+  DocumentStatus.IMPORTED,
+  DocumentStatus.COUNTING,
+  DocumentStatus.RECOUNT_REQUESTED,
+]);
+
+export function isExpressDeleteAllowedStatus(status: DocumentStatus): boolean {
+  return EXPRESS_DELETE_ALLOWED_STATUSES.has(status);
+}
+
+export function expressDeleteBlockedReason(
+  status: DocumentStatus,
+): string | null {
+  if (isExpressDeleteAllowedStatus(status)) return null;
+  if (
+    status === DocumentStatus.SUBMITTED ||
+    status === DocumentStatus.REVIEWING
+  ) {
+    return "เอกสารส่งให้หัวหน้างานแล้ว ไม่สามารถลบได้";
+  }
+  if (status === DocumentStatus.APPROVED || status === DocumentStatus.COMPLETED) {
+    return "เอกสารอนุมัติหรือปิดแล้ว ไม่สามารถลบได้";
+  }
+  return "สถานะเอกสารไม่อนุญาตให้ลบ";
+}
+
+export async function deleteCountDocumentForExpressDelete(
+  session: MockSession,
+  documentId: string,
+): Promise<
+  | { success: true; branchId: string; detail: string }
+  | { error: string; status: 403 | 404 | 400 }
+> {
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return {
+      error: access.error,
+      status: access.status,
+    };
+  }
+
+  const doc = access.document;
+  const blocked = expressDeleteBlockedReason(doc.status);
+  if (blocked) {
+    return { error: blocked, status: 400 };
+  }
+
+  const result = await deleteCountDocumentRecord(session, doc);
+  if ("error" in result) return result;
+  const detail = [
+    `documentNo=${doc.documentNo}`,
+    doc.locationCode ? `location=${doc.locationCode}` : null,
+    `status=${doc.status}`,
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  return { success: true, branchId: doc.branchId, detail };
+}
+
+async function deleteCountDocumentRecord(
+  session: MockSession,
+  doc: CountDocument,
+): Promise<{ success: true } | { error: string; status: 403 | 404 | 400 }> {
   const detail = [
     `documentNo=${doc.documentNo}`,
     doc.locationCode ? `location=${doc.locationCode}` : null,
@@ -531,7 +598,7 @@ export async function deleteImportedDocument(
     .join("; ");
 
   await prisma.countDocument.delete({
-    where: { id: documentId },
+    where: { id: doc.id },
   });
 
   try {

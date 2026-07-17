@@ -130,6 +130,9 @@ export async function createUserForAdmin(
   let plainPassword: string | undefined;
   if (input.passwordMode === "set") {
     if (!input.password) return { error: "Password is required" };
+    if (input.password.length < 8) {
+      return { error: "Password must be at least 8 characters" };
+    }
     plainPassword = input.password;
   } else if (input.passwordMode === "generate") {
     plainPassword = generatePassword();
@@ -258,6 +261,9 @@ export async function resetPasswordForAdmin(
   let plainPassword: string | undefined;
   if (input.passwordMode === "set") {
     if (!input.password) return { error: "Password is required" };
+    if (input.password.length < 8) {
+      return { error: "Password must be at least 8 characters" };
+    }
     plainPassword = input.password;
   } else if (input.passwordMode === "generate") {
     plainPassword = generatePassword();
@@ -270,7 +276,10 @@ export async function resetPasswordForAdmin(
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        sessionVersion: { increment: 1 },
+      },
     });
 
     if (input.passwordMode === "generate") {

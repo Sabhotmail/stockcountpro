@@ -5,7 +5,19 @@ import type {
   ExpressLocationsResponse,
   ExpressLoginResponse,
 } from "@/types/express";
+import { assertSafeExpressLocationCodes } from "@/lib/express-location";
 import { isExpressPushDebug, logExpressPush } from "@/lib/express-push-log";
+
+let warnedExpressHttp = false;
+
+function warnExpressHttpOnce(baseUrl: string): void {
+  if (warnedExpressHttp) return;
+  if (!baseUrl.toLowerCase().startsWith("http://")) return;
+  warnedExpressHttp = true;
+  console.warn(
+    "[express] EXPRESS_API_BASE_URL is http:// — credentials and bearer tokens travel in cleartext.",
+  );
+}
 
 function getExpressConfig():
   | { baseUrl: string; username: string; password: string }
@@ -18,7 +30,9 @@ function getExpressConfig():
     return { error: "Express API is not configured" };
   }
 
-  return { baseUrl: baseUrl.replace(/\/$/, ""), username, password };
+  const normalized = baseUrl.replace(/\/$/, "");
+  warnExpressHttpOnce(normalized);
+  return { baseUrl: normalized, username, password };
 }
 
 let cachedToken: { token: string; expiresAtMs: number } | null = null;
@@ -234,14 +248,11 @@ export async function fetchExpressCountDateByLocations(
 ): Promise<ExpressCountDateByLocationsResponse | { error: string }> {
   // Express expects literal commas in the path, e.g. .../locations/32F1,32G1
   // Do not encodeURIComponent the joined list (that turns "," into "%2C").
-  const joined = locationCodes
-    .map((c) => c.trim().toUpperCase())
-    .filter(Boolean)
-    .join(",");
-  if (!joined) return { error: "locations are required" };
+  const safe = assertSafeExpressLocationCodes(locationCodes);
+  if (!safe.ok) return { error: safe.error };
 
   return expressGet<ExpressCountDateByLocationsResponse>(
-    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${joined}`,
+    `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locations/${safe.joined}`,
     "Express countdate by locations",
   );
 }
@@ -368,6 +379,71 @@ export async function putExpressCountByLocation(
     (responseText ? { raw: responseText } : { success: true, emptyBody: true });
 
   return { success: true, response, requestLog };
+}
+
+export async function deleteExpressCountByLocation(
+  countDate: string,
+  locationCode: string,
+): Promise<{ success: true; response: unknown } | { error: string }> {
+  const code = locationCode.trim().toUpperCase();
+  if (!code) return { error: "locationCode is required" };
+
+  const safe = assertSafeExpressLocationCodes([code]);
+  if (!safe.ok) return { error: safe.error };
+
+  const config = getExpressConfig();
+  if ("error" in config) return { error: config.error };
+
+  const tokenResult = await getExpressToken();
+  if ("error" in tokenResult) return tokenResult;
+
+  const path = `/api/stockcount/countdate/${encodeURIComponent(countDate)}/locationcode/${encodeURIComponent(code)}`;
+  const url = `${config.baseUrl}${path}`;
+
+  const doFetch = async (token: string) =>
+    fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+  let res = await doFetch(tokenResult.token);
+  if (res.status === 401) {
+    cachedToken = null;
+    const retryToken = await loginExpressApi();
+    if ("error" in retryToken) return retryToken;
+    res = await doFetch(retryToken.token);
+  }
+
+  const responseText = await res.text();
+  let parsed: { success?: boolean; message?: string } | null = null;
+  if (responseText) {
+    try {
+      parsed = JSON.parse(responseText) as { success?: boolean; message?: string };
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!res.ok) {
+    const detail = responseText ? `: ${responseText.slice(0, 300)}` : "";
+    return {
+      error: `Express delete countdate by location failed (${res.status}) for ${path}${detail}`,
+    };
+  }
+
+  if (parsed?.success === false) {
+    return { error: parsed.message ?? "Express delete failed" };
+  }
+
+  const response =
+    parsed ??
+    (responseText ? { raw: responseText } : { success: true, emptyBody: true });
+
+  return { success: true, response };
 }
 
 export function summarizeExpressCountDate(data: ExpressCountDateResponse) {

@@ -18,6 +18,7 @@ const workGroups: AppNavGroup[] = [
     items: [
       { href: "/tablet/documents", label: "นับสต็อก (Tablet)" },
       { href: "/supervisor/documents", label: "Approve", exact: true },
+      { href: "/admin/express-delete", label: "ลบรายการนับ Express" },
     ],
   },
 ];
