@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
+import { isInsecureHttpAcknowledged } from "@/lib/security-flags";
 
 export const SESSION_COOKIE = "stockcount_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
@@ -124,6 +125,7 @@ let warnedInsecureCookie = false;
 
 export function warnInsecureSessionCookieOnce(): void {
   if (warnedInsecureCookie) return;
+  if (isInsecureHttpAcknowledged()) return;
   warnedInsecureCookie = true;
   console.warn(
     "[auth] Session cookie set without Secure; JWT may be intercepted on the network.",

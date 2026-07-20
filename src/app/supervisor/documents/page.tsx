@@ -335,7 +335,7 @@ export default function SupervisorDocumentsPage() {
             />
           )}
 
-          <div className="md:hidden rounded-lg border border-border/80 bg-background px-4 sm:px-5">
+          <div className="xl:hidden rounded-lg border border-border/80 bg-background px-4 sm:px-5">
             {visible.map((doc) => (
               <SupervisorDocumentRow
                 key={doc.id}
@@ -348,7 +348,7 @@ export default function SupervisorDocumentsPage() {
             ))}
           </div>
 
-          <div className="hidden overflow-hidden rounded-lg border border-border/80 bg-background md:block">
+          <div className="hidden overflow-hidden rounded-lg border border-border/80 bg-background xl:block">
             <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>

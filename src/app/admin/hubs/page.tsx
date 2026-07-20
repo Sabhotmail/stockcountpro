@@ -254,59 +254,145 @@ export default function AdminHubsPage() {
           {loading ? (
             <FormCardsSkeleton cards={2} />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>สาขา</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead>Short</TableHead>
-                  <TableHead>Suffix</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">จัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredHubs.map((hub) => {
-                  const branch = branchById.get(hub.branchId);
-                  return (
-                    <TableRow key={hub.id}>
-                      <TableCell>{branch?.code ?? hub.branchId}</TableCell>
-                      <TableCell className="font-mono">{hub.code}</TableCell>
-                      <TableCell>{hub.name}</TableCell>
-                      <TableCell>{hub.shortName ?? "—"}</TableCell>
-                      <TableCell className="font-mono">{hub.suffixLetter ?? "—"}</TableCell>
-                      <TableCell>{hub.isActive ? "Active" : "Disabled"}</TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEdit(hub)}
-                        >
-                          แก้ไข
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => void toggleHubActive(hub)}
-                        >
-                          {hub.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filteredHubs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      ยังไม่มี Hub สำหรับสาขานี้
-                    </TableCell>
-                  </TableRow>
+            <>
+              {/* Tablet / narrow screens: card layout to avoid horizontal scroll */}
+              <div className="grid gap-3 xl:hidden">
+                {filteredHubs.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    ยังไม่มี Hub สำหรับสาขานี้
+                  </p>
+                ) : (
+                  filteredHubs.map((hub) => {
+                    const branch = branchById.get(hub.branchId);
+                    return (
+                      <div
+                        key={hub.id}
+                        className="space-y-3 rounded-lg border p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {branch?.code ?? hub.branchId} ·{" "}
+                              <span className="font-mono">{hub.code}</span>
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {hub.name}
+                            </p>
+                          </div>
+                          <span
+                            className={
+                              hub.isActive
+                                ? "shrink-0 text-sm text-emerald-700"
+                                : "shrink-0 text-sm text-muted-foreground"
+                            }
+                          >
+                            {hub.isActive ? "Active" : "Disabled"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Short: </span>
+                            {hub.shortName ?? "—"}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Suffix:{" "}
+                            </span>
+                            <span className="font-mono">
+                              {hub.suffixLetter ?? "—"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(hub)}
+                          >
+                            แก้ไข
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => void toggleHubActive(hub)}
+                          >
+                            {hub.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop: full table */}
+              <div className="hidden xl:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>สาขา</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>ชื่อ</TableHead>
+                      <TableHead>Short</TableHead>
+                      <TableHead>Suffix</TableHead>
+                      <TableHead>สถานะ</TableHead>
+                      <TableHead className="text-right">จัดการ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredHubs.map((hub) => {
+                      const branch = branchById.get(hub.branchId);
+                      return (
+                        <TableRow key={hub.id}>
+                          <TableCell>{branch?.code ?? hub.branchId}</TableCell>
+                          <TableCell className="font-mono">{hub.code}</TableCell>
+                          <TableCell>{hub.name}</TableCell>
+                          <TableCell>{hub.shortName ?? "—"}</TableCell>
+                          <TableCell className="font-mono">
+                            {hub.suffixLetter ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            {hub.isActive ? "Active" : "Disabled"}
+                          </TableCell>
+                          <TableCell className="space-x-2 text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(hub)}
+                            >
+                              แก้ไข
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => void toggleHubActive(hub)}
+                            >
+                              {hub.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredHubs.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={7}
+                          className="text-center text-muted-foreground"
+                        >
+                          ยังไม่มี Hub สำหรับสาขานี้
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

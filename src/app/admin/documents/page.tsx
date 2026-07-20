@@ -304,7 +304,7 @@ export default function AdminDocumentsPage() {
             labels={docLabels}
           />
 
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex flex-col gap-3 xl:hidden">
             {documents.map((doc) => {
               const pushed = Boolean(doc.lastExpressPushAt);
               const completed = doc.status === DocumentStatus.COMPLETED;
@@ -386,7 +386,7 @@ export default function AdminDocumentsPage() {
             })}
           </div>
 
-          <Card className="hidden md:block">
+          <Card className="hidden xl:block">
             <CardContent className="pt-4">
               <Table className="table-fixed">
                 <TableHeader>

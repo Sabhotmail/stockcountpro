@@ -40,6 +40,21 @@ async function enrichEntryWithUserName(
   return { ...mapped, updatedByName: user?.name ?? entry.updatedBy };
 }
 
+/**
+ * Thrown inside the save transaction when the row changed underneath us
+ * (revision mismatch, concurrent create, or version no longer editable).
+ * Carries enough state for the caller to build the proper response.
+ */
+class EntrySaveConflictError extends Error {
+  constructor(
+    readonly reason: "CONFLICT" | "VERSION_NOT_EDITABLE",
+    readonly conflictLineId?: string,
+  ) {
+    super(reason);
+    this.name = "EntrySaveConflictError";
+  }
+}
+
 async function countCountedLinesInTx(
   tx: Prisma.TransactionClient,
   documentId: string,
@@ -163,30 +178,67 @@ async function applyEntrySave(
 
   try {
     saved = await prisma.$transaction(async (tx) => {
-      const upserted = await tx.countEntry.upsert({
-        where: { lineId },
-        create: {
-          lineId,
-          qtyCase,
-          qtyPack,
-          qtyPiece,
-          totalBaseQty,
-          note: null,
-          revision: 1,
-          updatedAt: now,
-          updatedBy: session.userId,
-        },
-        update: {
-          qtyCase,
-          qtyPack,
-          qtyPiece,
-          totalBaseQty,
-          note: null,
-          revision: (existing?.revision ?? 0) + 1,
-          updatedAt: now,
-          updatedBy: session.userId,
-        },
+      // Re-verify the version is still editable *inside* the transaction so a
+      // concurrent submit/approve cannot land an entry into a sealed version.
+      const freshVersion = await tx.countVersion.findUnique({
+        where: { id: versionId },
       });
+      if (!freshVersion || freshVersion.status !== VersionStatus.DRAFT) {
+        throw new EntrySaveConflictError("VERSION_NOT_EDITABLE");
+      }
+
+      let upserted: NonNullable<
+        Awaited<ReturnType<typeof prisma.countEntry.findUnique>>
+      >;
+
+      if (existing) {
+        // Guard the write on the revision we validated against. Under READ
+        // COMMITTED a competing save that already bumped the revision leaves
+        // count === 0 here, which we surface as a conflict (no lost update).
+        const updated = await tx.countEntry.updateMany({
+          where: { lineId, revision: payload.baseRevision },
+          data: {
+            qtyCase,
+            qtyPack,
+            qtyPiece,
+            totalBaseQty,
+            note: null,
+            revision: existing.revision + 1,
+            updatedAt: now,
+            updatedBy: session.userId,
+          },
+        });
+        if (updated.count === 0) {
+          throw new EntrySaveConflictError("CONFLICT", lineId);
+        }
+        upserted = await tx.countEntry.findUniqueOrThrow({ where: { lineId } });
+      } else {
+        // No row yet: create atomically. A concurrent create hits the unique
+        // constraint on lineId (P2002) which we translate into a conflict.
+        try {
+          upserted = await tx.countEntry.create({
+            data: {
+              lineId,
+              qtyCase,
+              qtyPack,
+              qtyPiece,
+              totalBaseQty,
+              note: null,
+              revision: 1,
+              updatedAt: now,
+              updatedBy: session.userId,
+            },
+          });
+        } catch (createError) {
+          if (
+            createError instanceof Prisma.PrismaClientKnownRequestError &&
+            createError.code === "P2002"
+          ) {
+            throw new EntrySaveConflictError("CONFLICT", lineId);
+          }
+          throw createError;
+        }
+      }
 
       const countedLines = await countCountedLinesInTx(tx, documentId);
       await tx.countDocument.update({
@@ -215,6 +267,27 @@ async function applyEntrySave(
       return upserted;
     });
   } catch (error) {
+    if (error instanceof EntrySaveConflictError) {
+      if (error.reason === "VERSION_NOT_EDITABLE") {
+        return { error: "Version is not editable" };
+      }
+      const latest = await prisma.countEntry.findUnique({
+        where: { lineId },
+      });
+      if (latest) {
+        const entry = await enrichEntryWithUserName(latest);
+        const name = entry.updatedByName ?? latest.updatedBy;
+        return {
+          error: "CONFLICT",
+          message: `รายการนี้ถูกแก้ไขโดย ${name} แล้ว`,
+          entry,
+        };
+      }
+      return {
+        error: "CONFLICT",
+        message: "รายการนี้ถูกแก้ไขโดยผู้อื่นแล้ว",
+      };
+    }
     if (
       mutationId &&
       error instanceof Prisma.PrismaClientKnownRequestError &&

@@ -561,7 +561,86 @@ export default function AdminUsersPage() {
             แสดง {filteredUsers.length} จาก {users.length} ผู้ใช้
           </p>
 
-          <Card>
+          {/* Tablet / narrow screens: card layout to avoid horizontal scroll */}
+          <div className="grid gap-3 xl:hidden">
+            {filteredUsers.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  ไม่พบผู้ใช้ที่ตรงกับตัวกรอง
+                </CardContent>
+              </Card>
+            ) : (
+              filteredUsers.map((user) => (
+                <Card key={user.id}>
+                  <CardContent className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium">{user.name}</p>
+                        <p className="font-mono text-sm text-muted-foreground">
+                          {user.username}
+                        </p>
+                      </div>
+                      <span
+                        className={
+                          user.isActive
+                            ? "shrink-0 text-sm text-emerald-700"
+                            : "shrink-0 text-sm text-muted-foreground"
+                        }
+                      >
+                        {user.isActive ? "Active" : "Disabled"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">บทบาท: </span>
+                        {roleLabels[user.role]}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">สาขา: </span>
+                        {user.branchIds.length === 0
+                          ? "—"
+                          : user.branchIds
+                              .map((id) => branchById.get(id)?.code ?? id)
+                              .join(", ")}
+                      </div>
+                    </div>
+
+                    <p className="truncate font-mono text-xs text-muted-foreground">
+                      {user.id}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openEdit(user)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => openReset(user)}
+                      >
+                        Reset password
+                      </Button>
+                      <Button
+                        variant={user.isActive ? "destructive" : "secondary"}
+                        size="xs"
+                        onClick={() => openStatusConfirm(user)}
+                      >
+                        {user.isActive ? "Disable" : "Enable"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Desktop: full table */}
+          <Card className="hidden xl:block">
             <CardContent className="overflow-x-auto p-0">
               <Table>
                 <TableHeader>

@@ -7,12 +7,14 @@ import type {
 } from "@/types/express";
 import { assertSafeExpressLocationCodes } from "@/lib/express-location";
 import { isExpressPushDebug, logExpressPush } from "@/lib/express-push-log";
+import { isInsecureHttpAcknowledged } from "@/lib/security-flags";
 
 let warnedExpressHttp = false;
 
 function warnExpressHttpOnce(baseUrl: string): void {
   if (warnedExpressHttp) return;
   if (!baseUrl.toLowerCase().startsWith("http://")) return;
+  if (isInsecureHttpAcknowledged()) return;
   warnedExpressHttp = true;
   console.warn(
     "[express] EXPRESS_API_BASE_URL is http:// — credentials and bearer tokens travel in cleartext.",

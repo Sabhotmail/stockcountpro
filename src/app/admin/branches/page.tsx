@@ -287,7 +287,7 @@ export default function AdminBranchesPage() {
         <FormCardsSkeleton cards={2} />
       ) : (
         <>
-          <div className="grid gap-4 md:hidden">
+          <div className="grid gap-4 xl:hidden">
             {branches.map((branch) => (
               <Card key={branch.id}>
                 <CardHeader className="pb-2">
@@ -325,7 +325,7 @@ export default function AdminBranchesPage() {
             ))}
           </div>
 
-          <Card className="hidden md:block">
+          <Card className="hidden xl:block">
             <CardContent className="pt-6">
               <Table>
                 <TableHeader>

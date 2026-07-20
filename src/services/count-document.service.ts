@@ -33,6 +33,7 @@ import {
 } from "@/types/count";
 import type { Branch, Hub, MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
+import { Prisma } from "@prisma/client";
 
 async function getBranch(branchId: string) {
   const branch = await prisma.branch.findUnique({
@@ -64,8 +65,9 @@ async function enrichDocument(doc: CountDocument): Promise<CountDocumentListItem
 export async function countCountedLines(
   documentId: string,
   _versionId: string | null,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
 ): Promise<number> {
-  const lines = await prisma.productLine.findMany({
+  const lines = await db.productLine.findMany({
     where: { documentId },
     include: { entry: true },
   });
@@ -301,28 +303,51 @@ export async function submitVersion(
   }
 
   const now = new Date();
-  const countedLines = await countCountedLines(documentId, versionId);
 
-  await prisma.$transaction([
-    prisma.countVersion.update({
-      where: { id: versionId },
-      data: {
-        status: VersionStatus.SUBMITTED,
-        submittedAt: now,
-        submittedBy: session.userId,
-      },
-    }),
-    prisma.countDocument.update({
-      where: { id: documentId },
-      data: {
-        status: DocumentStatus.SUBMITTED,
-        countedLines,
-        updatedAt: now,
-      },
-    }),
-  ]);
+  let countedLines: number;
+  try {
+    countedLines = await prisma.$transaction(async (tx) => {
+      // Flip the version only if it is still DRAFT. A concurrent submit/approve
+      // leaves count === 0, so we abort instead of double-submitting.
+      const flipped = await tx.countVersion.updateMany({
+        where: {
+          id: versionId,
+          documentId,
+          status: VersionStatus.DRAFT,
+        },
+        data: {
+          status: VersionStatus.SUBMITTED,
+          submittedAt: now,
+          submittedBy: session.userId,
+        },
+      });
+      if (flipped.count === 0) {
+        throw new Error("NOT_DRAFT");
+      }
 
-  await snapshotDocumentEntries(documentId, versionId);
+      const counted = await countCountedLines(documentId, versionId, tx);
+      await tx.countDocument.update({
+        where: { id: documentId },
+        data: {
+          status: DocumentStatus.SUBMITTED,
+          countedLines: counted,
+          updatedAt: now,
+        },
+      });
+
+      // Snapshot inside the same transaction so no save can interleave between
+      // sealing the version and capturing its entries.
+      await snapshotDocumentEntries(documentId, versionId, tx);
+
+      return counted;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "NOT_DRAFT") {
+      return { error: "Version is not editable" };
+    }
+    throw error;
+  }
+
   await logSubmit(
     session.userId,
     session.userName,

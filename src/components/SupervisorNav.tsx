@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppNav, type AppNavGroup } from "@/components/AppNav";
-import { canAccessAdmin } from "@/lib/permissions";
+import { AppNav } from "@/components/AppNav";
+import { buildAppNavGroups } from "@/lib/nav-groups";
+import { canSupervise } from "@/lib/permissions";
 import { UserRole } from "@/types/user";
 
 export function SupervisorNav() {
-  const [showHqArea, setShowHqArea] = useState(false);
+  const [role, setRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -17,10 +18,10 @@ export function SupervisorNav() {
         if (!res.ok) return;
         const data = (await res.json()) as { user?: { role?: UserRole } };
         if (!cancelled && data.user?.role) {
-          setShowHqArea(canAccessAdmin(data.user.role));
+          setRole(data.user.role);
         }
       } catch {
-        // nav still works without HQ group
+        // keep placeholder until role loads
       }
     }
 
@@ -30,31 +31,11 @@ export function SupervisorNav() {
     };
   }, []);
 
-  const groups: AppNavGroup[] = [
-    ...(showHqArea
-      ? [
-          {
-            label: "ประวัติ",
-            items: [
-              { href: "/admin/documents", label: "เอกสาร / ประวัติ" },
-              { href: "/admin/audit-logs", label: "Audit Log" },
-            ],
-          } satisfies AppNavGroup,
-        ]
-      : []),
-    {
-      label: "งานตรวจนับ",
-      items: [
-        {
-          href: "/supervisor/documents",
-          label: "รออนุมัติ",
-          exact: true,
-        },
-        { href: "/tablet/documents", label: "นับสต็อก" },
-        { href: "/supervisor/express-delete", label: "ลบรายการนับ Express" },
-      ],
-    },
-  ];
+  if (role && !canSupervise(role)) return null;
+
+  // Before role loads: ops-only without Express delete (safe for Branch Manager).
+  // Admin/HQ expand to full menu once role resolves.
+  const groups = buildAppNavGroups(role ?? UserRole.BRANCH_MANAGER);
 
   return <AppNav groups={groups} />;
 }

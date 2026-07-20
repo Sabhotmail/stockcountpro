@@ -32,12 +32,27 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          res.status === 404
+            ? "ไม่พบบริการเข้าสู่ระบบ — ลองรีสตาร์ทเซิร์ฟเวอร์ (npm run dev)"
+            : "เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ — ลองรีเฟรชหรือรีสตาร์ทเซิร์ฟเวอร์",
+        );
+      }
+
+      const data = (await res.json()) as {
+        error?: string;
+        user?: { role: UserRole };
+      };
       if (!res.ok) {
         throw new Error(data.error ?? "เข้าสู่ระบบไม่สำเร็จ");
       }
+      if (!data.user?.role) {
+        throw new Error("เข้าสู่ระบบไม่สำเร็จ");
+      }
 
-      router.replace(getHomePathForRole(data.user.role as UserRole));
+      router.replace(getHomePathForRole(data.user.role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "เข้าสู่ระบบไม่สำเร็จ");
     } finally {
