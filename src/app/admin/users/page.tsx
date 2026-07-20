@@ -27,29 +27,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ROLE_LABEL, ROLE_OPTIONS } from "@/lib/role-labels";
 import { UserRole, type Branch, type Hub, type User } from "@/types/user";
 
-const roleLabels: Record<UserRole, string> = {
-  [UserRole.ADMIN]: "Admin",
-  [UserRole.HQ]: "HQ",
-  [UserRole.SUPERVISOR]: "Supervisor",
-  [UserRole.BRANCH_MANAGER]: "ผู้จัดการสาขา",
-  [UserRole.STAFF]: "พนักงาน",
-  [UserRole.COUNTER]: "ผู้นับ",
-  [UserRole.VIEWER]: "ดูอย่างเดียว",
-};
-
 type PasswordMode = "set" | "generate";
-
-const roleOptions: UserRole[] = [
-  UserRole.ADMIN,
-  UserRole.HQ,
-  UserRole.SUPERVISOR,
-  UserRole.BRANCH_MANAGER,
-  UserRole.STAFF,
-  UserRole.COUNTER,
-  UserRole.VIEWER,
-];
 
 function isAdminOrHq(role: UserRole) {
   return role === UserRole.ADMIN || role === UserRole.HQ;
@@ -181,7 +162,7 @@ export default function AdminUsersPage() {
       return (
         user.name.toLowerCase().includes(query) ||
         user.username.toLowerCase().includes(query) ||
-        roleLabels[user.role].toLowerCase().includes(query) ||
+        ROLE_LABEL[user.role].toLowerCase().includes(query) ||
         branchText.includes(query)
       );
     });
@@ -513,9 +494,9 @@ export default function AdminUsersPage() {
                   }
                 >
                   <option value="all">ทั้งหมด</option>
-                  {roleOptions.map((role) => (
+                  {ROLE_OPTIONS.map((role) => (
                     <option key={role} value={role}>
-                      {roleLabels[role]}
+                      {ROLE_LABEL[role]}
                     </option>
                   ))}
                 </select>
@@ -594,7 +575,7 @@ export default function AdminUsersPage() {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div>
                         <span className="text-muted-foreground">บทบาท: </span>
-                        {roleLabels[user.role]}
+                        {ROLE_LABEL[user.role]}
                       </div>
                       <div className="min-w-0">
                         <span className="text-muted-foreground">สาขา: </span>
@@ -669,7 +650,7 @@ export default function AdminUsersPage() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell className="font-mono">{user.username}</TableCell>
-                        <TableCell>{roleLabels[user.role]}</TableCell>
+                        <TableCell>{ROLE_LABEL[user.role]}</TableCell>
                         <TableCell>
                           {user.branchIds.length === 0
                             ? "—"
@@ -776,9 +757,9 @@ export default function AdminUsersPage() {
                 value={createRole}
                 onChange={(e) => setCreateRole(e.target.value as UserRole)}
               >
-                {roleOptions.map((role) => (
+                {ROLE_OPTIONS.map((role) => (
                   <option key={role} value={role}>
-                    {roleLabels[role]}
+                    {ROLE_LABEL[role]}
                   </option>
                 ))}
               </select>
@@ -946,9 +927,9 @@ export default function AdminUsersPage() {
                 value={editRole}
                 onChange={(e) => setEditRole(e.target.value as UserRole)}
               >
-                {roleOptions.map((role) => (
+                {ROLE_OPTIONS.map((role) => (
                   <option key={role} value={role}>
-                    {roleLabels[role]}
+                    {ROLE_LABEL[role]}
                   </option>
                 ))}
               </select>

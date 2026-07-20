@@ -3,17 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { UserRole, type MockSession } from "@/types/user";
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  [UserRole.ADMIN]: "Admin",
-  [UserRole.HQ]: "HQ",
-  [UserRole.SUPERVISOR]: "Supervisor",
-  [UserRole.BRANCH_MANAGER]: "Branch Manager",
-  [UserRole.STAFF]: "Staff",
-  [UserRole.COUNTER]: "Counter",
-  [UserRole.VIEWER]: "Viewer",
-};
+import { ROLE_LABEL } from "@/lib/role-labels";
+import type { MockSession } from "@/types/user";
 
 export function PageShell({
   title,
