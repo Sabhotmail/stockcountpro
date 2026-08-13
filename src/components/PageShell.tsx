@@ -25,26 +25,28 @@ export function PageShell({
   brand?: string | null;
 }) {
   return (
-    <div className={cn("min-h-screen bg-muted/40", className)}>
-      <header className="border-b bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className={cn("min-h-dvh bg-background", className)}>
+      <header className="sticky top-0 z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-3.5">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               {brand && (
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground">
+                <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground">
                   {brand}
                 </p>
               )}
               <h1
                 className={cn(
-                  "text-lg font-bold tracking-tight sm:text-2xl",
+                  "text-xl font-semibold tracking-tight sm:text-[1.375rem]",
                   brand && "mt-0.5",
                 )}
               >
                 {title}
               </h1>
               {subtitle && (
-                <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {subtitle}
+                </p>
               )}
             </div>
             {actions && (
@@ -53,12 +55,10 @@ export function PageShell({
               </div>
             )}
           </div>
-          {nav && (
-            <div className="mt-4 border-t border-border/80 pt-3">{nav}</div>
-          )}
+          {nav && <div className="mt-3">{nav}</div>}
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+      <main className="mx-auto max-w-6xl px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-6">
         {children}
       </main>
     </div>
@@ -91,12 +91,10 @@ export function LogoutButton({ onClick }: { onClick: () => void }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {user && (
-        <div className="min-w-0 text-right leading-tight">
-          <p className="truncate text-sm font-medium">
-            {user.userName}
-          </p>
+        <div className="hidden min-w-0 text-right leading-tight sm:block">
+          <p className="truncate text-sm font-medium">{user.userName}</p>
           <p className="truncate text-[11px] text-muted-foreground">
-            login เป็น · {ROLE_LABEL[user.role] ?? user.role}
+            {ROLE_LABEL[user.role] ?? user.role}
           </p>
         </div>
       )}

@@ -16,7 +16,7 @@ export default function AdminExpressDeletePage() {
   return (
     <PageShell
       title="ลบรายการนับ Express"
-      subtitle="ลบเอกสารในระบบและรายการนับใน Express ตามวันที่และรหัสคลัง"
+      subtitle="ลบได้เฉพาะเอกสารที่เพิ่งดึงมาและยังไม่เริ่มนับ เช่น เจอรหัสสินค้าซ้ำ"
       actions={<LogoutButton onClick={handleLogout} />}
       nav={<AdminNav />}
     >

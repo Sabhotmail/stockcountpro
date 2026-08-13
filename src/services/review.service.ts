@@ -243,7 +243,6 @@ export async function getReviewDetail(
 export async function approveDocument(
   session: MockSession,
   documentId: string,
-  options: { pushToExpress?: boolean } = {},
 ): Promise<
   | {
       success: true;
@@ -323,10 +322,6 @@ export async function approveDocument(
     documentId,
     `ปิดเอกสาร ${doc.documentNo}`,
   );
-
-  if (!options.pushToExpress) {
-    return { success: true };
-  }
 
   const pushResult = await pushDocumentToExpress(session, documentId);
   if ("error" in pushResult) {

@@ -26,17 +26,12 @@ function secondaryMeta(doc: CountDocumentListItem): string {
 export function TabletDocumentRow({
   doc,
   starting,
-  deleting,
   onOpen,
-  onDelete,
 }: {
   doc: CountDocumentListItem;
   starting: boolean;
-  deleting: boolean;
   onOpen: () => void;
-  onDelete: () => void;
 }) {
-  const canDelete = doc.status === DocumentStatus.IMPORTED;
   const openLabel =
     starting
       ? "กำลังเปิด..."
@@ -46,50 +41,43 @@ export function TabletDocumentRow({
         : "เปิดเอกสาร";
 
   const meta = secondaryMeta(doc);
+  const progress =
+    doc.totalLines > 0 ? Math.round((doc.countedLines / doc.totalLines) * 100) : 0;
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between",
         documentRowHighlightClass(doc.status),
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate font-semibold tracking-tight">
-            {primaryTitle(doc)}
-          </p>
+          <p className="truncate font-medium tracking-tight">{primaryTitle(doc)}</p>
           <DocumentStatusBadge status={doc.status} compact />
         </div>
         <p className="mt-1 text-sm text-muted-foreground tabular-nums">
           {meta ? `${meta} · ` : ""}
-          นับแล้ว{" "}
-          <span className="font-medium text-foreground">
-            {doc.countedLines}/{doc.totalLines}
-          </span>
+          {doc.countedLines}/{doc.totalLines}
           {doc.currentVersionNo > 0 ? ` · V${doc.currentVersionNo}` : ""}
         </p>
+        {doc.totalLines > 0 && (
+          <div className="mt-2 h-1 w-full max-w-xs overflow-hidden bg-muted">
+            <div
+              className="h-full bg-foreground transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 gap-2">
-        {canDelete && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={deleting || starting}
-            onClick={onDelete}
-            size="lg"
-            className="min-h-11 flex-1 sm:flex-none sm:w-auto"
-          >
-            {deleting ? "กำลังลบ..." : "ลบ"}
-          </Button>
-        )}
         <Button
           type="button"
-          disabled={starting || deleting}
+          disabled={starting}
           onClick={onOpen}
           size="lg"
-          className="min-h-11 flex-1 bg-green-600 hover:bg-green-700 sm:flex-none sm:w-auto"
+          className="min-h-11 flex-1 sm:flex-none sm:min-w-28"
         >
           {openLabel}
         </Button>

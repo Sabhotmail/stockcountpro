@@ -32,7 +32,6 @@ import {
   type CountSummaryLine,
 } from "@/types/count";
 import type { Branch, Hub, MockSession } from "@/types/user";
-import { UserRole } from "@/types/user";
 import { Prisma } from "@prisma/client";
 
 async function getBranch(branchId: string) {
@@ -102,23 +101,9 @@ export async function listDocumentsForUser(
         return false;
       }
 
-      if (session.role === UserRole.ADMIN) return true;
-
-      if (
-        session.role === UserRole.STAFF ||
-        session.role === UserRole.COUNTER
-      ) {
-        return filterDocumentsForStaff(doc.status);
-      }
-
-      if (
-        session.role === UserRole.SUPERVISOR ||
-        session.role === UserRole.BRANCH_MANAGER
-      ) {
-        return filterDocumentsForStaff(doc.status);
-      }
-
-      return true;
+      // Tablet list is for counting. Completed docs belong on
+      // เอกสาร / รออนุมัติ / ภาพรวม — including Admin and HQ.
+      return filterDocumentsForStaff(doc.status);
     });
 
   const result: CountDocumentListItem[] = [];
@@ -552,8 +537,6 @@ export async function deleteImportedDocument(
 
 const EXPRESS_DELETE_ALLOWED_STATUSES = new Set<DocumentStatus>([
   DocumentStatus.IMPORTED,
-  DocumentStatus.COUNTING,
-  DocumentStatus.RECOUNT_REQUESTED,
 ]);
 
 export function isExpressDeleteAllowedStatus(status: DocumentStatus): boolean {
@@ -562,8 +545,14 @@ export function isExpressDeleteAllowedStatus(status: DocumentStatus): boolean {
 
 export function expressDeleteBlockedReason(
   status: DocumentStatus,
+  countedLines = 0,
 ): string | null {
-  if (isExpressDeleteAllowedStatus(status)) return null;
+  if (
+    status === DocumentStatus.COUNTING ||
+    status === DocumentStatus.RECOUNT_REQUESTED
+  ) {
+    return "เอกสารถูกนับแล้ว ไม่สามารถลบได้";
+  }
   if (
     status === DocumentStatus.SUBMITTED ||
     status === DocumentStatus.REVIEWING
@@ -573,7 +562,13 @@ export function expressDeleteBlockedReason(
   if (status === DocumentStatus.APPROVED || status === DocumentStatus.COMPLETED) {
     return "เอกสารอนุมัติหรือปิดแล้ว ไม่สามารถลบได้";
   }
-  return "สถานะเอกสารไม่อนุญาตให้ลบ";
+  if (!isExpressDeleteAllowedStatus(status)) {
+    return "สถานะเอกสารไม่อนุญาตให้ลบ";
+  }
+  if (countedLines > 0) {
+    return "เอกสารถูกนับแล้ว ไม่สามารถลบได้";
+  }
+  return null;
 }
 
 export async function deleteCountDocumentForExpressDelete(
@@ -592,7 +587,7 @@ export async function deleteCountDocumentForExpressDelete(
   }
 
   const doc = access.document;
-  const blocked = expressDeleteBlockedReason(doc.status);
+  const blocked = expressDeleteBlockedReason(doc.status, doc.countedLines);
   if (blocked) {
     return { error: blocked, status: 400 };
   }

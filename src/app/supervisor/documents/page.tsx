@@ -283,7 +283,7 @@ export default function SupervisorDocumentsPage() {
       </Tabs>
 
       {tab === "pending" && (
-        <div className="mb-4 flex flex-wrap gap-1.5">
+        <div className="mb-4 flex flex-wrap">
           {PENDING_STATUS_FILTERS.map(({ key, label }) => {
             const active = pendingStatus === key;
             const count = pendingStatusCounts[key];
@@ -293,10 +293,10 @@ export default function SupervisorDocumentsPage() {
                 type="button"
                 onClick={() => setPendingStatus(key)}
                 className={cn(
-                  "rounded-full border px-3 py-1 text-sm transition-colors",
+                  "inline-flex min-h-10 items-center px-2.5 text-sm transition-colors",
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted",
+                    ? "font-medium text-foreground shadow-[inset_0_-2px_0_0_currentColor]"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {label} ({count})

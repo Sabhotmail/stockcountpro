@@ -23,6 +23,10 @@ import type { ExpressLocationItem, ExpressStockCountLine } from "@/types/express
 import type { Branch, Hub, MockSession } from "@/types/user";
 
 import { dateKeyToUtcDateOnly, parseDateKeyBangkok } from "@/lib/datetime";
+import {
+  findDuplicateProductCodes,
+  formatDuplicateProductCodeWarning,
+} from "@/lib/duplicate-product-codes";
 import { mapExpressExpectedQty, mapExpressFieldQty } from "@/lib/express-expected-qty";
 
 export type ExpressSyncLocationInput = {
@@ -44,6 +48,8 @@ export type ExpressSyncDocumentResult = {
   lineCount?: number;
   status: "created" | "updated" | "skipped";
   reason?: string;
+  warning?: string;
+  duplicateProductCodes?: string[];
 };
 
 /** @deprecated Use ExpressSyncDocumentResult */
@@ -160,6 +166,18 @@ function mapExpressLineToProductLine(
     expectedQtyCase: mapExpressFieldQty(line.CaseQty),
     expectedQtyPiece: mapExpressFieldQty(line.PieceQty),
   };
+}
+
+function duplicateWarningFromLines(lines: ExpressStockCountLine[]): {
+  duplicateProductCodes?: string[];
+  warning?: string;
+} {
+  const duplicateProductCodes = findDuplicateProductCodes(
+    lines.map((line) => line.ProductCode),
+  );
+  const warning = formatDuplicateProductCodeWarning(duplicateProductCodes);
+  if (!warning) return {};
+  return { duplicateProductCodes, warning };
 }
 
 function buildPrefixBranchLookup(branches: Branch[]): Map<string, Branch> {
@@ -437,6 +455,7 @@ function aggregateExpressLinesByDocument(
         status: "skipped",
         reason: `ไม่สามารถจัดกลุ่มคลัง "${locationCode}" ได้`,
         lineCount: lines.length,
+        ...duplicateWarningFromLines(lines),
       });
       continue;
     }
@@ -497,6 +516,7 @@ async function upsertImportedDocument(
   const productLines = lines.map((line, index) =>
     mapExpressLineToProductLine(line, documentId, index + 1),
   );
+  const duplicateWarning = duplicateWarningFromLines(lines);
   const now = new Date();
 
   const existing = await prisma.countDocument.findUnique({
@@ -518,6 +538,7 @@ async function upsertImportedDocument(
       lineCount: existing.totalLines,
       status: "skipped",
       reason: `เอกสารอยู่ในสถานะ ${existing.status} — ไม่ sync ทับ`,
+      ...duplicateWarning,
     };
   }
 
@@ -580,6 +601,7 @@ async function upsertImportedDocument(
     documentNo,
     lineCount: productLines.length,
     status: existing ? "updated" : "created",
+    ...duplicateWarning,
   };
 }
 

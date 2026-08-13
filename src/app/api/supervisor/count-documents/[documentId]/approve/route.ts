@@ -16,16 +16,13 @@ export async function POST(
 
   const { documentId } = await params;
 
-  let pushToExpress = false;
   const raw = await readJsonBody(request);
   if (raw.ok) {
     const parsed = parseWithSchema(approveBodySchema, raw.data);
     if (!parsed.ok) return validationErrorResponse(parsed.error);
-    pushToExpress = parsed.data.pushToExpress === true;
   }
-  // empty / non-JSON body → approve only (legacy behavior)
 
-  const result = await approveDocument(session, documentId, { pushToExpress });
+  const result = await approveDocument(session, documentId);
 
   if ("error" in result) {
     return NextResponse.json(

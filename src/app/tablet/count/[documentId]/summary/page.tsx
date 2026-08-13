@@ -447,7 +447,7 @@ export default function TabletSummaryPage() {
         </section>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background">
         <div className="mx-auto flex max-w-4xl gap-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
           <Link
             href={`/tablet/count/${documentId}`}
@@ -461,7 +461,7 @@ export default function TabletSummaryPage() {
           <Button
             type="button"
             size="lg"
-            className="min-h-11 flex-1 bg-emerald-600 hover:bg-emerald-700"
+            className="min-h-11 flex-1"
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
           >

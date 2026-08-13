@@ -36,8 +36,7 @@ export function DocumentStatusBadge({
       variant={config.variant}
       className={cn(
         compact ? "text-xs" : "text-sm",
-        isCompleted &&
-          "border-transparent bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
+        isCompleted && "bg-secondary text-foreground",
       )}
     >
       {config.label}

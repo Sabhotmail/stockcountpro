@@ -49,7 +49,6 @@ export default function TabletDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
 
   async function loadDocuments() {
@@ -172,39 +171,6 @@ export default function TabletDocumentsPage() {
     router.push(`/tablet/count/${doc.id}`);
   }
 
-  async function handleDelete(doc: CountDocumentListItem) {
-    if (doc.status !== DocumentStatus.IMPORTED) return;
-
-    const confirmed = window.confirm(
-      `ลบเอกสารนี้?\n${doc.documentNo}\n\nลบได้เฉพาะเอกสารที่ยังไม่เริ่มนับ`,
-    );
-    if (!confirmed) return;
-
-    setDeletingId(doc.id);
-    setError(null);
-    try {
-      const res = await fetch(`/api/count-documents/${doc.id}`, {
-        method: "DELETE",
-        credentials: "same-origin",
-      });
-      const data = (await res.json()) as { error?: string };
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (res.status === 404) {
-        setDocuments((current) => current.filter((item) => item.id !== doc.id));
-        return;
-      }
-      if (!res.ok) throw new Error(data.error ?? "ลบเอกสารไม่สำเร็จ");
-      setDocuments((current) => current.filter((item) => item.id !== doc.id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "ลบเอกสารไม่สำเร็จ");
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -235,25 +201,25 @@ export default function TabletDocumentsPage() {
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-visible bg-transparent p-0 group-data-horizontal/tabs:h-auto">
           <TabsTrigger
             value="all"
-            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+            className="h-auto min-h-11 flex-none rounded-none px-3 py-2 shadow-none data-active:bg-transparent data-active:shadow-[inset_0_-2px_0_0_currentColor]"
           >
             ทั้งหมด ({counts.all})
           </TabsTrigger>
           <TabsTrigger
             value="not_started"
-            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+            className="h-auto min-h-11 flex-none rounded-none px-3 py-2 shadow-none data-active:bg-transparent data-active:shadow-[inset_0_-2px_0_0_currentColor]"
           >
             ยังไม่เริ่ม ({counts.not_started})
           </TabsTrigger>
           <TabsTrigger
             value="counting"
-            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+            className="h-auto min-h-11 flex-none rounded-none px-3 py-2 shadow-none data-active:bg-transparent data-active:shadow-[inset_0_-2px_0_0_currentColor]"
           >
             กำลังนับ ({counts.counting})
           </TabsTrigger>
           <TabsTrigger
             value="recount"
-            className="h-auto min-h-10 flex-none rounded-md px-3 py-2 data-[state=active]:bg-muted"
+            className="h-auto min-h-11 flex-none rounded-none px-3 py-2 shadow-none data-active:bg-transparent data-active:shadow-[inset_0_-2px_0_0_currentColor]"
           >
             ขอนับใหม่ ({counts.recount})
           </TabsTrigger>
@@ -275,9 +241,7 @@ export default function TabletDocumentsPage() {
               key={doc.id}
               doc={doc}
               starting={startingId === doc.id}
-              deleting={deletingId === doc.id}
               onOpen={() => void handleOpen(doc)}
-              onDelete={() => void handleDelete(doc)}
             />
           ))}
         </section>

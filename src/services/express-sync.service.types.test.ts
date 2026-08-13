@@ -1,4 +1,5 @@
 import type {
+  ExpressSyncDocumentResult,
   ExpressSyncLocationPreview,
   ExpressSyncPreviewResult,
   ExpressSyncResult,
@@ -40,7 +41,12 @@ async function assertSyncContract() {
   if ("error" in result) return;
 
   expectType<ExpressSyncResult>(result);
+  const item = result.results[0];
+  expectType<ExpressSyncDocumentResult>(item);
+  expectType<string | undefined>(item.warning);
+  expectType<string[] | undefined>(item.duplicateProductCodes);
 }
 
 void assertPreviewContract;
 void assertSyncContract;
+

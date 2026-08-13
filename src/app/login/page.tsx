@@ -61,21 +61,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/40">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6">
-        <header className="mb-8 space-y-2 text-center">
-          <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            StockCount Pro
+    <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_28rem]">
+      <aside className="hidden flex-col justify-between border-r px-12 py-12 lg:flex">
+        <p className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground">
+          ระบบตรวจนับสต็อก
+        </p>
+        <div>
+          <p className="text-5xl font-semibold tracking-tight">StockCount</p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            นับบนแท็บเล็ตในคลัง ตรวจและอนุมัติบนคอมพิวเตอร์
           </p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        </div>
+        <p className="text-xs text-muted-foreground">ใช้บัญชีที่ได้รับจากองค์กร</p>
+      </aside>
+
+      <div className="flex flex-col justify-center px-4 py-10 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8">
+        <div className="mx-auto w-full max-w-sm">
+          <header className="mb-8 lg:hidden">
+            <p className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground">
+              StockCount Pro
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+              เข้าสู่ระบบ
+            </h1>
+          </header>
+          <h1 className="mb-8 hidden text-2xl font-semibold tracking-tight lg:block">
             เข้าสู่ระบบ
           </h1>
-          <p className="text-sm text-muted-foreground">
-            ใช้ username และ password ที่ได้รับจากองค์กร
-          </p>
-        </header>
 
-        <section className="rounded-xl border bg-background p-6 shadow-sm sm:p-8">
           {error && (
             <Alert variant="destructive" className="mb-5">
               <AlertDescription>{error}</AlertDescription>
@@ -84,9 +97,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="grid gap-2">
-              <Label htmlFor="username" className="text-sm font-medium">
-                Username
-              </Label>
+              <Label htmlFor="username">ชื่อผู้ใช้</Label>
               <Input
                 id="username"
                 name="username"
@@ -106,9 +117,7 @@ export default function LoginPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
-              </Label>
+              <Label htmlFor="password">รหัสผ่าน</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -129,7 +138,7 @@ export default function LoginPage() {
                   disabled={loading}
                   onClick={() => setShowPassword((v) => !v)}
                   className={cn(
-                    "absolute top-1/2 right-1.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50",
+                    "absolute top-1/2 right-1.5 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50",
                   )}
                 >
                   {showPassword ? (
@@ -150,11 +159,7 @@ export default function LoginPage() {
               {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </Button>
           </form>
-        </section>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          ระบบตรวจนับสต็อก · ใช้งานบน Tablet ในคลัง
-        </p>
+        </div>
       </div>
     </div>
   );

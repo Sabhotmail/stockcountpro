@@ -134,7 +134,10 @@ async function mapDocumentPreview(
     ? await prisma.hub.findUnique({ where: { id: doc.hubId } })
     : null;
 
-  const blockedReason = expressDeleteBlockedReason(doc.status);
+  const blockedReason = expressDeleteBlockedReason(
+    doc.status,
+    doc.countedLines,
+  );
   return {
     id: doc.id,
     documentNo: doc.documentNo,

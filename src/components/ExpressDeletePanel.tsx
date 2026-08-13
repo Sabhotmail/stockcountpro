@@ -283,8 +283,8 @@ export function ExpressDeletePanel({
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          ลบเอกสารใน StockCount Pro และรายการนับใน Express ตามวันที่และรหัสคลัง
-          (เฉพาะสถานะยังไม่เริ่ม / กำลังนับ / ขอนับใหม่)
+          ใช้เมื่อเพิ่งดึงมาแล้วยังไม่เริ่มนับ เช่น เจอรหัสสินค้าซ้ำ
+          แล้วจะสร้างใบใหม่ใน Express — ลบทั้งเอกสารในระบบและรายการนับใน Express
         </p>
       </div>
 

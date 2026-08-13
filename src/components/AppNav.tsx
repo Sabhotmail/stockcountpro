@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type AppNavItem = {
@@ -26,13 +25,13 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-5 sm:gap-y-2">
+    <div className="-mx-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-6 sm:gap-y-2">
       {groups.map((group) => (
-        <div key={group.label} className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
+        <div key={group.label} className="min-w-0">
+          <p className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">
             {group.label}
           </p>
-          <nav className="flex flex-wrap gap-1.5">
+          <nav className="flex flex-wrap">
             {group.items.map((item) => {
               const active = isActive(pathname, item);
               return (
@@ -40,12 +39,10 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    buttonVariants({
-                      variant: active ? "default" : "ghost",
-                      size: "sm",
-                    }),
-                    !active && "bg-muted/60 text-foreground hover:bg-muted",
-                    "h-8 px-3",
+                    "inline-flex min-h-10 items-center px-2.5 text-sm transition-colors",
+                    active
+                      ? "font-medium text-foreground shadow-[inset_0_-2px_0_0_currentColor]"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {item.label}

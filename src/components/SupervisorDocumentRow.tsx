@@ -48,14 +48,14 @@ export function SupervisorDocumentRow({
       className={cn(
         "flex flex-col gap-3 border-b border-border/70 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between",
         mode === "pending" && documentRowHighlightClass(doc.status),
-        pushed && mode === "completed" && "bg-emerald-50/40",
+        pushed && mode === "completed" && "opacity-90",
       )}
     >
       <div className="flex min-w-0 flex-1 items-start gap-2">
         {mode === "completed" && eligible && onToggleSelect && (
           <input
             type="checkbox"
-            className="mt-1 size-4 shrink-0"
+            className="mt-1.5 size-5 shrink-0"
             checked={Boolean(selected)}
             onChange={(e) => onToggleSelect(doc.id, e.target.checked)}
             aria-label={`เลือก ${doc.documentNo}`}
@@ -93,14 +93,14 @@ export function SupervisorDocumentRow({
               href={`/supervisor/review/${doc.id}`}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "min-h-10 border-orange-200 text-orange-800 hover:bg-orange-50",
+                "min-h-11",
               )}
             >
               ขอนับใหม่
             </Link>
             <Link
               href={`/print/documents/${doc.id}`}
-              className={cn(buttonVariants({ size: "sm" }), "min-h-10")}
+              className={cn(buttonVariants({ size: "sm" }), "min-h-11")}
               target="_blank"
               rel="noreferrer"
             >
@@ -115,7 +115,7 @@ export function SupervisorDocumentRow({
         ) : (
           <Link
             href={`/supervisor/review/${doc.id}`}
-            className={cn(buttonVariants({ size: "sm" }), "min-h-10 w-full sm:w-auto")}
+            className={cn(buttonVariants({ size: "sm" }), "min-h-11 w-full sm:w-auto")}
           >
             ตรวจสอบ
           </Link>

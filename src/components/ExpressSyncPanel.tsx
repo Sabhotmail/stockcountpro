@@ -171,10 +171,13 @@ export function ExpressSyncPanel({
       const created = data.results.filter((item) => item.status === "created").length;
       const updated = data.results.filter((item) => item.status === "updated").length;
       const skipped = data.results.filter((item) => item.status === "skipped").length;
+      const warned = data.results.filter((item) => item.warning).length;
 
       setSyncResults(data.results);
       setSyncMessage(
-        `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
+        warned > 0
+          ? `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped} — พบรหัสสินค้าซ้ำ ${warned} คลัง`
+          : `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
       );
       onSynced?.();
     } catch (err) {
@@ -380,8 +383,25 @@ export function ExpressSyncPanel({
         )}
 
         {syncMessage && (
-          <Alert className="border-green-200 bg-green-50 text-green-800">
-            <AlertDescription>{syncMessage}</AlertDescription>
+          <Alert
+            className={
+              syncResults?.some((item) => item.warning)
+                ? undefined
+                : "border-green-200 bg-green-50 text-green-800"
+            }
+            variant={
+              syncResults?.some((item) => item.warning) ? "destructive" : "default"
+            }
+          >
+            <AlertDescription className="space-y-1">
+              <p>{syncMessage}</p>
+              {syncResults?.some((item) => item.warning) ? (
+                <p>
+                  ถ้ายังไม่เริ่มนับ ให้ลบที่หน้าลบรายการนับ Express แล้วสร้างใบใหม่ใน
+                  Express
+                </p>
+              ) : null}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -419,8 +439,15 @@ export function ExpressSyncPanel({
                       {item.lineCount ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {item.reason ??
-                        (item.documentNo ? `เอกสาร ${item.documentNo}` : "—")}
+                      <div className="space-y-1">
+                        {item.warning ? (
+                          <p className="text-destructive">{item.warning}</p>
+                        ) : null}
+                        <p>
+                          {item.reason ??
+                            (item.documentNo ? `เอกสาร ${item.documentNo}` : "—")}
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
                   );

@@ -18,7 +18,7 @@ export function DocumentSearchInput({
   return (
     <div className={cn("relative", className)}>
       <Search
-        className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden
       />
       <Input
@@ -26,7 +26,7 @@ export function DocumentSearchInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-10 pl-8 pr-8"
+        className="h-11 pl-9 pr-10 text-base md:h-10 md:text-sm"
         aria-label="ค้นหาเอกสาร"
       />
       {value ? (

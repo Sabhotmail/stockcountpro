@@ -41,7 +41,6 @@ export default function SupervisorReviewPage() {
   const [showRecountModal, setShowRecountModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
-  const [pushToExpress, setPushToExpress] = useState(false);
   const [codeFilter, setCodeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
   const [showUncountedOnly, setShowUncountedOnly] = useState(false);
@@ -102,7 +101,7 @@ export default function SupervisorReviewPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pushToExpress }),
+          body: JSON.stringify({}),
         },
       );
       const data = (await res.json()) as {
@@ -114,12 +113,12 @@ export default function SupervisorReviewPage() {
       }
 
       const params = new URLSearchParams();
-      if (pushToExpress && data.expressPush?.ok === false) {
+      if (data.expressPush?.ok === false) {
         params.set(
           "expressPushError",
           data.expressPush.error ?? "ส่ง Express ไม่สำเร็จ",
         );
-      } else if (pushToExpress && data.expressPush?.ok) {
+      } else if (data.expressPush?.ok) {
         params.set("expressPushOk", "1");
       }
       const qs = params.toString();
@@ -128,7 +127,6 @@ export default function SupervisorReviewPage() {
       setError(err instanceof Error ? err.message : "Approve failed");
     } finally {
       setActionLoading(false);
-      setPushToExpress(false);
     }
   }
 
@@ -300,24 +298,10 @@ export default function SupervisorReviewPage() {
             <DialogHeader>
               <DialogTitle>อนุมัติและปิดเอกสาร</DialogTitle>
               <DialogDescription>
-                เอกสารจะเปลี่ยนเป็นสถานะเสร็จสิ้น และพิมพ์ได้ทันที
+                เอกสารจะเป็นสถานะเสร็จสิ้น พิมพ์ได้ทันที และระบบจะส่งผลนับกลับ Express
+                ถ้าส่งไม่สำเร็จ ยังอนุมัติได้ — ส่งมือทีหลังจากแท็บเสร็จสิ้น
               </DialogDescription>
             </DialogHeader>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4"
-                checked={pushToExpress}
-                onChange={(e) => setPushToExpress(e.target.checked)}
-              />
-              <span>
-                <span className="font-medium">ส่ง Express ด้วย</span>
-                <span className="mt-0.5 block text-muted-foreground">
-                  ถ้าส่งไม่สำเร็จ เอกสารยังอนุมัติได้ — ส่งมือทีหลังได้จากแท็บเสร็จสิ้น
-                </span>
-              </span>
-            </label>
 
             <DialogFooter className="gap-2 sm:justify-end">
               <Button
@@ -330,7 +314,6 @@ export default function SupervisorReviewPage() {
               </Button>
               <Button
                 type="button"
-                className="bg-emerald-600 hover:bg-emerald-700"
                 disabled={actionLoading}
                 onClick={() => void confirmApprove()}
               >
@@ -424,7 +407,7 @@ export default function SupervisorReviewPage() {
           <Button
             type="button"
             variant="outline"
-            className="border-orange-200 text-orange-800 hover:bg-orange-50"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
             onClick={() => setShowRecountModal(true)}
             disabled={!canRecount || actionLoading}
           >
@@ -432,11 +415,8 @@ export default function SupervisorReviewPage() {
           </Button>
           <Button
             type="button"
-            className="min-w-[10rem] bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => {
-              setPushToExpress(false);
-              setApproveOpen(true);
-            }}
+            className="min-w-[10rem]"
+            onClick={() => setApproveOpen(true)}
             disabled={!canApprove || actionLoading}
           >
             {actionLoading ? "กำลังดำเนินการ..." : "อนุมัติและปิดเอกสาร"}

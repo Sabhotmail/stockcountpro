@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "StockCount Pro",
-  description: "Inventory Count System - Prototype",
+  description: "ระบบตรวจนับสต็อก",
 };
 
 export const viewport = {

@@ -9,11 +9,13 @@ import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { newClientMutationId } from "@/lib/client-id";
+import { listActiveCountWorkers } from "@/lib/active-count-workers";
 import {
   COUNT_POLL_INTERVAL_MS,
   LOCK_HEARTBEAT_INTERVAL_MS,
@@ -610,6 +612,11 @@ export default function TabletCountPage() {
     return { counted, total: lines.length };
   }, [lines, entries]);
 
+  const activeWorkers = useMemo(
+    () => listActiveCountWorkers(Object.values(locks), currentUserId),
+    [locks, currentUserId],
+  );
+
   const saveEntry = useCallback(
     async (lineId: string, payload: SaveEntryPayload) => {
       if (!versionId) {
@@ -948,7 +955,7 @@ export default function TabletCountPage() {
 
   return (
     <div className="min-h-screen bg-muted/40 pb-28">
-      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-sm sm:px-6">
+      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6">
         <div className="mx-auto max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -968,7 +975,7 @@ export default function TabletCountPage() {
                   "min-h-9",
                 )}
               >
-                Admin
+                เอกสาร
               </Link>
             )}
             {role && canSupervise(role) && (
@@ -979,14 +986,14 @@ export default function TabletCountPage() {
                   "min-h-9",
                 )}
               >
-                Approve
+                รออนุมัติ
               </Link>
             )}
           </div>
 
           <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
                 {document.documentNo}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -998,6 +1005,24 @@ export default function TabletCountPage() {
                 {document.currentVersionNo} · นับแล้ว {countedSummary.counted}/
                 {countedSummary.total}
               </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">กำลังนับในเอกสารนี้</span>
+                {activeWorkers.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    — ยังไม่มีใครกำลังกรอกรายการ
+                  </span>
+                ) : (
+                  activeWorkers.map((worker) => (
+                    <Badge
+                      key={worker.userId}
+                      variant={worker.isCurrentUser ? "default" : "secondary"}
+                    >
+                      {worker.isCurrentUser ? "คุณ" : worker.name}
+                      {worker.lineCount > 1 ? ` · ${worker.lineCount}` : ""}
+                    </Badge>
+                  ))
+                )}
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {!noteOpen && <SyncStatusBadge status={noteSyncStatus} />}
@@ -1056,7 +1081,7 @@ export default function TabletCountPage() {
                   type="text"
                   value={codeFilter}
                   onChange={(e) => setCodeFilter(e.target.value)}
-                  placeholder="เช่น P001"
+                  placeholder="เช่น 1010010001"
                   className="h-10 text-base"
                 />
               </div>
@@ -1067,7 +1092,7 @@ export default function TabletCountPage() {
                   type="text"
                   value={nameFilter}
                   onChange={(e) => setNameFilter(e.target.value)}
-                  placeholder="เช่น น้ำดื่ม"
+                  placeholder="เช่น เจเล่"
                   className="h-10 text-base"
                 />
               </div>
@@ -1129,14 +1154,14 @@ export default function TabletCountPage() {
         </div>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
         <div className="mx-auto max-w-4xl">
           <Link
             href={`/tablet/count/${documentId}/summary`}
             aria-disabled={!isEditable}
             className={cn(
               buttonVariants({ size: "lg" }),
-              "min-h-11 w-full bg-green-600 hover:bg-green-700",
+              "min-h-11 w-full",
               !isEditable && "pointer-events-none opacity-40",
             )}
             onClick={async (event) => {
