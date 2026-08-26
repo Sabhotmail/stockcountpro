@@ -11,6 +11,7 @@
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
     "db:seed": "dotenv -e .env.local -- prisma db seed",
     "db:bootstrap-admin": "dotenv -e .env.local -- tsx prisma/bootstrap-admin.ts",
+    "db:clear-operational": "dotenv -e .env.local -- tsx prisma/clear-operational-data.ts",
     "db:set-admin-password": "dotenv -e .env.local -- tsx prisma/set-admin-password.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:reset": "dotenv -e .env.local -- prisma migrate reset",
