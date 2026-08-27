@@ -22,11 +22,70 @@ import {
   type ExpressPushRequestLog,
 } from "@/services/express-api.service";
 import { getUserById } from "@/services/user.service";
-import { DocumentStatus } from "@/types/count";
+import { DocumentStatus, type CountEntry, type ProductLine } from "@/types/count";
 import type { MockSession } from "@/types/user";
 
 const EXPRESS_COUNT_FLAG = "3";
 const EXPRESS_USER_ID_MAX_LEN = 8;
+
+export function buildExpressPushDetails(params: {
+  productLines: ProductLine[];
+  entries: CountEntry[];
+  locationCode: string;
+  countDate: string;
+  userIdSent: string;
+  changedDate: string;
+}): ExpressPushCountDetail[] {
+  const entryByLine = new Map(params.entries.map((entry) => [entry.lineId, entry]));
+
+  return params.productLines.map((line) => {
+    const entry = entryByLine.get(line.lineId);
+    const caseUnitFactor = Math.max(1, Math.round(line.caseRatio || 1));
+    const counted = entry
+      ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
+      : false;
+
+    if (!entry || !counted) {
+      return {
+        LocationCode: params.locationCode,
+        ProductCode: line.productCode,
+        CountDate: params.countDate,
+        CaseQty: 0,
+        CaseUnitFactor: caseUnitFactor,
+        PieceQty: 0,
+        PhysicalBalance: 0,
+        CountFlag: EXPRESS_COUNT_FLAG,
+        UserID: params.userIdSent,
+        ChangedDate: params.changedDate,
+      };
+    }
+
+    const caseQty = effectiveQtyForTotal(entry.qtyCase);
+    const pieceQty = effectiveQtyForTotal(entry.qtyPiece);
+    const physical =
+      entry.totalBaseQty ??
+      calculateTotalBaseQty(
+        line,
+        entry.qtyCase,
+        entry.qtyPack,
+        entry.qtyPiece,
+      ) ??
+      caseQty * caseUnitFactor + pieceQty;
+
+    return {
+      LocationCode: params.locationCode,
+      ProductCode: line.productCode,
+      CountDate: params.countDate,
+      CaseQty: caseQty,
+      CaseUnitFactor: caseUnitFactor,
+      PieceQty: pieceQty,
+      PhysicalBalance: physical,
+      CountFlag: EXPRESS_COUNT_FLAG,
+      UserID: params.userIdSent,
+      ChangedDate: params.changedDate,
+    };
+  });
+}
 
 export type PushExpressResult =
   | {
@@ -97,46 +156,19 @@ export async function pushDocumentToExpress(
   if (entries.length === 0 && doc.currentVersionId) {
     entries = await resolveEffectiveEntries(documentId, doc.currentVersionId);
   }
-  const entryByLine = new Map(entries.map((e) => [e.lineId, e]));
-
   const changedDate = todayDateKeyBangkok();
-  const details: ExpressPushCountDetail[] = [];
-
-  for (const line of productLines) {
-    const entry = entryByLine.get(line.lineId);
-    if (!entry) continue;
-    if (!isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)) continue;
-
-    const caseUnitFactor = Math.max(1, Math.round(line.caseRatio || 1));
-    const caseQty = effectiveQtyForTotal(entry.qtyCase);
-    const pieceQty = effectiveQtyForTotal(entry.qtyPiece);
-    const physical =
-      entry.totalBaseQty ??
-      calculateTotalBaseQty(
-        line,
-        entry.qtyCase,
-        entry.qtyPack,
-        entry.qtyPiece,
-      ) ??
-      caseQty * caseUnitFactor + pieceQty;
-
-    details.push({
-      LocationCode: locationCode,
-      ProductCode: line.productCode,
-      CountDate: countDate,
-      CaseQty: caseQty,
-      CaseUnitFactor: caseUnitFactor,
-      PieceQty: pieceQty,
-      PhysicalBalance: physical,
-      CountFlag: EXPRESS_COUNT_FLAG,
-      UserID: userIdSent,
-      ChangedDate: changedDate,
-    });
-  }
+  const details = buildExpressPushDetails({
+    productLines,
+    entries,
+    locationCode,
+    countDate,
+    userIdSent,
+    changedDate,
+  });
 
   if (details.length === 0) {
     return {
-      error: "ไม่มีรายการที่นับแล้วให้ส่งกลับ Express",
+      error: "ไม่มีรายการสินค้าให้ส่งกลับ Express",
       status: 400,
     };
   }

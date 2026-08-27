@@ -20,7 +20,7 @@ Body: { "details": [ { LocationCode, ProductCode, CountDate, CaseQty, CaseUnitFa
 |------|-------|
 | When | Manual button only, document status `COMPLETED` |
 | Who | `SUPERVISOR`, `BRANCH_MANAGER`, `HQ`, `ADMIN` + document access |
-| Lines | Only counted lines (`isEntryCounted`) |
+| Lines | Every SKU on the document; uncounted lines sent as `CaseQty=0`, `PieceQty=0`, `PhysicalBalance=0` |
 | `UserID` | Session user's `username`, truncated to **8** chars |
 | `CountFlag` | `"3"` (per Express sample) |
 | `ChangedDate` | Today `YYYY-MM-DD` (Asia/Bangkok) |

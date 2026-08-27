@@ -127,7 +127,7 @@ POST /api/count-documents/{documentId}/push-express
 Server behavior:
 
 1. Requires document access + `COMPLETED`.
-2. Builds Express `details[]` from **counted lines only**.
+2. Builds Express `details[]` from **every SKU** on the document. Uncounted lines are sent as `CaseQty=0`, `PieceQty=0`, `PhysicalBalance=0`.
 3. Calls Express API #4:
    `PUT /api/stockcount/countdate/{date}/locationcode/{locationCode}`
 4. `UserID` = current user's username (max 8 chars).
