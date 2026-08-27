@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { getHomePathForRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types/user";
+import { AppVersion } from "@/components/AppVersion";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -72,14 +73,17 @@ export default function LoginPage() {
             นับบนแท็บเล็ตในคลัง ตรวจและอนุมัติบนคอมพิวเตอร์
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">ใช้บัญชีที่ได้รับจากองค์กร</p>
+        <p className="text-xs text-muted-foreground">
+          ใช้บัญชีที่ได้รับจากองค์กร · <AppVersion />
+        </p>
       </aside>
 
       <div className="flex flex-col justify-center px-4 py-10 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8">
         <div className="mx-auto w-full max-w-sm">
           <header className="mb-8 lg:hidden">
-            <p className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground">
-              StockCount Pro
+            <p className="flex items-baseline gap-2 text-[11px] font-medium tracking-[0.12em] text-muted-foreground">
+              <span>StockCount Pro</span>
+              <AppVersion className="font-normal tracking-normal" />
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">
               เข้าสู่ระบบ

@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const session = await getServerSession();
+  const session = await getServerSession({ refreshCookie: false });
   if (session) {
     try {
       await bumpSessionVersion(session.userId);

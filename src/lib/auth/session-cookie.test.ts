@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
   SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
   clearSessionCookieHeaders,
   serializeSessionCookie,
+  shouldRefreshSession,
   shouldUseSecureCookies,
 } from "@/lib/auth/session";
 
@@ -49,6 +51,27 @@ function testSerializeMatchesSecureFlag() {
   assert.ok(secure.includes("; Secure"));
 }
 
+function testSerializeIncludesExpiresForOldBrowsers() {
+  const now = Date.now();
+  const cookie = serializeSessionCookie("tok", false);
+  const match = cookie.match(/Expires=([^;]+)/);
+  assert.ok(match, "cookie must include Expires for browsers that ignore Max-Age");
+  const expires = Date.parse(match[1] ?? "");
+  const expected = now + SESSION_MAX_AGE_SECONDS * 1000;
+  assert.ok(Number.isFinite(expires));
+  assert.ok(Math.abs(expires - expected) < 2000);
+}
+
+function testShouldRefreshWhenPastHalfway() {
+  const nowMs = Date.UTC(2026, 7, 27, 12, 0, 0);
+  const half = SESSION_MAX_AGE_SECONDS / 2;
+  const expSoon = Math.floor(nowMs / 1000) + half - 1;
+  const expFresh = Math.floor(nowMs / 1000) + SESSION_MAX_AGE_SECONDS;
+
+  assert.equal(shouldRefreshSession(expSoon, nowMs), true);
+  assert.equal(shouldRefreshSession(expFresh, nowMs), false);
+}
+
 function testClearBothVariants() {
   const clears = clearSessionCookieHeaders();
   assert.equal(clears.length, 2);
@@ -58,5 +81,7 @@ function testClearBothVariants() {
 
 testShouldUseSecureFromRequest();
 testSerializeMatchesSecureFlag();
+testSerializeIncludesExpiresForOldBrowsers();
+testShouldRefreshWhenPastHalfway();
 testClearBothVariants();
 console.log("session-cookie.test: OK");

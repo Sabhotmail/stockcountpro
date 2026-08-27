@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ROLE_LABEL } from "@/lib/role-labels";
 import type { MockSession } from "@/types/user";
+import { AppVersion } from "@/components/AppVersion";
 
 export function PageShell({
   title,
@@ -31,8 +32,9 @@ export function PageShell({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               {brand && (
-                <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground">
-                  {brand}
+                <p className="flex items-baseline gap-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground">
+                  <span>{brand}</span>
+                  <AppVersion className="font-normal tracking-normal" />
                 </p>
               )}
               <h1
@@ -49,11 +51,10 @@ export function PageShell({
                 </p>
               )}
             </div>
-            {actions && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {actions}
-              </div>
-            )}
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {!brand && <AppVersion className="mr-1" />}
+              {actions}
+            </div>
           </div>
           {nav && <div className="mt-3">{nav}</div>}
         </div>

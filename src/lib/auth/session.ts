@@ -5,6 +5,7 @@ import { isInsecureHttpAcknowledged } from "@/lib/security-flags";
 
 export const SESSION_COOKIE = "stockcount_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
+export const SESSION_REFRESH_REMAINING_SECONDS = SESSION_MAX_AGE_SECONDS / 2;
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
@@ -62,12 +63,50 @@ export async function createSessionToken(session: MockSession): Promise<string> 
 export async function verifySessionToken(
   token: string,
 ): Promise<MockSession | null> {
+  const verified = await verifySessionTokenMeta(token);
+  return verified?.session ?? null;
+}
+
+export async function verifySessionTokenMeta(
+  token: string,
+): Promise<{ session: MockSession; exp: number } | null> {
   try {
     const { payload } = await jwtVerify(token, getAuthSecret());
-    return parseSessionPayload(payload as Record<string, unknown>);
+    const session = parseSessionPayload(payload as Record<string, unknown>);
+    if (!session || typeof payload.exp !== "number") return null;
+    return { session, exp: payload.exp };
   } catch {
     return null;
   }
+}
+
+export function shouldRefreshSession(
+  expUnixSeconds: number,
+  nowMs = Date.now(),
+): boolean {
+  const remainingSeconds = expUnixSeconds - nowMs / 1000;
+  return remainingSeconds <= SESSION_REFRESH_REMAINING_SECONDS;
+}
+
+export function buildSessionCookieSetOptions(
+  secure: boolean,
+  nowMs = Date.now(),
+): {
+  path: "/";
+  httpOnly: true;
+  sameSite: "lax";
+  maxAge: number;
+  expires: Date;
+  secure: boolean;
+} {
+  return {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    expires: new Date(nowMs + SESSION_MAX_AGE_SECONDS * 1000),
+    secure,
+  };
 }
 
 /**
@@ -102,14 +141,16 @@ export function shouldUseSecureCookies(request?: Request): boolean {
 export function serializeSessionCookie(
   token: string,
   secure = shouldUseSecureCookies(),
+  nowMs = Date.now(),
 ): string {
-  const secureFlag = secure ? "; Secure" : "";
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}${secureFlag}`;
+  const options = buildSessionCookieSetOptions(secure, nowMs);
+  const secureFlag = options.secure ? "; Secure" : "";
+  return `${SESSION_COOKIE}=${token}; Path=${options.path}; HttpOnly; SameSite=Lax; Max-Age=${options.maxAge}; Expires=${options.expires.toUTCString()}${secureFlag}`;
 }
 
 /** Clear both Secure and non-Secure variants so leftover cookies cannot stick. */
 export function clearSessionCookieHeaders(): string[] {
-  const base = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const base = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   return [base, `${base}; Secure`];
 }
 

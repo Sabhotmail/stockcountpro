@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
+import {
+  SESSION_COOKIE,
+  buildSessionCookieSetOptions,
+  createSessionToken,
+  shouldRefreshSession,
+  shouldUseSecureCookies,
+  verifySessionTokenMeta,
+} from "@/lib/auth/session";
 import { getSessionAuthState } from "@/lib/auth/session-user";
 
 const protectedPrefixes = ["/tablet", "/supervisor", "/admin"];
@@ -17,16 +24,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const session = await verifySessionToken(token);
-  if (!session) {
+  const verified = await verifySessionTokenMeta(token);
+  if (!verified) {
     const response = NextResponse.redirect(new URL("/login", request.url));
     response.cookies.delete(SESSION_COOKIE);
     return response;
   }
 
   const authState = await getSessionAuthState(
-    session.userId,
-    session.sessionVersion,
+    verified.session.userId,
+    verified.session.sessionVersion,
   );
   if (authState !== "ok") {
     const response = NextResponse.redirect(new URL("/login", request.url));
@@ -34,7 +41,16 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (shouldRefreshSession(verified.exp)) {
+    const nextToken = await createSessionToken(verified.session);
+    response.cookies.set(
+      SESSION_COOKIE,
+      nextToken,
+      buildSessionCookieSetOptions(shouldUseSecureCookies(request)),
+    );
+  }
+  return response;
 }
 
 export const config = {

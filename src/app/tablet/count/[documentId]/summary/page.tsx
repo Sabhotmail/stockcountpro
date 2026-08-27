@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
+import { AppVersion } from "@/components/AppVersion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -267,12 +268,15 @@ export default function TabletSummaryPage() {
     <div className="min-h-screen bg-muted/40 pb-28">
       <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <Link
-            href={`/tablet/count/${documentId}`}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← กลับไปนับต่อ
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/tablet/count/${documentId}`}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ← กลับไปนับต่อ
+            </Link>
+            <AppVersion className="ml-auto" />
+          </div>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-lg font-bold tracking-tight sm:text-xl">

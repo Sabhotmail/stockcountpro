@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountQtyConfirmDialog } from "@/components/CountQtyConfirmDialog";
 import { CountToast, type CountToastItem } from "@/components/CountToast";
 import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
+import { AppVersion } from "@/components/AppVersion";
 import { ProductCard } from "@/components/ProductCard";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -266,7 +267,7 @@ export default function TabletCountPage() {
     let cancelled = false;
 
     async function loadCurrentUser() {
-      const res = await fetch("/api/me");
+      const res = await fetch("/api/me", { credentials: "same-origin" });
       if (res.status === 401) {
         router.push("/login");
         return;
@@ -296,15 +297,22 @@ export default function TabletCountPage() {
     return lockMap;
   }, []);
 
-  const fetchDocumentWithLocks = useCallback(async () => {
-    const res = await fetch(`/api/count-documents/${documentId}`);
-    if (res.status === 401) {
-      router.push("/login");
-      return null;
-    }
-    if (!res.ok) throw new Error("Failed to load document");
-    return (await res.json()) as CountDocumentWithLocksResponse;
-  }, [documentId, router]);
+  const fetchDocumentWithLocks = useCallback(
+    async (options?: { redirectOn401?: boolean }) => {
+      const res = await fetch(`/api/count-documents/${documentId}`, {
+        credentials: "same-origin",
+      });
+      if (res.status === 401) {
+        if (options?.redirectOn401 !== false) {
+          router.push("/login");
+        }
+        return null;
+      }
+      if (!res.ok) throw new Error("Failed to load document");
+      return (await res.json()) as CountDocumentWithLocksResponse;
+    },
+    [documentId, router],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -313,7 +321,9 @@ export default function TabletCountPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/count-documents/${documentId}`);
+        const res = await fetch(`/api/count-documents/${documentId}`, {
+          credentials: "same-origin",
+        });
         if (res.status === 401) {
           router.push("/login");
           return;
@@ -373,7 +383,7 @@ export default function TabletCountPage() {
   const refreshDocumentSilent = useCallback(async () => {
     scrollYRef.current = window.scrollY;
     try {
-      const data = await fetchDocumentWithLocks();
+      const data = await fetchDocumentWithLocks({ redirectOn401: false });
       if (!data) return;
 
       const nextDocument = data.document;
@@ -486,7 +496,7 @@ export default function TabletCountPage() {
 
       const res = await fetch(
         `/api/count-documents/${documentId}/versions/${versionId}/locks/${lineId}`,
-        { method: "POST" },
+        { method: "POST", credentials: "same-origin" },
       );
 
       if (res.status === 409) {
@@ -637,6 +647,7 @@ export default function TabletCountPage() {
           `/api/count-documents/${documentId}/versions/${versionId}/entries/${lineId}`,
           {
             method: "PATCH",
+            credentials: "same-origin",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           },
@@ -967,6 +978,7 @@ export default function TabletCountPage() {
             >
               ← กลับรายการ
             </Link>
+            <AppVersion className="ml-auto" />
             {role && canAccessAdmin(role) && (
               <Link
                 href="/admin/documents"

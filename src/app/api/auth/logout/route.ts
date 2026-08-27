@@ -6,7 +6,7 @@ import {
 } from "@/services/mock-session.service";
 
 async function logout() {
-  const session = await getServerSession();
+  const session = await getServerSession({ refreshCookie: false });
   if (session) {
     try {
       await bumpSessionVersion(session.userId);
