@@ -90,7 +90,7 @@ export async function listActiveUserPresences(
     return {
       userId: row.userId,
       userName: row.userName,
-      role: row.role,
+      role: row.role as UserRole,
       lastSeenAt: row.updatedAt.toISOString(),
       activity: composePresenceDetail(
         described.pageLabel,
