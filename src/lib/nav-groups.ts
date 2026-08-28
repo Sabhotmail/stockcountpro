@@ -7,14 +7,21 @@ import {
 } from "@/lib/permissions";
 import { UserRole } from "@/types/user";
 
-function workMainGroup(dashboardHref: string): AppNavGroup {
+function workMainGroup(
+  dashboardHref: string,
+  options?: { includePresence?: boolean },
+): AppNavGroup {
+  const items: AppNavGroup["items"] = [
+    { href: dashboardHref, label: "ภาพรวม", exact: true },
+    { href: "/admin/documents", label: "เอกสาร" },
+  ];
+  if (options?.includePresence) {
+    items.push({ href: "/admin/presence", label: "ผู้ที่กำลังใช้งาน" });
+  }
+  items.push({ href: "/admin/audit-logs", label: "บันทึกการใช้งาน" });
   return {
     label: "งานหลัก",
-    items: [
-      { href: dashboardHref, label: "ภาพรวม", exact: true },
-      { href: "/admin/documents", label: "เอกสาร" },
-      { href: "/admin/audit-logs", label: "บันทึกการใช้งาน" },
-    ],
+    items,
   };
 }
 
@@ -76,7 +83,9 @@ export function buildAppNavGroups(role: UserRole | null): AppNavGroup[] {
 
   if (canAccessAdmin(role)) {
     const groups: AppNavGroup[] = [
-      workMainGroup("/admin/dashboard"),
+      workMainGroup("/admin/dashboard", {
+        includePresence: canManageSystem(role),
+      }),
     ];
     if (canManageSystem(role)) {
       groups.push(systemGroup);

@@ -27,6 +27,7 @@ async function main() {
   await prisma.countDocument.deleteMany();
   await prisma.userHub.deleteMany();
   await prisma.userBranch.deleteMany();
+  await prisma.userPresence.deleteMany();
   await prisma.user.deleteMany();
   await prisma.hub.deleteMany();
   await prisma.branch.deleteMany();

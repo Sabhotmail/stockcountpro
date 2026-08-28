@@ -13,15 +13,33 @@ function createPrismaClient() {
   });
 }
 
-if (
-  globalForPrisma.prisma &&
-  globalForPrisma.prismaSchemaFingerprint !== SCHEMA_FINGERPRINT
-) {
-  void globalForPrisma.prisma.$disconnect();
-  globalForPrisma.prisma = undefined;
+function hasUserPresence(client: PrismaClient): boolean {
+  return typeof client.userPresence?.deleteMany === "function";
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function resolvePrismaClient(): PrismaClient {
+  const existing = globalForPrisma.prisma;
+  const fingerprintChanged =
+    existing != null &&
+    globalForPrisma.prismaSchemaFingerprint !== SCHEMA_FINGERPRINT;
+
+  if (existing && fingerprintChanged) {
+    void existing.$disconnect();
+    globalForPrisma.prisma = undefined;
+  } else if (existing && !hasUserPresence(existing)) {
+    const replacement = createPrismaClient();
+    if (hasUserPresence(replacement)) {
+      void existing.$disconnect();
+      globalForPrisma.prisma = replacement;
+    } else {
+      void replacement.$disconnect();
+    }
+  }
+
+  return globalForPrisma.prisma ?? createPrismaClient();
+}
+
+export const prisma = resolvePrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

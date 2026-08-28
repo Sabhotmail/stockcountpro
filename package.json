@@ -1,6 +1,6 @@
 {
   "name": "stockcountpro",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "dev": "cross-env TZ=Asia/Bangkok next dev",

@@ -88,6 +88,19 @@ model User {
   sessionVersion Int          @default(0)
   branches       UserBranch[]
   hubs           UserHub[]
+  presence       UserPresence?
+}
+
+model UserPresence {
+  userId    String   @id
+  userName  String
+  role      UserRole
+  path      String
+  expiresAt DateTime
+  updatedAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model UserBranch {

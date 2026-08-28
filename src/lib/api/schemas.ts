@@ -199,3 +199,14 @@ export const expressDeleteRetryBodySchema = z.object({
   countDate: expressDeleteDateSchema,
   locationCode: expressDeleteLocationCodeSchema,
 });
+
+export const userPresenceHeartbeatBodySchema = z.object({
+  path: z
+    .string()
+    .trim()
+    .min(1)
+    .max(300)
+    .refine((value) => value.startsWith("/"), {
+      message: "path must start with /",
+    }),
+});

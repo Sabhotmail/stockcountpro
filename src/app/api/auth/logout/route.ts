@@ -4,12 +4,18 @@ import {
   buildSessionClearCookieHeaders,
   getServerSession,
 } from "@/services/mock-session.service";
+import { clearUserPresence } from "@/services/user-presence.service";
 
 async function logout() {
   const session = await getServerSession({ refreshCookie: false });
   if (session) {
     try {
       await bumpSessionVersion(session.userId);
+    } catch {
+      // still clear cookies
+    }
+    try {
+      await clearUserPresence(session.userId);
     } catch {
       // still clear cookies
     }
