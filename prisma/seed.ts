@@ -31,6 +31,7 @@ async function main() {
   await prisma.hub.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.countLineLock.deleteMany();
+  await prisma.countDocumentPresence.deleteMany();
   await prisma.appSetting.deleteMany();
 
   for (const branch of mockBranches) {

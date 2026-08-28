@@ -13,7 +13,9 @@ import {
   isEntryCounted,
   validateQuantities,
 } from "@/lib/unit-converter";
-import { acquireOrRenewLineLock } from "@/services/count-line-lock.service";
+import { acquireOrRenewLineLock, listActiveLocks } from "@/services/count-line-lock.service";
+import { touchDocumentPresence } from "@/services/count-document-presence.service";
+import { shouldEnforceLineLocks } from "@/lib/line-lock-policy";
 import { logAutoSave } from "@/services/audit-log.service";
 import { buildAutoSaveDetail } from "@/lib/audit-log-detail";
 import { getUserById } from "@/services/user.service";
@@ -110,12 +112,25 @@ async function applyEntrySave(
   });
   if (!line) return { error: "Line not found" };
 
-  // Claim/renew for this saver. Do not require a pre-held lock: with short TTL
-  // the client may expire between ensureLock and PATCH. Only block if another
-  // user currently holds an active lock.
-  const lockClaim = await acquireOrRenewLineLock(session, documentId, lineId);
-  if ("error" in lockClaim) {
-    return lockClaim;
+  // Solo counters skip line locks. With two or more people on the document,
+  // claim/renew a lock and only block if another user currently holds it.
+  const [viewers, existingLocks] = await Promise.all([
+    touchDocumentPresence(session, documentId),
+    listActiveLocks(documentId),
+  ]);
+  if (
+    shouldEnforceLineLocks(
+      [
+        ...viewers.map((viewer) => viewer.userId),
+        ...existingLocks.map((lock) => lock.lockedByUserId),
+      ],
+      session.userId,
+    )
+  ) {
+    const lockClaim = await acquireOrRenewLineLock(session, documentId, lineId);
+    if ("error" in lockClaim) {
+      return lockClaim;
+    }
   }
 
   const validationError = validateQuantities(

@@ -116,9 +116,16 @@ export interface LineLockInfo {
   expiresAt: string;
 }
 
+export interface DocumentViewerInfo {
+  userId: string;
+  userName: string;
+  expiresAt: string;
+}
+
 export interface CountDocumentWithLocksResponse {
   document: CountDocumentDetail;
   locks: LineLockInfo[];
+  viewers: DocumentViewerInfo[];
 }
 
 export type SaveEntryErrorCode = "CONFLICT" | "LOCKED";

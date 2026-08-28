@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const parsed = await parseRequestBody(request, loginBodySchema);
   if (!parsed.ok) {
     return NextResponse.json(
-      { error: "Username and password are required" },
+      { error: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" },
       { status: 400 },
     );
   }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (!session) {
     recordLoginFailure(ip, parsed.data.username);
     return NextResponse.json(
-      { error: "Invalid username or password" },
+      { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" },
       { status: 401 },
     );
   }

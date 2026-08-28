@@ -20,6 +20,7 @@ import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import { isEntryCounted } from "@/lib/unit-converter";
 import { logDeleteDocument, logStartCount, logSubmit } from "@/services/audit-log.service";
 import { listActiveLocks } from "@/services/count-line-lock.service";
+import { touchDocumentPresence } from "@/services/count-document-presence.service";
 import { getUserById } from "@/services/user.service";
 import {
   DocumentStatus,
@@ -177,8 +178,11 @@ export async function getDocumentDetailWithLocks(
 ) {
   const document = await getDocumentDetail(session, documentId);
   if (!document) return null;
-  const locks = await listActiveLocks(documentId);
-  return { document, locks };
+  const [locks, viewers] = await Promise.all([
+    listActiveLocks(documentId),
+    touchDocumentPresence(session, documentId),
+  ]);
+  return { document, locks, viewers };
 }
 
 export async function startCount(

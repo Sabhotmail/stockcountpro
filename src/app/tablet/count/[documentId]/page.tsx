@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { newClientMutationId } from "@/lib/client-id";
 import { listActiveCountWorkers } from "@/lib/active-count-workers";
+import { shouldEnforceLineLocks } from "@/lib/line-lock-policy";
 import {
   COUNT_POLL_INTERVAL_MS,
   LOCK_HEARTBEAT_INTERVAL_MS,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/unit-converter";
 import {
   type CountDocumentWithLocksResponse,
+  type DocumentViewerInfo,
   type LineLockInfo,
   type SaveEntryErrorResponse,
   type CountDocumentDetail,
@@ -159,6 +161,7 @@ export default function TabletCountPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [locks, setLocks] = useState<Record<string, LineLockInfo>>({});
+  const [viewers, setViewers] = useState<DocumentViewerInfo[]>([]);
   const [conflictByLine, setConflictByLine] = useState<Record<string, string>>(
     {},
   );
@@ -346,6 +349,7 @@ export default function TabletCountPage() {
         setDocument(doc);
         setDocumentNote(doc.note ?? "");
         setLocks(lockMap);
+        setViewers(data.viewers ?? []);
         setEntries(entryMap);
       } catch (err) {
         if (!cancelled) {
@@ -411,6 +415,7 @@ export default function TabletCountPage() {
       });
 
       setLocks(parseLocks(data.locks ?? []));
+      setViewers(data.viewers ?? []);
       setEntries((prev) => {
         const next = { ...prev };
 
@@ -488,9 +493,20 @@ export default function TabletCountPage() {
     return () => clearInterval(intervalId);
   }, [isEditable, refreshDocumentSilent]);
 
+  const lockEnforced = useMemo(() => {
+    const activeUserIds = [
+      ...viewers.map((viewer) => viewer.userId),
+      ...Object.values(locks)
+        .filter((lock) => new Date(lock.expiresAt).getTime() > Date.now())
+        .map((lock) => lock.lockedByUserId),
+    ];
+    return shouldEnforceLineLocks(activeUserIds, currentUserId ?? "");
+  }, [currentUserId, locks, viewers]);
+
   const ensureLock = useCallback(
     async (lineId: string) => {
       if (!versionId) return false;
+      if (!lockEnforced) return true;
 
       cancelScheduledRelease(lineId);
 
@@ -512,11 +528,11 @@ export default function TabletCountPage() {
       setLocks((prev) => ({ ...prev, [lineId]: data.lock }));
       return true;
     },
-    [cancelScheduledRelease, documentId, pushToast, versionId],
+    [cancelScheduledRelease, documentId, lockEnforced, pushToast, versionId],
   );
 
   useEffect(() => {
-    if (!isEditable || !versionId) return;
+    if (!isEditable || !versionId || !lockEnforced) return;
 
     const intervalId = setInterval(() => {
       const lineId = activeEditLineIdRef.current;
@@ -525,7 +541,7 @@ export default function TabletCountPage() {
     }, LOCK_HEARTBEAT_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [ensureLock, isEditable, versionId]);
+  }, [ensureLock, isEditable, lockEnforced, versionId]);
 
   const releaseLock = useCallback(
     async (lineId: string) => {
@@ -623,9 +639,16 @@ export default function TabletCountPage() {
   }, [lines, entries]);
 
   const activeWorkers = useMemo(
-    () => listActiveCountWorkers(Object.values(locks), currentUserId),
-    [locks, currentUserId],
+    () =>
+      listActiveCountWorkers(
+        Object.values(locks),
+        currentUserId,
+        Date.now(),
+        viewers,
+      ),
+    [locks, currentUserId, viewers],
   );
+  const visibleWorkers = lockEnforced ? activeWorkers : [];
 
   const saveEntry = useCallback(
     async (lineId: string, payload: SaveEntryPayload) => {
@@ -1019,12 +1042,12 @@ export default function TabletCountPage() {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">กำลังนับในเอกสารนี้</span>
-                {activeWorkers.length === 0 ? (
+                {visibleWorkers.length === 0 ? (
                   <span className="text-xs text-muted-foreground">
                     — ยังไม่มีใครกำลังกรอกรายการ
                   </span>
                 ) : (
-                  activeWorkers.map((worker) => (
+                  visibleWorkers.map((worker) => (
                     <Badge
                       key={worker.userId}
                       variant={worker.isCurrentUser ? "default" : "secondary"}

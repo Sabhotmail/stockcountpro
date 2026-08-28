@@ -53,6 +53,30 @@ function testGroupsLinesPerUserAndPutsCurrentUserFirst() {
   });
 }
 
+function testIncludesViewersWithoutLocks() {
+  const workers = listActiveCountWorkers(
+    [],
+    "u1",
+    now,
+    [
+      {
+        userId: "u1",
+        userName: "Ann",
+        expiresAt: "2026-08-13T04:01:00.000Z",
+      },
+      {
+        userId: "u2",
+        userName: "Bee",
+        expiresAt: "2026-08-13T04:01:00.000Z",
+      },
+    ],
+  );
+  assert.equal(workers.length, 2);
+  assert.equal(workers[0]?.userId, "u1");
+  assert.equal(workers[0]?.lineCount, 0);
+  assert.equal(workers[1]?.userId, "u2");
+}
+
 function testEmptyWhenNoActiveLocks() {
   assert.deepEqual(listActiveCountWorkers([], "u1", now), []);
 }
@@ -60,4 +84,5 @@ function testEmptyWhenNoActiveLocks() {
 testIgnoresExpiredLocks();
 testGroupsLinesPerUserAndPutsCurrentUserFirst();
 testEmptyWhenNoActiveLocks();
+testIncludesViewersWithoutLocks();
 console.log("active-count-workers.test: OK");

@@ -133,6 +133,7 @@ model CountDocument {
   auditLogs        AuditLog[]
   finalEntries     FinalCountEntry[]
   lineLocks        CountLineLock[]
+  presences        CountDocumentPresence[]
 
   @@index([branchId, documentDate, hubId])
   @@index([branchId, documentDate, locationCode])
@@ -206,6 +207,18 @@ model CountLineLock {
   line             ProductLine   @relation(fields: [lineId], references: [lineId], onDelete: Cascade)
 
   @@id([documentId, lineId])
+  @@index([documentId, expiresAt])
+}
+
+model CountDocumentPresence {
+  documentId String
+  userId     String
+  userName   String
+  expiresAt  DateTime
+  updatedAt  DateTime
+  document   CountDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
   @@index([documentId, expiresAt])
 }
 

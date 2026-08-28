@@ -78,6 +78,7 @@ async function main() {
     prisma.entrySnapshot.deleteMany(),
     prisma.countEntry.deleteMany(),
     prisma.countLineLock.deleteMany(),
+    prisma.countDocumentPresence.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.countVersion.deleteMany(),
     prisma.productLine.deleteMany(),

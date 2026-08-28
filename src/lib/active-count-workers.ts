@@ -1,4 +1,4 @@
-import type { LineLockInfo } from "@/types/count";
+import type { DocumentViewerInfo, LineLockInfo } from "@/types/count";
 
 export type ActiveCountWorker = {
   userId: string;
@@ -11,8 +11,19 @@ export function listActiveCountWorkers(
   locks: Iterable<LineLockInfo>,
   currentUserId: string | null,
   nowMs = Date.now(),
+  viewers: Iterable<DocumentViewerInfo> = [],
 ): ActiveCountWorker[] {
   const byUser = new Map<string, ActiveCountWorker>();
+
+  for (const viewer of viewers) {
+    if (Date.parse(viewer.expiresAt) <= nowMs) continue;
+    byUser.set(viewer.userId, {
+      userId: viewer.userId,
+      name: viewer.userName,
+      lineCount: 0,
+      isCurrentUser: currentUserId !== null && viewer.userId === currentUserId,
+    });
+  }
 
   for (const lock of locks) {
     if (Date.parse(lock.expiresAt) <= nowMs) continue;
@@ -25,7 +36,8 @@ export function listActiveCountWorkers(
       userId: lock.lockedByUserId,
       name: lock.lockedByUserName,
       lineCount: 1,
-      isCurrentUser: currentUserId !== null && lock.lockedByUserId === currentUserId,
+      isCurrentUser:
+        currentUserId !== null && lock.lockedByUserId === currentUserId,
     });
   }
 

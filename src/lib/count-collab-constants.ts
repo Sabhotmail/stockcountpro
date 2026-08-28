@@ -1,6 +1,8 @@
 export const DEFAULT_LINE_LOCK_TTL_SECONDS = 30;
 export const LINE_LOCK_TTL_MS = DEFAULT_LINE_LOCK_TTL_SECONDS * 1000;
 export const COUNT_POLL_INTERVAL_MS = 10_000;
+/** How long a count-page viewer stays "present" without a fresh poll. */
+export const DOCUMENT_PRESENCE_TTL_MS = 30_000;
 /**
  * Renew active edit lock while a qty field stays focused.
  * Must stay below LINE_LOCK_TTL_MIN_SECONDS (5s) so short admin TTL settings
