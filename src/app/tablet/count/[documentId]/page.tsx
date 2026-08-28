@@ -15,7 +15,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { newClientMutationId } from "@/lib/client-id";
+import {
+  filterCountableLines,
+  type CountStatusFilter,
+} from "@/lib/line-filter";
 import { listActiveCountWorkers } from "@/lib/active-count-workers";
 import { shouldEnforceLineLocks } from "@/lib/line-lock-policy";
 import {
@@ -157,7 +162,7 @@ export default function TabletCountPage() {
   const [error, setError] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
-  const [showUncountedOnly, setShowUncountedOnly] = useState(false);
+  const [countStatus, setCountStatus] = useState<CountStatusFilter>("all");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [locks, setLocks] = useState<Record<string, LineLockInfo>>({});
@@ -590,33 +595,29 @@ export default function TabletCountPage() {
   );
 
   const filteredLines = useMemo(() => {
-    const codeQuery = codeFilter.trim().toLowerCase();
-    const nameQuery = nameFilter.trim().toLowerCase();
-
-    return lines.filter((line) => {
-      if (codeQuery && !line.productCode.toLowerCase().includes(codeQuery)) {
-        return false;
-      }
-      if (nameQuery && !line.productName.toLowerCase().includes(nameQuery)) {
-        return false;
-      }
-      if (showUncountedOnly) {
-        const entry = entries[line.lineId];
-        const counted = entry
+    const now = Date.now();
+    const withCounted = lines.map((line) => {
+      const entry = entries[line.lineId];
+      return {
+        ...line,
+        isCounted: entry
           ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
-          : false;
-        if (counted) return false;
+          : false,
+      };
+    });
 
+    return filterCountableLines(withCounted, {
+      codeFilter,
+      nameFilter,
+      countStatus,
+      isLockedByOther: (line) => {
         const lock = locks[line.lineId];
-        if (
+        return Boolean(
           lock &&
-          lock.lockedByUserId !== currentUserId &&
-          new Date(lock.expiresAt) > new Date()
-        ) {
-          return false;
-        }
-      }
-      return true;
+            lock.lockedByUserId !== currentUserId &&
+            Date.parse(lock.expiresAt) > now,
+        );
+      },
     });
   }, [
     lines,
@@ -625,7 +626,7 @@ export default function TabletCountPage() {
     currentUserId,
     codeFilter,
     nameFilter,
-    showUncountedOnly,
+    countStatus,
   ]);
 
   const countedSummary = useMemo(() => {
@@ -1136,19 +1137,30 @@ export default function TabletCountPage() {
               <p className="text-sm text-muted-foreground">
                 แสดง {filteredLines.length} จาก {lines.length} รายการ
               </p>
-              <Button
-                type="button"
-                variant={showUncountedOnly ? "secondary" : "outline"}
-                size="sm"
-                className={
-                  showUncountedOnly
-                    ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
-                    : undefined
+              <Tabs
+                value={countStatus}
+                onValueChange={(value) =>
+                  setCountStatus(value as CountStatusFilter)
                 }
-                onClick={() => setShowUncountedOnly((v) => !v)}
               >
-                {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
-              </Button>
+                <TabsList className="h-auto">
+                  <TabsTrigger value="all" className="min-h-11 px-3">
+                    ทั้งหมด
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="uncounted"
+                    className="min-h-11 px-3 data-active:bg-orange-100 data-active:text-orange-800"
+                  >
+                    ยังไม่นับ
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="counted"
+                    className="min-h-11 px-3 data-active:bg-emerald-100 data-active:text-emerald-800"
+                  >
+                    นับแล้ว
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </CardContent>
         </Card>
