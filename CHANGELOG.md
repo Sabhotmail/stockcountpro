@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6 — 2026-09-15
+
+### Added
+
+- สคริปต์ NSSM ติดตั้งบริการห้อง Test (`StockCountPro-Test` พอร์ต 3001) และห้อง NKR (`StockCountPro-NKR` พอร์ต 3002)
+- เปิด Windows Firewall inbound TCP 3001 และ 3002 (`scripts\open-firewall-rooms.bat` และตอนติดตั้ง NSSM)
+
 ## 1.0.5 — 2026-09-15
 
 ### Added
