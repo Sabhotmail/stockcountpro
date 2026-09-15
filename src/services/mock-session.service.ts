@@ -1,5 +1,4 @@
 import {
-  SESSION_COOKIE,
   buildSessionCookieSetOptions,
   clearLegacySessionCookie,
   clearSessionCookieHeaders,
@@ -9,10 +8,24 @@ import {
   shouldUseSecureCookies,
   verifySessionTokenMeta,
 } from "@/lib/auth/session";
+import { getSessionCookieNameFromHost } from "@/lib/app-env";
 import { getSessionAuthState } from "@/lib/auth/session-user";
 import type { MockSession } from "@/types/user";
 import { getUserById } from "@/services/user.service";
 import { cookies, headers } from "next/headers";
+
+async function resolveRequestHost(): Promise<string | undefined> {
+  try {
+    const h = await headers();
+    return h.get("x-forwarded-host") ?? h.get("host") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function resolveSessionCookieName(): Promise<string> {
+  return getSessionCookieNameFromHost(await resolveRequestHost());
+}
 
 async function resolveSecureCookieFlag(): Promise<boolean> {
   try {
@@ -36,7 +49,8 @@ export async function getServerSession(options?: {
 }): Promise<MockSession | null> {
   const refreshCookie = options?.refreshCookie !== false;
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const sessionCookie = await resolveSessionCookieName();
+  const token = cookieStore.get(sessionCookie)?.value;
   if (!token) return null;
 
   const verified = await verifySessionTokenMeta(token);
@@ -65,7 +79,7 @@ export async function getServerSession(options?: {
       const nextToken = await createSessionToken(session);
       const secure = await resolveSecureCookieFlag();
       cookieStore.set(
-        SESSION_COOKIE,
+        sessionCookie,
         nextToken,
         buildSessionCookieSetOptions(secure),
       );
@@ -101,9 +115,28 @@ export function buildSessionSetCookieHeader(
   token: string,
   request?: Request,
 ): string {
-  return serializeSessionCookie(token, shouldUseSecureCookies(request));
+  const host = requestHost(request);
+  return serializeSessionCookie(
+    token,
+    shouldUseSecureCookies(request),
+    Date.now(),
+    getSessionCookieNameFromHost(host),
+  );
 }
 
-export function buildSessionClearCookieHeaders(): string[] {
-  return [...clearSessionCookieHeaders(), clearLegacySessionCookie()];
+export function buildSessionClearCookieHeaders(request?: Request): string[] {
+  const host = requestHost(request);
+  return [
+    ...clearSessionCookieHeaders(getSessionCookieNameFromHost(host)),
+    clearLegacySessionCookie(),
+  ];
+}
+
+function requestHost(request?: Request): string | undefined {
+  if (!request) return undefined;
+  try {
+    return new URL(request.url).host;
+  } catch {
+    return undefined;
+  }
 }

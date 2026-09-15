@@ -6,7 +6,7 @@ import {
 } from "@/services/mock-session.service";
 import { clearUserPresence } from "@/services/user-presence.service";
 
-async function logout() {
+async function logout(request: Request) {
   const session = await getServerSession({ refreshCookie: false });
   if (session) {
     try {
@@ -22,16 +22,16 @@ async function logout() {
   }
 
   const response = NextResponse.json({ success: true });
-  for (const cookie of buildSessionClearCookieHeaders()) {
+  for (const cookie of buildSessionClearCookieHeaders(request)) {
     response.headers.append("Set-Cookie", cookie);
   }
   return response;
 }
 
-export async function POST() {
-  return logout();
+export async function POST(request: Request) {
+  return logout(request);
 }
 
-export async function DELETE() {
-  return logout();
+export async function DELETE(request: Request) {
+  return logout(request);
 }

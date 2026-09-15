@@ -266,7 +266,7 @@ export default function TabletSummaryPage() {
 
   return (
     <div className="min-h-screen bg-muted/40 pb-28">
-      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6">
+      <header className="sticky top-[var(--env-banner-h,0px)] z-10 border-b bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6">
         <div className="mx-auto max-w-4xl">
           <div className="flex items-center gap-2">
             <Link

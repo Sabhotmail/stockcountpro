@@ -2,8 +2,12 @@ import { SignJWT, jwtVerify } from "jose";
 import type { MockSession } from "@/types/user";
 import { UserRole } from "@/types/user";
 import { isInsecureHttpAcknowledged } from "@/lib/security-flags";
+import {
+  PRODUCTION_SESSION_COOKIE,
+  getSessionCookieName,
+} from "@/lib/app-env";
 
-export const SESSION_COOKIE = "stockcount_session";
+export const SESSION_COOKIE = PRODUCTION_SESSION_COOKIE;
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 export const SESSION_REFRESH_REMAINING_SECONDS = SESSION_MAX_AGE_SECONDS / 2;
 
@@ -142,15 +146,18 @@ export function serializeSessionCookie(
   token: string,
   secure = shouldUseSecureCookies(),
   nowMs = Date.now(),
+  cookieName = getSessionCookieName(),
 ): string {
   const options = buildSessionCookieSetOptions(secure, nowMs);
   const secureFlag = options.secure ? "; Secure" : "";
-  return `${SESSION_COOKIE}=${token}; Path=${options.path}; HttpOnly; SameSite=Lax; Max-Age=${options.maxAge}; Expires=${options.expires.toUTCString()}${secureFlag}`;
+  return `${cookieName}=${token}; Path=${options.path}; HttpOnly; SameSite=Lax; Max-Age=${options.maxAge}; Expires=${options.expires.toUTCString()}${secureFlag}`;
 }
 
 /** Clear both Secure and non-Secure variants so leftover cookies cannot stick. */
-export function clearSessionCookieHeaders(): string[] {
-  const base = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+export function clearSessionCookieHeaders(
+  cookieName = getSessionCookieName(),
+): string[] {
+  const base = `${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   return [base, `${base}; Secure`];
 }
 

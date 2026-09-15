@@ -1,11 +1,15 @@
 {
   "name": "stockcountpro",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "private": true,
   "scripts": {
     "dev": "cross-env TZ=Asia/Bangkok next dev",
+    "dev:test": "dotenv -e .env.test -- cross-env TZ=Asia/Bangkok next dev -p 3001",
     "build": "prisma generate && next build",
     "start": "cross-env TZ=Asia/Bangkok next start",
+    "start:test": "dotenv -e .env.test -- cross-env TZ=Asia/Bangkok next start -p 3001",
+    "dev:nkr": "dotenv -e .env.nkr -- cross-env TZ=Asia/Bangkok next dev -p 3002",
+    "start:nkr": "dotenv -e .env.nkr -- cross-env TZ=Asia/Bangkok next start -p 3002",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
@@ -15,7 +19,17 @@
     "db:set-admin-password": "dotenv -e .env.local -- tsx prisma/set-admin-password.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:reset": "dotenv -e .env.local -- prisma migrate reset",
-    "db:deploy": "dotenv -e .env.local -- prisma migrate deploy"
+    "db:deploy": "dotenv -e .env.local -- prisma migrate deploy",
+    "db:create:test": "dotenv -e .env.test -- tsx prisma/create-test-database.ts",
+    "db:deploy:test": "dotenv -e .env.test -- prisma migrate deploy",
+    "db:seed:test": "dotenv -e .env.test -- prisma db seed",
+    "db:bootstrap-admin:test": "dotenv -e .env.test -- tsx prisma/bootstrap-admin.ts",
+    "db:studio:test": "dotenv -e .env.test -- prisma studio --port 5556",
+    "db:create:nkr": "dotenv -e .env.nkr -- tsx prisma/create-test-database.ts",
+    "db:deploy:nkr": "dotenv -e .env.nkr -- prisma migrate deploy",
+    "db:seed:nkr": "dotenv -e .env.nkr -- prisma db seed",
+    "db:bootstrap-admin:nkr": "dotenv -e .env.nkr -- tsx prisma/bootstrap-admin.ts",
+    "db:studio:nkr": "dotenv -e .env.nkr -- prisma studio --port 5557"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

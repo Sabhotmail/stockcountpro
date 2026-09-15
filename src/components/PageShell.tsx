@@ -27,7 +27,7 @@ export function PageShell({
 }) {
   return (
     <div className={cn("min-h-dvh bg-background", className)}>
-      <header className="sticky top-0 z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-[var(--env-banner-h,0px)] z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

@@ -194,3 +194,40 @@ Sample body:
 | `CaseUnitFactor` | `caseRatio` |
 | `TransactionValue` | `expectedQty` (supervisor only); `-1` = ยังไม่ตรวจนับใน Express → เก็บเป็น `null` |
 | `CountDate` | `documentDate` |
+
+## Test room (port 8081)
+
+Production Express stays on `:8080`. The test web (`npm run start:test`, port 3001) must use a cloned Express on `:8081`.
+
+1. Copy `.env.test.example` → `.env.test` and set secrets (different `AUTH_SECRET` from production).
+2. Point `EXPRESS_API_BASE_URL` at the test Express, e.g. `http://<host>:8081`.
+3. Create the test database and schema:
+
+```text
+npm run db:create:test
+npm run db:deploy:test
+npm run db:bootstrap-admin:test
+```
+
+4. Run the test web: `npm run start:test` → `http://<LAN-IP>:3001`
+
+The process refuses to start if `APP_ENV=test` still points at database `stockcountpro` (no `_test`) or Express port `8080`.
+
+## Temporary NKR room (port 8082)
+
+Production Express stays on `:8080`. Test stays on `:8081`. The NKR web (`npm run start:nkr`, port 3002) must use a cloned Express on `:8082`.
+
+1. Copy `.env.nkr.example` → `.env.nkr` and set secrets (different `AUTH_SECRET` from production and test).
+2. Point `EXPRESS_API_BASE_URL` at the NKR Express, e.g. `http://<host>:8082`.
+3. Create the NKR database and schema:
+
+```text
+npm run db:create:nkr
+npm run db:deploy:nkr
+npm run db:bootstrap-admin:nkr
+```
+
+4. Run the NKR web: `npm run start:nkr` → `http://<LAN-IP>:3002`
+5. In that room only, create branch **NKR** (Admin → สาขา) with the Express location prefix for NKR warehouses, then assign users to that branch/hub.
+
+The process refuses to start if `APP_ENV=nkr` points at `stockcountpro` / `_test` or Express port `8080` / `8081`.

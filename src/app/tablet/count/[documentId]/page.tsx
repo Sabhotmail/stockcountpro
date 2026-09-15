@@ -990,7 +990,7 @@ export default function TabletCountPage() {
 
   return (
     <div className="min-h-screen bg-muted/40 pb-28">
-      <header className="sticky top-0 z-10 border-b bg-background px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6">
+      <header className="sticky top-[var(--env-banner-h,0px)] z-10 border-b bg-background px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6">
         <div className="mx-auto max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
             <Link

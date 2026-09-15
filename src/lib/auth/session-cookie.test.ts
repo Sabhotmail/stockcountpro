@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { NKR_SESSION_COOKIE, TEST_SESSION_COOKIE } from "@/lib/app-env";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
@@ -79,9 +80,41 @@ function testClearBothVariants() {
   assert.ok(clears.some((c) => !c.includes("Secure")));
 }
 
+function testTestEnvUsesSeparateCookieName() {
+  const prev = process.env.APP_ENV;
+  process.env.APP_ENV = "test";
+  try {
+    const cookie = serializeSessionCookie("tok", false);
+    assert.ok(cookie.startsWith(`${TEST_SESSION_COOKIE}=tok`));
+    assert.ok(!cookie.startsWith(`${SESSION_COOKIE}=tok`));
+
+    const clears = clearSessionCookieHeaders();
+    assert.ok(clears.every((c) => c.startsWith(`${TEST_SESSION_COOKIE}=`)));
+  } finally {
+    if (prev === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = prev;
+  }
+}
+
+function testNkrEnvUsesSeparateCookieName() {
+  const prev = process.env.APP_ENV;
+  process.env.APP_ENV = "nkr";
+  try {
+    const cookie = serializeSessionCookie("tok", false);
+    assert.ok(cookie.startsWith(`${NKR_SESSION_COOKIE}=tok`));
+    assert.ok(!cookie.startsWith(`${SESSION_COOKIE}=tok`));
+    assert.ok(!cookie.startsWith(`${TEST_SESSION_COOKIE}=tok`));
+  } finally {
+    if (prev === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = prev;
+  }
+}
+
 testShouldUseSecureFromRequest();
 testSerializeMatchesSecureFlag();
 testSerializeIncludesExpiresForOldBrowsers();
 testShouldRefreshWhenPastHalfway();
 testClearBothVariants();
+testTestEnvUsesSeparateCookieName();
+testNkrEnvUsesSeparateCookieName();
 console.log("session-cookie.test: OK");

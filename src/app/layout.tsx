@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { connection } from "next/server";
+import { EnvBanner } from "@/components/EnvBanner";
 import { PresenceHeartbeat } from "@/components/PresenceHeartbeat";
+import { getDocumentTitle, getEnvBannerText } from "@/lib/app-env";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,10 +16,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "StockCount Pro",
-  description: "ระบบตรวจนับสต็อก",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  return {
+    title: getDocumentTitle(),
+    description: "ระบบตรวจนับสต็อก",
+  };
+}
 
 export const viewport = {
   width: "device-width",
@@ -24,17 +30,26 @@ export const viewport = {
   viewportFit: "cover" as const,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+  const banner = getEnvBannerText();
+
   return (
     <html
       lang="th"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      style={
+        banner
+          ? ({ "--env-banner-h": "2.75rem" } as React.CSSProperties)
+          : undefined
+      }
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <EnvBanner />
         <PresenceHeartbeat />
         {children}
       </body>

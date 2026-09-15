@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.5 — 2026-09-15
+
+### Added
+
+- ห้องสาขาชั่วคราว NKR แยกทั้งชุด: พอร์ต 3002 / Express 8082 / ฐาน `stockcountpro_nkr`
+- แถบสีฟ้า “สาขาชั่วคราว · NKR — ข้อมูลนี้ไม่ใช่ของจริง” และชื่อแท็บ `NKR · StockCount Pro`
+- คุกกี้ `stockcount_session_nkr` คนละชื่อของจริงและ Test
+- ปฏิเสธการสตาร์ทถ้าห้อง NKR ชี้ฐานหรือ Express ของห้องอื่น (หรือกลับกัน)
+- ไฟล์ตัวอย่าง `.env.nkr.example` และคำสั่ง `npm run start:nkr`, `dev:nkr`, `db:create:nkr`, `db:deploy:nkr`, `db:bootstrap-admin:nkr`
+
+## 1.0.4 — 2026-09-02
+
+### Added
+
+- แยกห้อง Test กับของจริงบนเครื่องเดียวกัน: ของจริงพอร์ต 3000 / Express 8080 / ฐาน `stockcountpro`, ห้อง Test พอร์ต 3001 / Express 8081 / ฐาน `stockcountpro_test`
+- ห้อง Test แสดงแถบสีส้ม “ห้องทดสอบ — ข้อมูลนี้ไม่ใช่ของจริง” และชื่อแท็บ `TEST · StockCount Pro`
+- คุกกี้เข้าสู่ระบบคนละชื่อกันของจริง กันล็อกอินห้องหนึ่งทับอีกห้องบน IP เดียวกัน
+- ปฏิเสธการสตาร์ทถ้าห้อง Test ชี้ฐานหรือ Express ของจริง (หรือกลับกัน)
+- ไฟล์ตัวอย่าง `.env.test.example` และคำสั่ง `npm run start:test`, `dev:test`, `db:create:test`, `db:deploy:test`, `db:bootstrap-admin:test`
+
 ## 1.0.3 — 2026-08-28
 
 ### Added

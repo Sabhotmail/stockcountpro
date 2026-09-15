@@ -272,7 +272,7 @@ export default function PrintDocumentPage() {
 
   return (
     <div className="min-h-screen bg-neutral-200/80 print:bg-white">
-      <div className="no-print sticky top-0 z-10 border-b bg-background px-4 py-3 shadow-sm">
+      <div className="no-print sticky top-[var(--env-banner-h,0px)] z-10 border-b bg-background px-4 py-3 shadow-sm">
         <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             ตัวอย่างเอกสารทางการ — {doc.documentNo}

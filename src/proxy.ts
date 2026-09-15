@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookieNameFromHost } from "@/lib/app-env";
 import {
-  SESSION_COOKIE,
   buildSessionCookieSetOptions,
   createSessionToken,
   shouldRefreshSession,
@@ -14,12 +14,15 @@ const protectedPrefixes = ["/tablet", "/supervisor", "/admin"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const sessionCookie = getSessionCookieNameFromHost(
+    request.headers.get("host"),
+  );
 
   if (!protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const token = request.cookies.get(sessionCookie)?.value;
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -27,7 +30,7 @@ export async function proxy(request: NextRequest) {
   const verified = await verifySessionTokenMeta(token);
   if (!verified) {
     const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete(SESSION_COOKIE);
+    response.cookies.delete(sessionCookie);
     return response;
   }
 
@@ -37,7 +40,7 @@ export async function proxy(request: NextRequest) {
   );
   if (authState !== "ok") {
     const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete(SESSION_COOKIE);
+    response.cookies.delete(sessionCookie);
     return response;
   }
 
@@ -45,7 +48,7 @@ export async function proxy(request: NextRequest) {
   if (shouldRefreshSession(verified.exp)) {
     const nextToken = await createSessionToken(verified.session);
     response.cookies.set(
-      SESSION_COOKIE,
+      sessionCookie,
       nextToken,
       buildSessionCookieSetOptions(shouldUseSecureCookies(request)),
     );

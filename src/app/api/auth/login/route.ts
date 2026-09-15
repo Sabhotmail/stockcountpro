@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     },
   });
 
-  for (const cookie of buildSessionClearCookieHeaders()) {
+  for (const cookie of buildSessionClearCookieHeaders(request)) {
     response.headers.append("Set-Cookie", cookie);
   }
   response.headers.append(
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   return response;
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const session = await getServerSession({ refreshCookie: false });
   if (session) {
     try {
@@ -90,7 +90,7 @@ export async function DELETE() {
   }
 
   const response = NextResponse.json({ success: true });
-  for (const cookie of buildSessionClearCookieHeaders()) {
+  for (const cookie of buildSessionClearCookieHeaders(request)) {
     response.headers.append("Set-Cookie", cookie);
   }
   return response;
