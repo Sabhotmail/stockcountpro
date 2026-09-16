@@ -7,7 +7,7 @@ import { FormCardsSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -231,21 +231,32 @@ export default function AdminHubsPage() {
       )}
 
       <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Hub ทั้งหมด</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              value={selectedBranchId}
-              onChange={(event) => setSelectedBranchId(event.target.value)}
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-2">
+              <Label htmlFor="hub_branch_filter" className="shrink-0">
+                สาขา
+              </Label>
+              <select
+                id="hub_branch_filter"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-64 sm:flex-none"
+                value={selectedBranchId}
+                onChange={(event) => setSelectedBranchId(event.target.value)}
+              >
+                {activeBranches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code} · {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={openCreate}
+              disabled={!selectedBranchId}
             >
-              {activeBranches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.code} · {branch.name}
-                </option>
-              ))}
-            </select>
-            <Button type="button" onClick={openCreate} disabled={!selectedBranchId}>
               เพิ่ม Hub
             </Button>
           </div>
