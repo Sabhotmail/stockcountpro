@@ -50,7 +50,7 @@ const ROOMS: Record<AppEnv, RoomConfig> = {
     appPort: NKR_APP_PORT,
     cookie: NKR_SESSION_COOKIE,
     title: "NKR · StockCount Pro",
-    banner: "สาขาชั่วคราว · NKR — ข้อมูลนี้ไม่ใช่ของจริง",
+    banner: "สาขาชั่วคราว · NKR — แยกจากห้องของจริง",
     tone: "sky",
     dbSuffix: "_nkr",
   },

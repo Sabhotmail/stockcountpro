@@ -77,7 +77,7 @@ function testDocumentTitleAndBanner() {
   assert.equal(getDocumentTitle("nkr"), "NKR · StockCount Pro");
   assert.equal(
     getEnvBannerText("nkr"),
-    "สาขาชั่วคราว · NKR — ข้อมูลนี้ไม่ใช่ของจริง",
+    "สาขาชั่วคราว · NKR — แยกจากห้องของจริง",
   );
   assert.equal(getEnvBannerTone("production"), null);
   assert.equal(getEnvBannerTone("test"), "amber");
