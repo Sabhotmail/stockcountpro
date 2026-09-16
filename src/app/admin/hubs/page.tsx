@@ -220,7 +220,7 @@ export default function AdminHubsPage() {
   return (
     <PageShell
       title="จัดการ Hub"
-      subtitle="Hub ภายใต้สาขา BKK3 — ใช้ map คลัง Van (241x) และ G/D/F/Z (24GA, 24DB)"
+      subtitle="Hub ภายใต้สาขา — map คลัง Van (หลักที่ 3 เช่น 241x / 430x) และ G/D/F/Z (หลักที่ 4 เช่น 24GA, 43G1)"
       actions={<LogoutButton onClick={() => void handleLogout()} />}
       nav={<AdminNav />}
     >
@@ -409,7 +409,7 @@ export default function AdminHubsPage() {
               </Alert>
             )}
             <div className="grid gap-2">
-              <Label htmlFor="create_hub_code">Hub code (1-9)</Label>
+              <Label htmlFor="create_hub_code">Hub code (0-9)</Label>
               <Input
                 id="create_hub_code"
                 value={createCode}
@@ -435,12 +435,15 @@ export default function AdminHubsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="create_hub_suffix">Suffix letter (G/D/F/Z)</Label>
+              <Label htmlFor="create_hub_suffix">
+                Suffix (ตัวที่ 4 เช่น A หรือ 1)
+              </Label>
               <Input
                 id="create_hub_suffix"
                 value={createSuffixLetter}
                 onChange={(e) => setCreateSuffixLetter(e.target.value)}
-                placeholder="A"
+                placeholder="A หรือ 1"
+                maxLength={1}
               />
             </div>
           </div>
@@ -483,11 +486,15 @@ export default function AdminHubsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit_hub_suffix">Suffix letter</Label>
+              <Label htmlFor="edit_hub_suffix">
+                Suffix (ตัวที่ 4 เช่น A หรือ 1)
+              </Label>
               <Input
                 id="edit_hub_suffix"
                 value={editSuffixLetter}
                 onChange={(e) => setEditSuffixLetter(e.target.value)}
+                placeholder="A หรือ 1"
+                maxLength={1}
               />
             </div>
           </div>

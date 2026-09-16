@@ -13,6 +13,14 @@ export function validateExpressLocationPrefix(value: string): string | null {
   return null;
 }
 
+export function isValidHubCode(code: string): boolean {
+  return /^[0-9]$/.test(code.trim());
+}
+
+export function isValidHubSuffixLetter(suffix: string): boolean {
+  return /^[A-Z0-9]$/.test(suffix.trim().toUpperCase());
+}
+
 const LOCATION_CODE_RE = /^[A-Z0-9]+$/;
 
 export function assertSafeExpressLocationCodes(

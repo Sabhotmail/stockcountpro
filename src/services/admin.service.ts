@@ -2,6 +2,8 @@ import { mapAuditLog, mapBranch, mapCountDocument, mapHub } from "@/lib/db/mappe
 import { getDocumentForSession } from "@/lib/document-access";
 import { getLastSuccessfulExpressPushes } from "@/lib/express-push-status";
 import {
+  isValidHubCode,
+  isValidHubSuffixLetter,
   normalizeExpressLocationPrefix,
   validateExpressLocationPrefix,
 } from "@/lib/express-location";
@@ -486,8 +488,8 @@ export async function createHubForAdmin(
   if (!branch) return { error: "Branch not found" };
 
   const code = input.code.trim();
-  if (!/^[1-9]$/.test(code)) {
-    return { error: "Hub code must be a single digit 1-9" };
+  if (!isValidHubCode(code)) {
+    return { error: "Hub code must be a single digit 0-9" };
   }
 
   const name = input.name.trim();
@@ -495,8 +497,8 @@ export async function createHubForAdmin(
 
   const shortName = input.shortName?.trim() || null;
   const suffixLetter = input.suffixLetter?.trim().toUpperCase() || null;
-  if (suffixLetter && !/^[A-Z]$/.test(suffixLetter)) {
-    return { error: "Suffix letter must be a single A-Z character" };
+  if (suffixLetter && !isValidHubSuffixLetter(suffixLetter)) {
+    return { error: "Suffix must be a single A-Z or 0-9 character" };
   }
 
   const id = `hub_${input.branchId}_${code}`;
@@ -554,8 +556,8 @@ export async function updateHubForAdmin(
 
   if (input.suffixLetter !== undefined) {
     const suffixLetter = input.suffixLetter?.trim().toUpperCase() || null;
-    if (suffixLetter && !/^[A-Z]$/.test(suffixLetter)) {
-      return { error: "Suffix letter must be a single A-Z character" };
+    if (suffixLetter && !isValidHubSuffixLetter(suffixLetter)) {
+      return { error: "Suffix must be a single A-Z or 0-9 character" };
     }
     data.suffixLetter = suffixLetter;
   }
