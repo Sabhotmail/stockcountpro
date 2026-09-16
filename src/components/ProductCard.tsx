@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useRef, type FocusEvent } from "react";
+import { useCallback, useRef, type FocusEvent, type MouseEvent } from "react";
 import type { CountEntry, ProductLine, SyncStatus } from "@/types/count";
 import { ProductImage } from "@/components/ProductImage";
 import { QtyInput } from "@/components/QtyInput";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { calculateTotalBaseQty, isEntryCounted } from "@/lib/unit-converter";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   line: ProductLine;
@@ -22,6 +23,8 @@ interface ProductCardProps {
   onEditStart?: () => void;
   /** Fired when focus leaves all qty inputs on this card (not when tabbing between them). */
   onEditEnd?: () => void;
+  /** True while this card is the one currently being counted. */
+  active?: boolean;
 }
 
 function normalizeUnitLabel(raw: string | undefined, fallback: string): string {
@@ -63,6 +66,7 @@ export function ProductCard({
   onQtyChange,
   onEditStart,
   onEditEnd,
+  active = false,
 }: ProductCardProps) {
   const qtyAreaRef = useRef<HTMLDivElement>(null);
   const counted = entry
@@ -98,11 +102,28 @@ export function ProductCard({
     [onEditEnd],
   );
 
+  const handleCardClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.closest("input, button, textarea")) return;
+      qtyAreaRef.current?.querySelector("input")?.focus();
+    },
+    [disabled],
+  );
+
   return (
     <div
-      className={`rounded-xl border bg-white p-4 shadow-sm ${
-        counted ? "border-slate-200" : "border-amber-200 bg-amber-50/30"
-      }`}
+      onClick={handleCardClick}
+      className={cn(
+        "rounded-xl border p-4 shadow-sm transition-colors duration-150",
+        !disabled && "cursor-pointer",
+        counted ? "border-slate-200 bg-white" : "border-amber-200 bg-amber-50/40",
+        active
+          ? "border-sky-400 bg-sky-50 ring-2 ring-sky-200"
+          : "focus-within:border-sky-400 focus-within:bg-sky-50 focus-within:ring-2 focus-within:ring-sky-200",
+      )}
     >
       {lockHeldByOther && (
         <div className="mb-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800">

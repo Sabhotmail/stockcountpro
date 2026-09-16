@@ -109,6 +109,7 @@ function CountLineRow({
   onEditStart,
   onEditEnd,
   onQtyChange,
+  active,
 }: {
   line: ProductLine;
   locks: Record<string, LineLockInfo>;
@@ -121,6 +122,7 @@ function CountLineRow({
   onEditStart: () => void;
   onEditEnd: () => void;
   onQtyChange: (field: "qtyCase" | "qtyPack" | "qtyPiece", value: number | null) => void;
+  active: boolean;
 }) {
   const lock = locks[line.lineId];
   const lockHeldByOther =
@@ -142,6 +144,7 @@ function CountLineRow({
       onEditStart={onEditStart}
       onEditEnd={onEditEnd}
       onQtyChange={onQtyChange}
+      active={active}
     />
   );
 }
@@ -194,6 +197,7 @@ export default function TabletCountPage() {
   const savingLinesRef = useRef(new Set<string>());
   /** Line whose qty fields currently have focus (null when focus left the card). */
   const activeEditLineIdRef = useRef<string | null>(null);
+  const [activeEditLineId, setActiveEditLineId] = useState<string | null>(null);
   /** Lines this client currently holds (for pagehide / unmount release). */
   const heldLocksRef = useRef(new Set<string>());
   const versionIdRef = useRef<string | null | undefined>(undefined);
@@ -1179,17 +1183,20 @@ export default function TabletCountPage() {
               onAcceptServer={() => acceptServerEntry(line.lineId)}
               onEditStart={() => {
                 activeEditLineIdRef.current = line.lineId;
+                setActiveEditLineId(line.lineId);
                 void ensureLock(line.lineId);
               }}
               onEditEnd={() => {
                 if (activeEditLineIdRef.current === line.lineId) {
                   activeEditLineIdRef.current = null;
+                  setActiveEditLineId(null);
                 }
                 scheduleReleaseLock(line.lineId);
               }}
               onQtyChange={(field, value) => {
                 void updateEntry(line, field, value);
               }}
+              active={activeEditLineId === line.lineId}
             />
           ))}
 
