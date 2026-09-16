@@ -28,5 +28,5 @@ if not defined NODE (
 
 set "TZ=Asia/Bangkok"
 set "NODE_ENV=production"
-"%NODE%" "node_modules\dotenv-cli\cli.js" -e .env.nkr -- "%NODE%" "node_modules\next\dist\bin\next" start -p 3002
+"%NODE%" "node_modules\dotenv-cli\cli.js" -e .env.nkr -- "%NODE%" "node_modules\next\dist\bin\next" start -p 3003
 exit /b %ERRORLEVEL%

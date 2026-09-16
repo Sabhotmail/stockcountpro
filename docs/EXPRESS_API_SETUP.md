@@ -213,12 +213,12 @@ npm run db:bootstrap-admin:test
 
 The process refuses to start if `APP_ENV=test` still points at database `stockcountpro` (no `_test`) or Express port `8080`.
 
-## Temporary NKR room (port 8082)
+## Temporary NKR room (web 3003)
 
-Production Express stays on `:8080`. Test stays on `:8081`. The NKR web (`npm run start:nkr`, port 3002) must use a cloned Express on `:8082`.
+Production Express stays on its own host `:8080`. Test stays on `:8081`. The NKR web (`npm run start:nkr`, port 3003) uses Express at `http://100.71.103.65:8080`.
 
 1. Copy `.env.nkr.example` → `.env.nkr` and set secrets (different `AUTH_SECRET` from production and test).
-2. Point `EXPRESS_API_BASE_URL` at the NKR Express, e.g. `http://<host>:8082`.
+2. Point `EXPRESS_API_BASE_URL` at `http://100.71.103.65:8080`.
 3. Create the NKR database and schema:
 
 ```text
@@ -227,7 +227,7 @@ npm run db:deploy:nkr
 npm run db:bootstrap-admin:nkr
 ```
 
-4. Run the NKR web: `npm run start:nkr` → `http://<LAN-IP>:3002`
+4. Run the NKR web: `npm run start:nkr` → `http://<LAN-IP>:3003`
 5. In that room only, create branch **NKR** (Admin → สาขา) with the Express location prefix for NKR warehouses, then assign users to that branch/hub.
 
-The process refuses to start if `APP_ENV=nkr` points at `stockcountpro` / `_test` or Express port `8080` / `8081`.
+The process refuses to start if `APP_ENV=nkr` points at `stockcountpro` / `_test`, or Express that is not `http://100.71.103.65:8080`.

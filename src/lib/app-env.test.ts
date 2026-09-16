@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  NKR_EXPRESS_HOST,
   NKR_EXPRESS_PORT,
   NKR_SESSION_COOKIE,
   PRODUCTION_EXPRESS_PORT,
@@ -15,6 +16,8 @@ import {
   getSessionCookieName,
   getSessionCookieNameFromHost,
 } from "@/lib/app-env";
+
+const NKR_EXPRESS_URL = `http://${NKR_EXPRESS_HOST}:${NKR_EXPRESS_PORT}`;
 
 function testGetAppEnvDefaultsToProduction() {
   assert.equal(getAppEnv(undefined), "production");
@@ -58,7 +61,7 @@ function testSessionCookieNameFromHostPort() {
     TEST_SESSION_COOKIE,
   );
   assert.equal(
-    getSessionCookieNameFromHost("100.106.34.125:3002", "production"),
+    getSessionCookieNameFromHost("100.106.34.125:3003", "production"),
     NKR_SESSION_COOKIE,
   );
 }
@@ -115,7 +118,7 @@ function testIsolationAllowsMatchingPairs() {
     assertAppEnvIsolation({
       appEnv: "nkr",
       databaseUrl: "postgresql://u:p@localhost:5432/stockcountpro_nkr",
-      expressBaseUrl: `http://127.0.0.1:${NKR_EXPRESS_PORT}`,
+      expressBaseUrl: NKR_EXPRESS_URL,
     }),
   );
 }
@@ -179,7 +182,7 @@ function testIsolationRejectsNkrPointingAtOtherRooms() {
         databaseUrl: "postgresql://u:p@localhost:5432/stockcountpro_nkr",
         expressBaseUrl: `http://127.0.0.1:${PRODUCTION_EXPRESS_PORT}`,
       }),
-    /8080/,
+    /100\.71\.103\.65/,
   );
   assert.throws(
     () =>
@@ -207,18 +210,18 @@ function testIsolationRejectsProductionAndTestPointingAtNkr() {
       assertAppEnvIsolation({
         appEnv: "production",
         databaseUrl: "postgresql://u:p@localhost:5432/stockcountpro",
-        expressBaseUrl: `http://127.0.0.1:${NKR_EXPRESS_PORT}`,
+        expressBaseUrl: NKR_EXPRESS_URL,
       }),
-    /8082/,
+    /100\.71\.103\.65/,
   );
   assert.throws(
     () =>
       assertAppEnvIsolation({
         appEnv: "test",
         databaseUrl: "postgresql://u:p@localhost:5432/stockcountpro_test",
-        expressBaseUrl: `http://127.0.0.1:${NKR_EXPRESS_PORT}`,
+        expressBaseUrl: NKR_EXPRESS_URL,
       }),
-    /8082/,
+    /100\.71\.103\.65/,
   );
 }
 

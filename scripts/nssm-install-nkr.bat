@@ -6,7 +6,7 @@ set "SERVICE=StockCountPro-NKR"
 set "RUNNER=%ROOT%\scripts\run-nkr-service.bat"
 set "LOGDIR=%ROOT%\logs"
 
-echo === NSSM install %SERVICE% (port 3002, .env.nkr) ===
+echo === NSSM install %SERVICE% (port 3003, .env.nkr) ===
 echo Repo: %ROOT%
 echo Run this file as Administrator.
 echo.
@@ -45,7 +45,7 @@ if errorlevel 1 (
 
 "%NSSM%" set "%SERVICE%" AppDirectory "%ROOT%"
 "%NSSM%" set "%SERVICE%" DisplayName "StockCount Pro NKR"
-"%NSSM%" set "%SERVICE%" Description "Temporary NKR room on port 3002 (.env.nkr, Express 8082)"
+"%NSSM%" set "%SERVICE%" Description "Temporary NKR room on port 3003 (.env.nkr, Express 100.71.103.65:8080)"
 "%NSSM%" set "%SERVICE%" Start SERVICE_AUTO_START
 "%NSSM%" set "%SERVICE%" AppStdout "%LOGDIR%\nkr-service.log"
 "%NSSM%" set "%SERVICE%" AppStderr "%LOGDIR%\nkr-service.err.log"
@@ -56,9 +56,10 @@ if errorlevel 1 (
 "%NSSM%" set "%SERVICE%" AppEnvironmentExtra TZ=Asia/Bangkok NODE_ENV=production
 
 echo.
-echo Opening Windows Firewall TCP 3002 (NKR room) ...
+echo Opening Windows Firewall TCP 3003 (NKR room) ...
 netsh advfirewall firewall delete rule name="StockCount Pro NKR 3002" >nul 2>nul
-netsh advfirewall firewall add rule name="StockCount Pro NKR 3002" dir=in action=allow protocol=TCP localport=3002 profile=any
+netsh advfirewall firewall delete rule name="StockCount Pro NKR 3003" >nul 2>nul
+netsh advfirewall firewall add rule name="StockCount Pro NKR 3003" dir=in action=allow protocol=TCP localport=3003 profile=any
 if errorlevel 1 (
   echo Firewall rule failed. Run this bat as Administrator.
 )
@@ -73,8 +74,8 @@ if errorlevel 1 (
 
 echo.
 echo OK. NKR room service: %SERVICE%
-echo URL: http://%COMPUTERNAME%:3002
-echo Firewall: inbound TCP 3002
+echo URL: http://%COMPUTERNAME%:3003
+echo Firewall: inbound TCP 3003
 echo Logs: %LOGDIR%\nkr-service.log
 echo Stop:  nssm stop %SERVICE%
 echo Remove: nssm stop %SERVICE% ^& nssm remove %SERVICE% confirm
