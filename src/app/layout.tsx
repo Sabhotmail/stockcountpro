@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { connection } from "next/server";
 import { EnvBanner } from "@/components/EnvBanner";
 import { PresenceHeartbeat } from "@/components/PresenceHeartbeat";
-import { getDocumentTitle, getEnvBannerText } from "@/lib/app-env";
+import { getDocumentTitle, getEnvBannerCssVars, getEnvBannerText } from "@/lib/app-env";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,13 +42,9 @@ export default async function RootLayout({
     <html
       lang="th"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      style={
-        banner
-          ? ({ "--env-banner-h": "2.75rem" } as React.CSSProperties)
-          : undefined
-      }
+      style={getEnvBannerCssVars(Boolean(banner)) as React.CSSProperties | undefined}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col bg-background text-foreground pt-[var(--env-banner-h,0px)] print:pt-0">
         <EnvBanner />
         <PresenceHeartbeat />
         {children}

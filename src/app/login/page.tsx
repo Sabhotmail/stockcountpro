@@ -72,7 +72,7 @@ export default function LoginPage() {
   const canSubmit = username.trim().length > 0 && password.length > 0;
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-foreground text-background pt-[var(--env-banner-h,0px)]">
+    <div className="relative flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col overflow-hidden bg-foreground text-background">
       <span
         aria-hidden
         className="pointer-events-none absolute inset-y-0 right-[-8%] flex items-center select-none text-[min(48vw,20rem)] font-semibold leading-none text-background/[0.04]"
@@ -80,9 +80,9 @@ export default function LoginPage() {
         SC
       </span>
 
-      <AppVersion className="absolute top-[max(1.25rem,calc(var(--env-banner-h,0px)+0.5rem),env(safe-area-inset-top))] right-6 z-10 text-background/45 sm:right-8" />
+      <AppVersion className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-6 z-10 text-background/45 sm:right-8" />
 
-      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-6 py-10 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="w-full max-w-sm">
           <header className="mb-8 text-center">
             <p className="text-[11px] font-medium tracking-[0.18em] text-background/50">

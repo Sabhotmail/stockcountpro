@@ -1,6 +1,18 @@
 export type AppEnv = "production" | "test" | "nkr";
 export type EnvBannerTone = "amber" | "sky";
 
+/** Content height of the env banner, excluding the notch safe-area. */
+export const ENV_BANNER_HEIGHT = "2.75rem";
+
+export function getEnvBannerCssVars(
+  hasBanner: boolean,
+): { "--env-banner-h": string } | undefined {
+  if (!hasBanner) return undefined;
+  return {
+    "--env-banner-h": `calc(${ENV_BANNER_HEIGHT} + env(safe-area-inset-top, 0px))`,
+  };
+}
+
 export const PRODUCTION_EXPRESS_PORT = "8080";
 export const TEST_EXPRESS_PORT = "8081";
 export const NKR_EXPRESS_HOST = "100.71.103.65";

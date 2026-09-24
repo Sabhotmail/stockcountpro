@@ -15,9 +15,9 @@ export async function EnvBanner() {
   return (
     <div
       role="status"
-      className={`fixed inset-x-0 top-0 z-50 flex min-h-[var(--env-banner-h,2.75rem)] items-center justify-center px-3 py-1.5 text-center text-sm font-semibold pt-[max(0.375rem,env(safe-area-inset-top))] print:hidden ${BANNER_TONE_CLASS[tone]}`}
+      className={`fixed inset-x-0 top-0 z-50 flex h-[var(--env-banner-h,2.75rem)] items-center justify-center px-3 text-center text-sm font-semibold pt-[env(safe-area-inset-top,0px)] print:hidden ${BANNER_TONE_CLASS[tone]}`}
     >
-      {text}
+      <span className="min-w-0 truncate">{text}</span>
     </div>
   );
 }
