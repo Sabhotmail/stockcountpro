@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Image Sync — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --pre-bg: #1e293b; --pre-text: #e2e8f0;
+      --danger: #b91c1c; --danger-bg: #fef2f2; --ok: #047857; --ok-bg: #d1fae5;
+      --warn: #b45309; --warn-bg: #fef3c7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--pre-bg); color: var(--pre-text); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .callout { border-radius: 8px; padding: 0.85rem 1rem; margin: 0.75rem 0 1rem; font-size: 0.95rem; }
+    .callout-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .callout-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #a7f3d0; }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+    .mockup-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .mockup-col { flex: 1 1 220px; }
+    .mockup-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .folder { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; font-family: Consolas, monospace; font-size: 0.8rem; background: #fff; min-height: 5rem; }
+    .folder.locked { border-color: #fecaca; background: var(--danger-bg); }
+    .folder.dest { border-color: #a7f3d0; background: var(--ok-bg); }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-green { background: #d1fae5; color: #047857; }
+    .badge-sky { background: #e0f2fe; color: #0369a1; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .flow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0; }
+    .flow-step { background: var(--accent-soft); border: 1px solid #99f6e4; border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.85rem; font-weight: 600; }
+    .flow-arrow { color: var(--muted); }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Product Image Sync (อ่านอย่างเดียวจาก SalesTools)</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-09-25</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Sync รูปสินค้าไป <code>public/products</code> ใช้ร่วมห้องของจริง (:3002) และ NKR (:3003)</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>คัดลอกรูปจากโฟลเดอร์ SalesTools เข้า StockCount อัตโนมัติวันละครั้ง</li>
+        <li>รันมือได้เมื่อมีรูปใหม่</li>
+        <li>ห้องของจริง (:3002) และ NKR (:3003) ใช้ชุดรูปเดียวกัน</li>
+        <li>ชื่อไฟล์ <code>{รหัสสินค้า}.jpg</code> ตรงกับ <code>/products/{รหัส}.jpg</code> ในแอป</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่เขียน / ลบ / แก้ไฟล์ในโฟลเดอร์ SalesTools เด็ดขาด</li>
+        <li>ไม่ใช้ junction / symlink ไปที่ต้นทาง</li>
+        <li>ไม่ลบรูปใน <code>public/products</code> เมื่อต้นทางไม่มีไฟล์นั้น</li>
+        <li>ไม่มีปุ่ม sync ใน UI รอบนี้</li>
+      </ul>
+      <div class="callout callout-danger">
+        <strong>ห้ามกระทบ SalesTools:</strong> ต้นทาง
+        <code>C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures</code>
+        เป็นโฟลเดอร์ของระบบอื่น — สคริปต์อ่านอย่างเดียวเท่านั้น
+      </div>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>UI โหลดรูปจาก <code>/products/{รหัส}.jpg|.jpeg|.png|.webp</code> ผ่าน <code>src/lib/product-image.ts</code></li>
+        <li><code>public/products/</code> ถูก gitignore — ต้องมีไฟล์บนเครื่องเซิร์ฟเวอร์เอง</li>
+        <li>ยังไม่มีสคริปต์ sync อัตโนมัติ</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>รัน <code>scripts\sync-product-images.bat</code> ครั้งแรกเพื่อ copy ชุดปัจจุบัน</li>
+        <li>รัน <code>scripts\install-product-image-sync-task.bat</code> ในฐานะ Administrator</li>
+        <li>Task Scheduler รันทุกวัน 06:00 อัตโนมัติ</li>
+        <li>เมื่อมีรูปใหม่กลางวัน — รัน <code>sync-product-images.bat</code> มือได้ทันที</li>
+        <li>ตรวจหน้านับสต็อกทั้ง :3002 และ :3003 ว่ารูปขึ้น</li>
+      </ol>
+      <div class="flow">
+        <span class="flow-step">SalesTools pictures</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">robocopy /XO (อ่านอย่างเดียว)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">public/products</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">:3002 + :3003</span>
+      </div>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>ไม่เพิ่มหน้าจอในแอป — แสดงโฟลว์ติดตั้งและผลบนเครื่องเซิร์ฟเวอร์</p>
+
+      <h3>โฟลว์โฟลเดอร์ — เครื่องเซิร์ฟเวอร์</h3>
+      <div class="mockup">
+        <div class="mockup-header">Sync ทางเดียว · ไม่แตะต้นทาง</div>
+        <div class="mockup-row">
+          <div class="mockup-col">
+            <div class="mockup-label">ต้นทาง (SalesTools) <span class="badge badge-red">อ่านอย่างเดียว</span></div>
+            <div class="folder locked">C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures\
+1010030013.jpg
+1010030014.jpg
+…</div>
+          </div>
+          <div class="mockup-col">
+            <div class="mockup-label">ปลายทาง (StockCount) <span class="badge badge-green">เขียนได้</span></div>
+            <div class="folder dest">…\stockcountpro\public\products\
+1010030013.jpg
+1010030014.jpg
+…</div>
+          </div>
+        </div>
+        <p class="mockup-note">ชุดเดียวกันถูกเสิร์ฟทั้งห้องของจริง (:3002) และ NKR (:3003)</p>
+      </div>
+
+      <h3>คอนโซลหลังรัน sync มือ</h3>
+      <div class="mockup">
+        <div class="mockup-header">scripts\sync-product-images.bat</div>
+        <div class="mockup-card">
+          <pre style="margin:0"><code>=== StockCount Pro · sync product images ===
+Source (read-only): C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures
+Dest:               D:\...\stockcountpro\public\products
+Shared by rooms:    :3002 (ของจริง) and :3003 (NKR)
+
+OK. Copied/updated as needed. Log: logs\product-image-sync.log</code></pre>
+        </div>
+        <p class="mockup-note">ถ้าต้นทางหาไม่เจอ — หยุดทันที ไม่สร้าง/ไม่ลบอะไรใต้ DBO_SIRIPRO_WEB</p>
+      </div>
+
+      <h3>หน้านับสต็อกหลัง sync สำเร็จ</h3>
+      <div class="mockup">
+        <div class="mockup-header">หน้านับสินค้า — /tablet/count/[documentId] · ทั้ง :3002 และ :3003</div>
+        <div class="mockup-card" style="display:flex;gap:1rem;align-items:center">
+          <div style="width:88px;height:88px;border:1px solid var(--border);border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--muted)">รูปสินค้า</div>
+          <div>
+            <div style="font-weight:600">1010030013</div>
+            <div style="font-size:0.9rem;color:var(--muted)">/products/1010030013.jpg</div>
+            <span class="badge badge-sky">ห้องของจริง :3002</span>
+            <span class="badge badge-sky">ห้อง NKR :3003</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>Data model / API</h2>
+      <p>ไม่แตะฐานข้อมูลและไม่เพิ่ม API — เป็นไฟล์ static ใต้ <code>public/products</code> เท่านั้น</p>
+      <table>
+        <thead>
+          <tr><th>รายการ</th><th>ค่า</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ต้นทาง</td><td><code>C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures</code></td></tr>
+          <tr><td>ปลายทาง</td><td><code>%ROOT%\public\products</code></td></tr>
+          <tr><td>นามสกุล</td><td><code>.jpg .jpeg .png .webp</code></td></tr>
+          <tr><td>Task</td><td><code>StockCountPro-ProductImageSync</code> · ทุกวัน 06:00</td></tr>
+          <tr><td>Log</td><td><code>logs\product-image-sync.log</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <ul>
+        <li>ต้นทางไม่มีโฟลเดอร์ → exit 1 พร้อมข้อความชัด ไม่แตะปลายทาง</li>
+        <li>robocopy exit 0–7 = สำเร็จ (มาตรฐาน Windows)</li>
+        <li>ไม่ใช้ <code>/MIR</code> / <code>/PURGE</code></li>
+      </ul>
+      <h3>Checklist</h3>
+      <ul>
+        <li>[ ] รัน sync ครั้งแรก สำเร็จและมีไฟล์ใน <code>public\products</code></li>
+        <li>[ ] ติดตั้ง Task Scheduler สำเร็จ</li>
+        <li>[ ] เปิดรูปบนห้องของจริง :3002</li>
+        <li>[ ] เปิดรูปบนห้อง NKR :3003</li>
+        <li>[ ] ยืนยันว่าโฟลเดอร์ SalesTools ไม่ถูกแก้ (timestamp ไฟล์ต้นทางคงเดิม)</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · design spec · 2026-09-25</footer>
+  </div>
+</body>
+</html>
