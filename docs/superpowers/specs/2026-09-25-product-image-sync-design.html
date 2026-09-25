@@ -59,7 +59,7 @@
       <div class="meta">
         <span><strong>Date:</strong> 2026-09-25</span>
         <span><strong>Owner:</strong> StockCount Pro</span>
-        <span><strong>Scope:</strong> Sync รูปสินค้าไป <code>public/products</code> ใช้ร่วมห้องของจริง (:3002) และ NKR (:3003)</span>
+        <span><strong>Scope:</strong> Sync รูปสินค้าไป <code>public/products</code> ของแต่ละโฟลเดอร์โปรเจกต์ (ของจริง :3002 และ NKR :3003 คนละโฟลเดอร์)</span>
       </div>
     </header>
 
@@ -69,7 +69,7 @@
       <ul>
         <li>คัดลอกรูปจากโฟลเดอร์ SalesTools เข้า StockCount อัตโนมัติวันละครั้ง</li>
         <li>รันมือได้เมื่อมีรูปใหม่</li>
-        <li>ห้องของจริง (:3002) และ NKR (:3003) ใช้ชุดรูปเดียวกัน</li>
+        <li>ห้องของจริง (:3002) และ NKR (:3003) ได้รูปครบ — คนละโฟลเดอร์โปรเจกต์ รัน sync/install คนละครั้ง</li>
         <li>ชื่อไฟล์ <code>{รหัสสินค้า}.jpg</code> ตรงกับ <code>/products/{รหัส}.jpg</code> ในแอป</li>
       </ul>
       <h3>Non-goals</h3>
@@ -98,20 +98,20 @@
     <section id="workflow">
       <h2>User workflow</h2>
       <ol>
-        <li>รัน <code>scripts\sync-product-images.bat</code> ครั้งแรกเพื่อ copy ชุดปัจจุบัน</li>
-        <li>รัน <code>scripts\install-product-image-sync-task.bat</code> ในฐานะ Administrator</li>
-        <li>Task Scheduler รันทุกวัน 06:00 อัตโนมัติ</li>
-        <li>เมื่อมีรูปใหม่กลางวัน — รัน <code>sync-product-images.bat</code> มือได้ทันที</li>
+        <li>ในโฟลเดอร์ห้องของจริง (:3002): รัน <code>sync-product-images.bat</code> แล้วรัน <code>install-product-image-sync-task.bat</code> (Admin)</li>
+        <li>ในโฟลเดอร์ห้อง NKR (:3003): ทำเหมือนกันอีกครั้ง</li>
+        <li>แต่ละโฟลเดอร์ได้ Task คนละชื่อ (ตามชื่อโฟลเดอร์) รันทุกวัน 06:00</li>
+        <li>เมื่อมีรูปใหม่กลางวัน — รัน <code>sync-product-images.bat</code> ในโฟลเดอร์ที่ต้องการอัปเดต</li>
         <li>ตรวจหน้านับสต็อกทั้ง :3002 และ :3003 ว่ารูปขึ้น</li>
       </ol>
       <div class="flow">
         <span class="flow-step">SalesTools pictures</span>
         <span class="flow-arrow">→</span>
-        <span class="flow-step">robocopy /XO (อ่านอย่างเดียว)</span>
+        <span class="flow-step">robocopy /XO</span>
         <span class="flow-arrow">→</span>
-        <span class="flow-step">public/products</span>
-        <span class="flow-arrow">→</span>
-        <span class="flow-step">:3002 + :3003</span>
+        <span class="flow-step">โฟลเดอร์ของจริง public/products</span>
+        <span class="flow-arrow">+</span>
+        <span class="flow-step">โฟลเดอร์ NKR public/products</span>
       </div>
     </section>
 
@@ -138,7 +138,7 @@
 …</div>
           </div>
         </div>
-        <p class="mockup-note">ชุดเดียวกันถูกเสิร์ฟทั้งห้องของจริง (:3002) และ NKR (:3003)</p>
+        <p class="mockup-note">คนละโฟลเดอร์โปรเจกต์ = copy คนละรอบ; ต้นทาง SalesTools อ่านอย่างเดียวเหมือนกัน</p>
       </div>
 
       <h3>คอนโซลหลังรัน sync มือ</h3>
@@ -147,8 +147,8 @@
         <div class="mockup-card">
           <pre style="margin:0"><code>=== StockCount Pro · sync product images ===
 Source (read-only): C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures
-Dest:               D:\...\stockcountpro\public\products
-Shared by rooms:    :3002 (ของจริง) and :3003 (NKR)
+Dest:               D:\...\stockcountpro-nkr\public\products
+This copy is only for THIS project folder
 
 OK. Copied/updated as needed. Log: logs\product-image-sync.log</code></pre>
         </div>
@@ -181,7 +181,7 @@ OK. Copied/updated as needed. Log: logs\product-image-sync.log</code></pre>
           <tr><td>ต้นทาง</td><td><code>C:\inetpub\wwwroot\DBO_SIRIPRO_WEB\pictures</code></td></tr>
           <tr><td>ปลายทาง</td><td><code>%ROOT%\public\products</code></td></tr>
           <tr><td>นามสกุล</td><td><code>.jpg .jpeg .png .webp</code></td></tr>
-          <tr><td>Task</td><td><code>StockCountPro-ProductImageSync</code> · ทุกวัน 06:00</td></tr>
+          <tr><td>Task</td><td><code>StockCountPro-ProductImageSync-&lt;ชื่อโฟลเดอร์&gt;</code> · ทุกวัน 06:00 · คนละอันต่อโฟลเดอร์</td></tr>
           <tr><td>Log</td><td><code>logs\product-image-sync.log</code></td></tr>
         </tbody>
       </table>

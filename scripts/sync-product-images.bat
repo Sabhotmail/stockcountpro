@@ -10,7 +10,7 @@ set "LOG=%LOGDIR%\product-image-sync.log"
 echo === StockCount Pro · sync product images ===
 echo Source (read-only): %SOURCE%
 echo Dest:               %DEST%
-echo Shared by rooms:    :3002 (ของจริง) and :3003 (NKR)
+echo This copy is only for THIS project folder ^(run again in the other room's folder^).
 echo.
 echo This script NEVER writes, deletes, or modifies files under SalesTools.
 echo.
@@ -40,5 +40,5 @@ if %RC% GEQ 8 (
 echo.
 echo OK. Copied/updated as needed ^(robocopy exit %RC%^).
 echo Log: %LOG%
-echo Both rooms :3002 and :3003 serve files from public\products
+echo Images for this folder only: %DEST%
 exit /b 0

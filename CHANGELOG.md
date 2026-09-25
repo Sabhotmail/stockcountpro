@@ -10,8 +10,8 @@
 
 ### Added
 
-- สคริปต์ sync รูปสินค้าจาก SalesTools (`scripts\sync-product-images.bat`) แบบอ่านอย่างเดียว เข้า `public/products` ใช้ร่วมห้องของจริง (:3002) และ NKR (:3003)
-- ติดตั้ง Task Scheduler วันละครั้ง 06:00 ด้วย `scripts\install-product-image-sync-task.bat`
+- สคริปต์ sync รูปสินค้าจาก SalesTools (`scripts\sync-product-images.bat`) แบบอ่านอย่างเดียว เข้า `public/products` ของโฟลเดอร์โปรเจกต์นั้น (ของจริง :3002 กับ NKR :3003 คนละโฟลเดอร์ → รัน sync/install คนละครั้ง)
+- ติดตั้ง Task Scheduler วันละครั้ง 06:00 ด้วย `scripts\install-product-image-sync-task.bat` (ชื่อ task ตามชื่อโฟลเดอร์โปรเจกต์ กันทับกัน)
 
 ### Fixed
 
