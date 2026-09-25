@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.10 — 2026-09-25
+
+### Added
+
+- สคริปต์ sync รูปสินค้าจาก SalesTools (`scripts\sync-product-images.bat`) แบบอ่านอย่างเดียว เข้า `public/products` ของโฟลเดอร์โปรเจกต์นั้น (ของจริง :3002 กับ NKR :3003 คนละโฟลเดอร์ → รัน sync/install คนละครั้ง)
+- ติดตั้ง Task Scheduler วันละครั้ง 06:00 ด้วย `scripts\install-product-image-sync-task.bat` (ชื่อ task ตามชื่อโฟลเดอร์โปรเจกต์ กันทับกัน)
+
 ## 1.0.9 — 2026-09-16
 
 ### Changed
@@ -7,11 +14,6 @@
 - Hub code รับ **0–9** (เดิม 1–9) เพื่อ map คลังแบบ `430x`
 - Suffix ของ Hub รับ **A–Z หรือ 0–9** หนึ่งตัว (เดิม A–Z อย่างเดียว) เพื่อ map G/D/F/Z แบบ `43G1` / `43D2`
 - หน้า Sync แสดงคลังที่ยังไม่ได้ map ด้วย ไม่กรองทิ้งเฉพาะคลังที่เข้าถึงได้แล้ว
-
-### Added
-
-- สคริปต์ sync รูปสินค้าจาก SalesTools (`scripts\sync-product-images.bat`) แบบอ่านอย่างเดียว เข้า `public/products` ของโฟลเดอร์โปรเจกต์นั้น (ของจริง :3002 กับ NKR :3003 คนละโฟลเดอร์ → รัน sync/install คนละครั้ง)
-- ติดตั้ง Task Scheduler วันละครั้ง 06:00 ด้วย `scripts\install-product-image-sync-task.bat` (ชื่อ task ตามชื่อโฟลเดอร์โปรเจกต์ กันทับกัน)
 
 ### Fixed
 
