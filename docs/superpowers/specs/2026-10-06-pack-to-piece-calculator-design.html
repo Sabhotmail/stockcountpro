@@ -77,12 +77,13 @@
       <ul>
         <li>ให้ผู้ใช้นับเปิดเครื่องคิดเลขข้างช่องชิ้นเมื่อต้องการ</li>
         <li>กรอกจำนวนแพ๊คและชิ้นต่อแพ๊คเอง แล้วใส่ผลรวมทับช่องชิ้น</li>
+        <li>ถ้าชื่อสินค้ามีรูปแบบ <code>(6x12)</code> ให้ใส่ชิ้นต่อแพ๊ค (= 12) ให้อัตโนมัติ แก้ได้</li>
         <li>ใช้ flow บันทึกเดิม (lock, ยืนยันครั้งแรก, แปลงชิ้นล้นเป็นลัง, autosave)</li>
       </ul>
       <h3>Non-goals</h3>
       <ul>
         <li>ไม่ทำเครื่องคิดเลขเลขคณิตทั่วไป</li>
-        <li>ไม่จำค่าชิ้น/แพ๊คครั้งก่อน</li>
+        <li>ไม่จำค่าชิ้น/แพ๊คครั้งก่อนระหว่างสินค้า (แต่ดึงจากชื่อสินค้าเมื่อมี <code>(NxM)</code>)</li>
         <li>ไม่เปิดช่องแพ็คจาก Express / ไม่แก้ sync</li>
         <li>ไม่บวกเพิ่มเข้าค่าชิ้นเดิม (แทนที่เท่านั้น)</li>
       </ul>
@@ -150,9 +151,9 @@
           </div>
           <div class="dialog-field">
             <label>ชิ้นต่อแพ๊ค</label>
-            <input value="" placeholder="0" />
+            <input value="12" />
           </div>
-          <div class="preview muted">กรอกจำนวนแพ๊คและชิ้นต่อแพ๊ค</div>
+          <div class="preview muted">กรอกจำนวนแพ๊ค — ชิ้นต่อแพ๊คดึงจากชื่อ (6x12)</div>
           <div class="actions">
             <button type="button" class="btn">ยกเลิก</button>
             <button type="button" class="btn btn-primary" disabled>ใส่ช่องชิ้น</button>

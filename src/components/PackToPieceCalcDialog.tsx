@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { calculatePackToPiece } from "@/lib/pack-to-piece";
+import {
+  calculatePackToPiece,
+  parsePiecesPerPackFromProductName,
+} from "@/lib/pack-to-piece";
 
 interface PackToPieceCalcDialogProps {
   open: boolean;
@@ -46,9 +49,10 @@ export function PackToPieceCalcDialog({
   useEffect(() => {
     if (open) {
       setPacksDraft("");
-      setPerPackDraft("");
+      const inferred = parsePiecesPerPackFromProductName(productName);
+      setPerPackDraft(inferred !== null ? String(inferred) : "");
     }
-  }, [open]);
+  }, [open, productName]);
 
   const packs = parseNonNegIntDraft(packsDraft);
   const piecesPerPack = parseNonNegIntDraft(perPackDraft);
