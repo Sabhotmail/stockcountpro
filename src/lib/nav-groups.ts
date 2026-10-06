@@ -9,12 +9,15 @@ import { UserRole } from "@/types/user";
 
 function workMainGroup(
   dashboardHref: string,
-  options?: { includePresence?: boolean },
+  options?: { includePresence?: boolean; includeProductImages?: boolean },
 ): AppNavGroup {
   const items: AppNavGroup["items"] = [
     { href: dashboardHref, label: "ภาพรวม", exact: true },
     { href: "/admin/documents", label: "เอกสาร" },
   ];
+  if (options?.includeProductImages) {
+    items.push({ href: "/admin/product-images", label: "รูปสินค้า" });
+  }
   if (options?.includePresence) {
     items.push({ href: "/admin/presence", label: "ผู้ที่กำลังใช้งาน" });
   }
@@ -70,7 +73,7 @@ export function buildAppNavGroups(role: UserRole | null): AppNavGroup[] {
   // Until role loads: HQ-safe admin shell (no system settings).
   if (role === null) {
     return [
-      workMainGroup("/admin/dashboard"),
+      workMainGroup("/admin/dashboard", { includeProductImages: true }),
       {
         label: "ปฏิบัติงาน",
         items: opsItems({
@@ -85,6 +88,7 @@ export function buildAppNavGroups(role: UserRole | null): AppNavGroup[] {
     const groups: AppNavGroup[] = [
       workMainGroup("/admin/dashboard", {
         includePresence: canManageSystem(role),
+        includeProductImages: true,
       }),
     ];
     if (canManageSystem(role)) {

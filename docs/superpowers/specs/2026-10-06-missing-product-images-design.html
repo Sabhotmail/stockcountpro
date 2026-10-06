@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Missing Product Images — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #d1fae5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-green { background: #d1fae5; color: #047857; }
+    .stats { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .stat { flex: 1 1 140px; border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; background: #fff; }
+    .stat .n { font-size: 1.5rem; font-weight: 700; }
+    .stat .l { font-size: 0.8rem; color: var(--muted); }
+    .row-main { display: flex; justify-content: space-between; gap: 1rem; cursor: pointer; }
+    .docs { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9rem; }
+    .docs a { color: var(--accent); }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>หน้า Admin — สินค้าไม่มีรูป</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-10-06</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> <code>/admin/product-images</code> · Admin / HQ</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>แสดงรหัสสินค้าที่อยู่ในเอกสารนับ แต่ไม่มีไฟล์ใน <code>public/products</code></li>
+        <li>กดแถวดูเอกสารที่เกี่ยวข้อง และลิงก์ไป <code>/admin/documents/[documentId]</code></li>
+        <li>สรุปจำนวนรหัสทั้งหมด / มีรูป / ไม่มีรูป</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่แตะโฟลเดอร์ SalesTools</li>
+        <li>ไม่มีปุ่ม sync รูปใน UI รอบนี้</li>
+        <li>ไม่อัปโหลดรูปจากหน้านี้</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>รูปเสิร์ฟจาก <code>/products/{รหัส}.jpg|.jpeg|.png|.webp</code></li>
+        <li>sync ด้วยสคริปต์ bat เข้า <code>public/products</code> ต่อโฟลเดอร์ห้อง</li>
+        <li>ยังไม่มีหน้ารายงานรหัสที่ขาดรูป</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>Admin เปิดเมนูงานหลัก → <strong>รูปสินค้า</strong></li>
+        <li>ดูสรุปจำนวน และรายการรหัสที่ไม่มีรูป</li>
+        <li>ค้นหารหัส/ชื่อได้</li>
+        <li>กดแถวขยายรายการเอกสาร → เปิดหน้ารายละเอียดเอกสาร</li>
+        <li>ไปเติมรูปที่ SalesTools แล้วรัน sync bat ของห้องนั้น</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <h3>หน้ารูปสินค้า — /admin/product-images</h3>
+      <p>เข้าถึงได้: Admin, HQ</p>
+      <div class="mockup">
+        <div class="mockup-header">StockCount Pro · รูปสินค้า</div>
+        <div class="mockup-card">
+          <div style="font-weight:600;margin-bottom:0.25rem">รูปสินค้า</div>
+          <div style="font-size:0.9rem;color:var(--muted);margin-bottom:1rem">รหัสในเอกสารนับที่ยังไม่มีไฟล์ใน public/products</div>
+          <div class="stats">
+            <div class="stat"><div class="n">1,240</div><div class="l">รหัสทั้งหมด</div></div>
+            <div class="stat"><div class="n" style="color:var(--ok)">1,180</div><div class="l">มีรูป</div></div>
+            <div class="stat"><div class="n" style="color:var(--danger)">60</div><div class="l">ไม่มีรูป</div></div>
+          </div>
+          <input placeholder="ค้นหารหัสหรือชื่อสินค้า" style="width:100%;padding:0.5rem 0.75rem;border:1px solid var(--border);border-radius:8px;margin-bottom:0.75rem" />
+          <div class="mockup-card" style="padding:0.75rem 1rem">
+            <div class="row-main">
+              <div>
+                <div style="font-weight:600;font-variant-numeric:tabular-nums">1010030099</div>
+                <div style="font-size:0.9rem;color:var(--muted)">นมสด UHT 200ml</div>
+              </div>
+              <div style="text-align:right">
+                <span class="badge badge-red">ไม่มีรูป</span>
+                <div style="font-size:0.8rem;color:var(--muted);margin-top:0.25rem">2 เอกสาร ▾</div>
+              </div>
+            </div>
+            <div class="docs">
+              <div><a href="#">CNT-BKK1-20261006</a> · สาขา BKK1 · กำลังนับ</div>
+              <div style="margin-top:0.35rem"><a href="#">CNT-NKR-20261005</a> · สาขา NKR · ส่งแล้ว</div>
+            </div>
+          </div>
+        </div>
+        <p class="mockup-note">กดแถวเพื่อขยาย/ย่อรายการเอกสาร — ลิงก์ไปหน้ารายละเอียดเอกสารของแอดมิน</p>
+      </div>
+
+      <h3>สถานะว่าง</h3>
+      <div class="mockup">
+        <div class="mockup-header">เมื่อไม่มีรหัสขาดรูป</div>
+        <div class="mockup-card" style="text-align:center;color:var(--muted);padding:2rem">
+          <span class="badge badge-green">ครบ</span>
+          <p style="margin:0.75rem 0 0">ทุกรหัสในเอกสารมีรูปแล้ว</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>Data model / API</h2>
+      <table>
+        <thead><tr><th>รายการ</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/admin/product-images</code></td></tr>
+          <tr><td>สิทธิ์</td><td><code>canAccessAdmin</code></td></tr>
+          <tr><td>แหล่งรหัส</td><td><code>ProductLine</code> ทุกเอกสาร</td></tr>
+          <tr><td>เช็ครูป</td><td>ไฟล์ใน <code>public/products</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <ul>
+        <li>401 → ไป login · 403 → กลับเอกสาร</li>
+        <li>โฟลเดอร์ <code>public/products</code> ไม่มี = ถือว่าทุกรหัสยังไม่มีรูป</li>
+      </ul>
+      <ul>
+        <li>[ ] เมนู “รูปสินค้า” โชว์สำหรับ Admin/HQ</li>
+        <li>[ ] สรุปตัวเลขตรงกับรายการ</li>
+        <li>[ ] กดแถวแล้วเห็นเอกสาร + ลิงก์ใช้ได้</li>
+        <li>[ ] ค้นหารหัส/ชื่อกรองรายการได้</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · design spec · 2026-10-06</footer>
+  </div>
+</body>
+</html>

@@ -11,6 +11,7 @@ const EXACT_PAGE_LABELS: Record<string, string> = {
   "/admin/dashboard": "ภาพรวม",
   "/supervisor/dashboard": "ภาพรวม",
   "/admin/presence": "ผู้ที่กำลังใช้งาน",
+  "/admin/product-images": "รูปสินค้า",
   "/admin/documents": "เอกสาร",
   "/admin/users": "ผู้ใช้",
   "/admin/branches": "สาขา",

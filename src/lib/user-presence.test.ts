@@ -33,6 +33,7 @@ function testDescribesReviewAndAdminDocument() {
 function testDescribesKnownPagesWithoutDocument() {
   assert.equal(describePresencePath("/admin/dashboard").pageLabel, "ภาพรวม");
   assert.equal(describePresencePath("/admin/presence").pageLabel, "ผู้ที่กำลังใช้งาน");
+  assert.equal(describePresencePath("/admin/product-images").pageLabel, "รูปสินค้า");
   assert.equal(describePresencePath("/tablet/documents").pageLabel, "รายการเอกสาร");
   assert.equal(describePresencePath("/unknown").pageLabel, "กำลังใช้งานระบบ");
   assert.equal(describePresencePath("/unknown").documentId, null);
