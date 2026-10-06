@@ -10,7 +10,7 @@ import { LogoutButton, PageShell } from "@/components/PageShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { DocumentStatus } from "@/types/count";
+import { DocumentStatus } from "@/types/count";
 
 type MissingDoc = {
   documentId: string;
@@ -19,6 +19,32 @@ type MissingDoc = {
   branchCode: string;
   branchName: string;
 };
+
+/** Where to open count/review detail from the missing-images report. */
+function documentDetailHref(status: DocumentStatus, documentId: string): string {
+  switch (status) {
+    case DocumentStatus.SUBMITTED:
+    case DocumentStatus.REVIEWING:
+    case DocumentStatus.RECOUNT_REQUESTED:
+    case DocumentStatus.APPROVED:
+    case DocumentStatus.COMPLETED:
+      return `/supervisor/review/${documentId}`;
+    case DocumentStatus.COUNTING:
+      return `/tablet/count/${documentId}`;
+    default:
+      return `/admin/documents/${documentId}`;
+  }
+}
+
+function showsCountReview(status: DocumentStatus): boolean {
+  return (
+    status === DocumentStatus.SUBMITTED ||
+    status === DocumentStatus.REVIEWING ||
+    status === DocumentStatus.RECOUNT_REQUESTED ||
+    status === DocumentStatus.APPROVED ||
+    status === DocumentStatus.COMPLETED
+  );
+}
 
 type MissingRow = {
   productCode: string;
@@ -196,7 +222,10 @@ export default function AdminProductImagesPage() {
                                       className="flex flex-wrap items-center gap-2 text-sm"
                                     >
                                       <Link
-                                        href={`/admin/documents/${doc.documentId}`}
+                                        href={documentDetailHref(
+                                          doc.status,
+                                          doc.documentId,
+                                        )}
                                         className="font-medium text-foreground underline-offset-4 hover:underline"
                                       >
                                         {doc.documentNo}
@@ -208,6 +237,14 @@ export default function AdminProductImagesPage() {
                                         status={doc.status}
                                         compact
                                       />
+                                      {showsCountReview(doc.status) ? (
+                                        <Link
+                                          href={`/admin/documents/${doc.documentId}`}
+                                          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                                        >
+                                          ประวัติ
+                                        </Link>
+                                      ) : null}
                                     </li>
                                   ))}
                                 </ul>
