@@ -8,6 +8,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { QtyInput } from "@/components/QtyInput";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Button } from "@/components/ui/button";
+import { parsePiecesPerPackFromProductName } from "@/lib/pack-to-piece";
 import { calculateTotalBaseQty, isEntryCounted } from "@/lib/unit-converter";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +80,8 @@ export function ProductCard({
     : false;
   const pieceUnitLabel = normalizeUnitLabel(line.unitPieceName, "ชิ้น");
   const conversionNotes = getConversionNotes(line, pieceUnitLabel);
+  const canUsePackCalculator =
+    parsePiecesPerPackFromProductName(line.productName) !== null;
 
   const openPackCalculator = useCallback(() => {
     if (disabled) return;
@@ -255,7 +258,7 @@ export function ProductCard({
                   onBlur={handleQtyBlur}
                   onChange={(value) => onQtyChange("qtyPiece", value)}
                 />
-                {!disabled && (
+                {!disabled && canUsePackCalculator && (
                   <Button
                     type="button"
                     variant="outline"
@@ -277,15 +280,17 @@ export function ProductCard({
             )}
           </div>
 
-          <PackToPieceCalcDialog
-            open={calcOpen}
-            productCode={line.productCode}
-            productName={line.productName}
-            pieceUnitLabel={pieceUnitLabel}
-            existingPieceQty={entry?.qtyPiece ?? null}
-            onApply={applyPackCalculator}
-            onCancel={closePackCalculator}
-          />
+          {canUsePackCalculator && (
+            <PackToPieceCalcDialog
+              open={calcOpen}
+              productCode={line.productCode}
+              productName={line.productName}
+              pieceUnitLabel={pieceUnitLabel}
+              existingPieceQty={entry?.qtyPiece ?? null}
+              onApply={applyPackCalculator}
+              onCancel={closePackCalculator}
+            />
+          )}
 
           {counted && (
             <>
