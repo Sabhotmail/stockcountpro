@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useRef, type FocusEvent, type MouseEvent } from "react";
+import { useCallback, useRef, useState, type FocusEvent, type MouseEvent } from "react";
+import { Calculator } from "lucide-react";
 import type { CountEntry, ProductLine, SyncStatus } from "@/types/count";
+import { PackToPieceCalcDialog } from "@/components/PackToPieceCalcDialog";
 import { ProductImage } from "@/components/ProductImage";
 import { QtyInput } from "@/components/QtyInput";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
+import { Button } from "@/components/ui/button";
 import { calculateTotalBaseQty, isEntryCounted } from "@/lib/unit-converter";
 import { cn } from "@/lib/utils";
 
@@ -69,11 +72,41 @@ export function ProductCard({
   active = false,
 }: ProductCardProps) {
   const qtyAreaRef = useRef<HTMLDivElement>(null);
+  const calcOpenRef = useRef(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const counted = entry
     ? isEntryCounted(entry.qtyCase, entry.qtyPack, entry.qtyPiece)
     : false;
   const pieceUnitLabel = normalizeUnitLabel(line.unitPieceName, "ชิ้น");
   const conversionNotes = getConversionNotes(line, pieceUnitLabel);
+
+  const openPackCalculator = useCallback(() => {
+    if (disabled) return;
+    calcOpenRef.current = true;
+    onEditStart?.();
+    setCalcOpen(true);
+  }, [disabled, onEditStart]);
+
+  const closePackCalculator = useCallback(() => {
+    calcOpenRef.current = false;
+    setCalcOpen(false);
+    // Dialog closed without applying — release lock if focus left the qty area.
+    requestAnimationFrame(() => {
+      if (calcOpenRef.current) return;
+      const active = document.activeElement;
+      if (active && qtyAreaRef.current?.contains(active)) return;
+      onEditEnd?.();
+    });
+  }, [onEditEnd]);
+
+  const applyPackCalculator = useCallback(
+    (totalPieces: number) => {
+      calcOpenRef.current = false;
+      onQtyChange("qtyPiece", totalPieces);
+      setCalcOpen(false);
+    },
+    [onQtyChange],
+  );
   const totalBaseQty = entry
     ? calculateTotalBaseQty(
         { caseRatio: line.caseRatio, packRatio: line.packRatio },
@@ -84,7 +117,12 @@ export function ProductCard({
     : null;
 
   const handleQtyBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLElement>) => {
+      if (calcOpenRef.current) {
+        // Calculator dialog holds the edit lock while open.
+        return;
+      }
+
       const next = event.relatedTarget;
       if (next instanceof Node && qtyAreaRef.current?.contains(next)) {
         // Still editing this line (e.g. Case → Piece) — keep the lock.
@@ -94,6 +132,7 @@ export function ProductCard({
       // Mobile browsers often leave relatedTarget null when tapping another input.
       // Defer and re-check where focus landed.
       requestAnimationFrame(() => {
+        if (calcOpenRef.current) return;
         const active = document.activeElement;
         if (active && qtyAreaRef.current?.contains(active)) return;
         onEditEnd?.();
@@ -206,17 +245,46 @@ export function ProductCard({
               />
             )}
             {line.allowPiece && (
-              <QtyInput
-                compact
-                label={pieceUnitLabel}
-                value={entry?.qtyPiece ?? null}
-                disabled={disabled}
-                onFocus={onEditStart}
-                onBlur={handleQtyBlur}
-                onChange={(value) => onQtyChange("qtyPiece", value)}
-              />
+              <>
+                <QtyInput
+                  compact
+                  label={pieceUnitLabel}
+                  value={entry?.qtyPiece ?? null}
+                  disabled={disabled}
+                  onFocus={onEditStart}
+                  onBlur={handleQtyBlur}
+                  onChange={(value) => onQtyChange("qtyPiece", value)}
+                />
+                {!disabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="shrink-0"
+                    title="แปลงแพ๊คเป็นชิ้น"
+                    aria-label="แปลงแพ๊คเป็นชิ้น"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openPackCalculator();
+                    }}
+                    onFocus={onEditStart}
+                    onBlur={handleQtyBlur}
+                  >
+                    <Calculator />
+                  </Button>
+                )}
+              </>
             )}
           </div>
+
+          <PackToPieceCalcDialog
+            open={calcOpen}
+            productCode={line.productCode}
+            productName={line.productName}
+            pieceUnitLabel={pieceUnitLabel}
+            onApply={applyPackCalculator}
+            onCancel={closePackCalculator}
+          />
 
           {counted && (
             <>

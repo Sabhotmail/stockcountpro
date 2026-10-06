@@ -13,7 +13,7 @@ interface QtyInputProps {
   disabled?: boolean;
   compact?: boolean;
   onFocus?: () => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLElement>) => void;
 }
 
 function formatQtyValue(value: number | null): string {

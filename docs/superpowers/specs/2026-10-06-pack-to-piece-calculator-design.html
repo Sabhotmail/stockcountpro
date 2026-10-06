@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pack→Piece Calculator — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --sky: #0284c7; --sky-soft: #e0f2fe;
+      --amber-bg: #fffbeb; --amber-border: #fde68a;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-card.active { border-color: #38bdf8; background: #f0f9ff; box-shadow: 0 0 0 2px #bae6fd; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; }
+    .badge-sky { background: var(--sky-soft); color: var(--sky); }
+    .qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+    .qty-field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .qty-field label { font-size: 0.75rem; color: var(--muted); }
+    .qty-field input, .dialog-field input {
+      width: 4.5rem; padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem;
+    }
+    .calc-btn {
+      width: 2.25rem; height: 2.25rem; border-radius: 8px; border: 1px solid var(--border);
+      background: #fff; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1rem; cursor: pointer;
+    }
+    .dialog-overlay {
+      border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 1.25rem;
+      max-width: 420px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    }
+    .dialog-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.85rem; }
+    .dialog-field label { font-size: 0.85rem; font-weight: 600; }
+    .dialog-field input { width: 100%; }
+    .preview { padding: 0.75rem 1rem; background: var(--accent-soft); border-radius: 8px; font-weight: 600; margin: 0.5rem 0 1rem; }
+    .preview.muted { background: var(--code-bg); color: var(--muted); font-weight: 500; }
+    .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; cursor: pointer; background: #fff; }
+    .btn-primary { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>เครื่องคิดเลขแปลงแพ๊ค → ชิ้น</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-10-06</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> <code>/tablet/count/[documentId]</code> · Counter / Supervisor</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>ให้ผู้ใช้นับเปิดเครื่องคิดเลขข้างช่องชิ้นเมื่อต้องการ</li>
+        <li>กรอกจำนวนแพ๊คและชิ้นต่อแพ๊คเอง แล้วใส่ผลรวมทับช่องชิ้น</li>
+        <li>ใช้ flow บันทึกเดิม (lock, ยืนยันครั้งแรก, แปลงชิ้นล้นเป็นลัง, autosave)</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ทำเครื่องคิดเลขเลขคณิตทั่วไป</li>
+        <li>ไม่จำค่าชิ้น/แพ๊คครั้งก่อน</li>
+        <li>ไม่เปิดช่องแพ็คจาก Express / ไม่แก้ sync</li>
+        <li>ไม่บวกเพิ่มเข้าค่าชิ้นเดิม (แทนที่เท่านั้น)</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>การ์ดสินค้ามีช่องลัง / แพ็ค / ชิ้น ตาม <code>allowCase</code> / <code>allowPack</code> / <code>allowPiece</code></li>
+        <li>Express sync ตั้ง <code>allowPack: false</code> — ผู้ใช้นับกรอกลัง+ชิ้นเป็นหลัก</li>
+        <li>มีแปลงชิ้นล้นเป็นลังอัตโนมัติผ่าน <code>convertPieceOverflowToCase</code></li>
+        <li>ยังไม่มีเครื่องคิดเลขแปลงแพ๊ค→ชิ้น</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>เปิดหน้านับสินค้าบนแท็บเล็ต</li>
+        <li>เลือกบรรทัดสินค้า → กดปุ่มเครื่องคิดเลขข้างช่องชิ้น</li>
+        <li>กรอกจำนวนแพ๊ค และจำนวนชิ้นต่อแพ๊ค</li>
+        <li>ดูผลรวมสด แล้วกด <strong>ใส่ช่องชิ้น</strong></li>
+        <li>ระบบแทนที่ค่าในช่องชิ้น แล้วเข้า path บันทึกเดิม</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>หน้านับสินค้า — /tablet/count/[documentId]</h3>
+      <p>เข้าถึงได้: Counter, Supervisor (ตามสิทธิ์เอกสาร)</p>
+
+      <div class="mockup">
+        <div class="mockup-header">ProductCard · ช่องชิ้น + ปุ่มเครื่องคิดเลข</div>
+        <div class="mockup-card active">
+          <div style="font-size:0.85rem;color:var(--muted)">รหัส <strong style="color:var(--text)">A00123</strong> · ชื่อ <strong style="color:var(--text)">น้ำดื่ม 600ml</strong></div>
+          <div class="qty-row">
+            <span style="font-size:0.9rem;font-weight:600">จำนวน</span>
+            <div class="qty-field">
+              <label>ลัง</label>
+              <input value="1" readonly />
+            </div>
+            <div class="qty-field">
+              <label>ชิ้น</label>
+              <input value="" readonly placeholder="" />
+            </div>
+            <button type="button" class="calc-btn" title="แปลงแพ๊คเป็นชิ้น" aria-label="แปลงแพ๊คเป็นชิ้น">🧮</button>
+            <span class="badge badge-sky">ปุ่มเครื่องคิดเลข</span>
+          </div>
+          <p style="margin:0.5rem 0 0;font-size:0.8rem;color:var(--muted)">(72 ชิ้น = 1 ลัง) · กรอกชิ้นครบลังแล้วระบบจะแปลงให้เอง</p>
+        </div>
+        <p class="mockup-note">ปุ่มแสดงเฉพาะเมื่อ <code>allowPiece</code> และการ์ดไม่ถูก lock โดยคนอื่น (<code>disabled</code>)</p>
+      </div>
+
+      <h3>Dialog — แปลงแพ๊คเป็นชิ้น</h3>
+
+      <div class="mockup">
+        <div class="mockup-header">Empty / invalid — ปุ่มใส่ช่องชิ้นปิด</div>
+        <div class="dialog-overlay">
+          <div style="font-weight:700;margin-bottom:0.25rem">แปลงแพ๊คเป็นชิ้น</div>
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">A00123 น้ำดื่ม 600ml</div>
+          <div class="dialog-field">
+            <label>จำนวนแพ๊ค</label>
+            <input value="" placeholder="0" />
+          </div>
+          <div class="dialog-field">
+            <label>ชิ้นต่อแพ๊ค</label>
+            <input value="" placeholder="0" />
+          </div>
+          <div class="preview muted">กรอกจำนวนแพ๊คและชิ้นต่อแพ๊ค</div>
+          <div class="actions">
+            <button type="button" class="btn">ยกเลิก</button>
+            <button type="button" class="btn btn-primary" disabled>ใส่ช่องชิ้น</button>
+          </div>
+        </div>
+        <p class="mockup-note">ค่าว่าง / ไม่เป็นจำนวนเต็ม / ติดลบ → ใส่ไม่ได้</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-header">Filled / valid — พร้อมใส่</div>
+        <div class="dialog-overlay">
+          <div style="font-weight:700;margin-bottom:0.25rem">แปลงแพ๊คเป็นชิ้น</div>
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">A00123 น้ำดื่ม 600ml</div>
+          <div class="dialog-field">
+            <label>จำนวนแพ๊ค</label>
+            <input value="5" />
+          </div>
+          <div class="dialog-field">
+            <label>ชิ้นต่อแพ๊ค</label>
+            <input value="12" />
+          </div>
+          <div class="preview">5 แพ๊ค × 12 ชิ้น/แพ๊ค = 60 ชิ้น</div>
+          <div class="actions">
+            <button type="button" class="btn">ยกเลิก</button>
+            <button type="button" class="btn btn-primary">ใส่ช่องชิ้น</button>
+          </div>
+        </div>
+        <p class="mockup-note">กดใส่ช่องชิ้น → แทนที่ <code>qtyPiece</code> = 60 → ปิด dialog → ใช้ <code>onQtyChange</code> เดิม</p>
+      </div>
+    </section>
+
+    <section id="data-api">
+      <h2>Data model / API</h2>
+      <ul>
+        <li>ไม่เพิ่ม field ใน DB / Express</li>
+        <li>Helper: <code>calculatePackToPiece(packs, piecesPerPack) → number | null</code></li>
+        <li>Apply ผ่าน <code>onQtyChange("qtyPiece", total)</code> เท่านั้น</li>
+      </ul>
+    </section>
+
+    <section id="errors-tests">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead>
+          <tr><th>กรณี</th><th>ผลที่คาด</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>5 × 12</td><td>ได้ 60 ใส่ช่องชิ้น</td></tr>
+          <tr><td>0 × 12</td><td>ได้ 0 (นับศูนย์ชิ้น)</td></tr>
+          <tr><td>ค่าว่าง / ทศนิยม / ติดลบ</td><td>ปุ่มใส่ช่องชิ้นปิด</td></tr>
+          <tr><td>ยกเลิก</td><td>ช่องชิ้นไม่เปลี่ยน</td></tr>
+          <tr><td>ชิ้นล้นลังหลังใส่</td><td>ระบบแปลงลัง+ชิ้นตามเดิม</td></tr>
+          <tr><td>นับครั้งแรกของช่อง</td><td>ยังขึ้น dialog ยืนยันบันทึกจำนวน</td></tr>
+          <tr><td>การ์ดถูก lock โดยคนอื่น</td><td>ไม่มีปุ่มเครื่องคิดเลข / กดไม่ได้</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>StockCount Pro · Design Spec · 2026-10-06</footer>
+  </div>
+</body>
+</html>
