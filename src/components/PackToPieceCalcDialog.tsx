@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isQtyFieldCounted } from "@/lib/count-qty";
 import {
   calculatePackToPiece,
   parsePiecesPerPackFromProductName,
@@ -22,6 +23,8 @@ interface PackToPieceCalcDialogProps {
   productCode: string;
   productName: string;
   pieceUnitLabel: string;
+  /** Current piece field value; when already counted, show replace + add. */
+  existingPieceQty: number | null;
   onApply: (totalPieces: number) => void;
   onCancel: () => void;
 }
@@ -40,6 +43,7 @@ export function PackToPieceCalcDialog({
   productCode,
   productName,
   pieceUnitLabel,
+  existingPieceQty,
   onApply,
   onCancel,
 }: PackToPieceCalcDialogProps) {
@@ -61,9 +65,16 @@ export function PackToPieceCalcDialog({
       ? calculatePackToPiece(packs, piecesPerPack)
       : null;
 
+  const hasExisting = isQtyFieldCounted(existingPieceQty);
+  const existing = hasExisting ? (existingPieceQty as number) : null;
+  const addedTotal =
+    total !== null && existing !== null ? existing + total : null;
+
   const preview =
     total !== null && packs !== null && piecesPerPack !== null
-      ? `${packs} แพ๊ค × ${piecesPerPack} ${pieceUnitLabel}/แพ๊ค = ${total} ${pieceUnitLabel}`
+      ? hasExisting && existing !== null && addedTotal !== null
+        ? `${packs} แพ๊ค × ${piecesPerPack} ${pieceUnitLabel}/แพ๊ค = ${total} ${pieceUnitLabel} · ปัจจุบัน ${existing} → แทนที่ ${total} / บวกเพิ่ม ${addedTotal}`
+        : `${packs} แพ๊ค × ${piecesPerPack} ${pieceUnitLabel}/แพ๊ค = ${total} ${pieceUnitLabel}`
       : `กรอกจำนวนแพ๊คและ${pieceUnitLabel}ต่อแพ๊ค`;
 
   return (
@@ -125,20 +136,46 @@ export function PackToPieceCalcDialog({
           </p>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onCancel}>
             ยกเลิก
           </Button>
-          <Button
-            type="button"
-            disabled={total === null}
-            onClick={() => {
-              if (total === null) return;
-              onApply(total);
-            }}
-          >
-            ใส่ช่องชิ้น
-          </Button>
+          {hasExisting ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={total === null}
+                onClick={() => {
+                  if (total === null) return;
+                  onApply(total);
+                }}
+              >
+                แทนที่
+              </Button>
+              <Button
+                type="button"
+                disabled={addedTotal === null}
+                onClick={() => {
+                  if (addedTotal === null) return;
+                  onApply(addedTotal);
+                }}
+              >
+                บวกเพิ่ม
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              disabled={total === null}
+              onClick={() => {
+                if (total === null) return;
+                onApply(total);
+              }}
+            >
+              ใส่ช่องชิ้น
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

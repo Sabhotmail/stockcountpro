@@ -282,6 +282,7 @@ export function ProductCard({
             productCode={line.productCode}
             productName={line.productName}
             pieceUnitLabel={pieceUnitLabel}
+            existingPieceQty={entry?.qtyPiece ?? null}
             onApply={applyPackCalculator}
             onCancel={closePackCalculator}
           />
