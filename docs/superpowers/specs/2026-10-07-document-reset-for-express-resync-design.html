@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Reset for Express Re-sync — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .btn { padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .dialog { max-width: 420px; border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; background: #fff; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+    .field { margin: 0.75rem 0; }
+    .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .field input, .field textarea { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
+    .warn { background: var(--danger-bg); color: var(--danger); padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; }
+    .actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>รีเซ็ตเอกสารเพื่อนับใหม่จาก Express</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-10-07</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> <code>/admin/documents/[documentId]</code> · Admin / HQ</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>ให้ Admin/HQ รีเซ็ตใบที่เริ่มนับแล้วกลับเป็น <code>IMPORTED</code> เพื่อ Sync Express วัน+คลังเดิมทับได้</li>
+        <li>ล้างจำนวนนับ / เวอร์ชัน / lock / presence ทั้งใบ</li>
+        <li>บังคับเหตุผล + ยืนยันรหัสเอกสาร และเขียน audit</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ Sync Express อัตโนมัติในคลิกเดียว</li>
+        <li>ไม่เก็บ snapshot จำนวนเดิม</li>
+        <li>ไม่รีเซ็ต <code>APPROVED</code> / <code>COMPLETED</code></li>
+        <li>ไม่เปิดให้ Supervisor</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>Express = วัน + คลัง (ไม่มีเลขเอกสารแยก) → Sync ชี้ใบเดิม</li>
+        <li>Sync ทับได้เฉพาะ <code>IMPORTED</code>; สถานะอื่นถูกข้าม</li>
+        <li>ลบเอกสารได้เฉพาะ <code>IMPORTED</code></li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>Admin/HQ เปิดหน้ารายละเอียดเอกสาร</li>
+        <li>กดรีเซ็ต → กรอกเหตุผล + พิมพ์รหัสเอกสารยืนยัน</li>
+        <li>ระบบล้างการนับ → สถานะยังไม่เริ่ม</li>
+        <li>แก้ Express แล้ว Sync วัน+คลังเดิม</li>
+        <li>Staff เริ่มนับใหม่</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <h3>หน้ารายละเอียดเอกสาร — /admin/documents/[documentId]</h3>
+      <p>เข้าถึงได้: Admin, HQ</p>
+
+      <div class="mockup">
+        <div class="mockup-header">Action bar · สถานะกำลังนับ</div>
+        <div class="mockup-card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+          <span style="font-size:0.85rem">สถานะ: กำลังนับ · นับแล้ว 120/400</span>
+          <button type="button" class="btn btn-danger">รีเซ็ตเพื่อนับใหม่จาก Express</button>
+        </div>
+        <p class="mockup-note">ปุ่มแสดงเฉพาะ COUNTING / RECOUNT_REQUESTED / SUBMITTED / REVIEWING</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-header">Dialog ยืนยัน</div>
+        <div class="dialog">
+          <div style="font-weight:700;margin-bottom:0.5rem">รีเซ็ตเอกสาร?</div>
+          <div class="warn">จำนวนที่นับไว้ทั้งหมดจะถูกลบ และสถานะกลับเป็นยังไม่เริ่ม ไม่สามารถกู้คืนได้</div>
+          <div class="field">
+            <label>เหตุผล (บังคับ)</label>
+            <textarea rows="2">Express ส่งรายการสินค้าผิด ต้อง Sync ใหม่</textarea>
+          </div>
+          <div class="field">
+            <label>พิมพ์รหัสเอกสารเพื่อยืนยัน: CNT-24-...</label>
+            <input value="" placeholder="documentNo" />
+          </div>
+          <div class="actions">
+            <button type="button" class="btn">ยกเลิก</button>
+            <button type="button" class="btn btn-danger">ยืนยันรีเซ็ต</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="data-api">
+      <h2>Data model / API</h2>
+      <ul>
+        <li><code>POST /api/admin/count-documents/[documentId]/reset</code> body: <code>{ reason, confirmDocumentNo }</code></li>
+        <li>Transaction: ลบ entries, snapshots, versions, locks, presence, recount requests, final entries (ถ้ามี) → อัปเดตเอกสารเป็น IMPORTED, version=null/0, countedLines=0, note=null</li>
+        <li>เก็บ product lines ไว้ (Express sync ทับเมื่อ IMPORTED)</li>
+        <li>AuditAction ใหม่: <code>RESET_DOCUMENT</code></li>
+      </ul>
+    </section>
+
+    <section id="errors-tests">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead><tr><th>กรณี</th><th>ผลที่คาด</th></tr></thead>
+        <tbody>
+          <tr><td>ไม่ใช่ Admin/HQ</td><td>403</td></tr>
+          <tr><td>สถานะ APPROVED/COMPLETED/IMPORTED</td><td>400 + เหตุผล</td></tr>
+          <tr><td>confirmDocumentNo ไม่ตรง</td><td>400</td></tr>
+          <tr><td>reason ว่าง</td><td>400</td></tr>
+          <tr><td>สำเร็จ</td><td>สถานะยังไม่เริ่ม; Sync ทับได้; audit มีเหตุผล</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>StockCount Pro · Design Spec · 2026-10-07</footer>
+  </div>
+</body>
+</html>

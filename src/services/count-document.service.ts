@@ -12,13 +12,20 @@ import {
   canAccessDocument,
   canDeleteImportedDocument,
   canMutateCount,
+  canResetCountDocument,
   filterDocumentsForStaff,
 } from "@/lib/permissions";
 import { filterLinesForRole } from "@/lib/product-line-filter";
 import { prisma } from "@/lib/prisma";
+import { canResetDocumentStatus } from "@/lib/document-reset";
 import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import { isEntryCounted } from "@/lib/unit-converter";
-import { logDeleteDocument, logStartCount, logSubmit } from "@/services/audit-log.service";
+import {
+  logDeleteDocument,
+  logResetDocument,
+  logStartCount,
+  logSubmit,
+} from "@/services/audit-log.service";
 import { listActiveLocks } from "@/services/count-line-lock.service";
 import { touchDocumentPresence } from "@/services/count-document-presence.service";
 import { getUserById } from "@/services/user.service";
@@ -649,6 +656,89 @@ export async function deleteCountDocumentForExpressDelete(
     .join("; ");
 
   return { success: true, branchId: doc.branchId, detail };
+}
+
+/**
+ * Wipe count progress and return the document to IMPORTED so Express sync
+ * (date + location) can overwrite product lines again.
+ */
+export async function resetCountDocumentForExpressResync(
+  session: MockSession,
+  documentId: string,
+  input: { reason: string; confirmDocumentNo: string },
+): Promise<
+  | { success: true; document: CountDocument }
+  | { error: string; status: 403 | 404 | 400 }
+> {
+  if (!canResetCountDocument(session.role)) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { error: access.error, status: access.status };
+  }
+
+  const doc = access.document;
+  if (!canResetDocumentStatus(doc.status)) {
+    return {
+      error: `รีเซ็ตไม่ได้เมื่อสถานะเป็น ${doc.status}`,
+      status: 400,
+    };
+  }
+
+  const reason = input.reason.trim();
+  if (!reason) {
+    return { error: "กรุณาระบุเหตุผลการรีเซ็ต", status: 400 };
+  }
+
+  if (input.confirmDocumentNo.trim() !== doc.documentNo) {
+    return { error: "รหัสเอกสารที่ยืนยันไม่ตรง", status: 400 };
+  }
+
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const lines = await tx.productLine.findMany({
+      where: { documentId },
+      select: { lineId: true },
+    });
+    const lineIds = lines.map((line) => line.lineId);
+
+    await tx.countLineLock.deleteMany({ where: { documentId } });
+    await tx.countDocumentPresence.deleteMany({ where: { documentId } });
+    await tx.recountRequest.deleteMany({ where: { documentId } });
+    await tx.finalCountEntry.deleteMany({ where: { documentId } });
+    if (lineIds.length > 0) {
+      await tx.countEntry.deleteMany({ where: { lineId: { in: lineIds } } });
+    }
+    await tx.countVersion.deleteMany({ where: { documentId } });
+    await tx.countDocument.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.IMPORTED,
+        currentVersionId: null,
+        currentVersionNo: 0,
+        countedLines: 0,
+        note: null,
+        updatedAt: now,
+      },
+    });
+  });
+
+  const updated = await prisma.countDocument.findUniqueOrThrow({
+    where: { id: documentId },
+  });
+
+  await logResetDocument(
+    session.userId,
+    session.userName,
+    doc.branchId,
+    documentId,
+    `reset ${doc.documentNo} from ${doc.status}; reason=${reason}`,
+  );
+
+  return { success: true, document: mapCountDocument(updated) };
 }
 
 async function deleteCountDocumentRecord(

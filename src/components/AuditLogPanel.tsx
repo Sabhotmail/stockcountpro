@@ -23,6 +23,7 @@ const actionLabels: Record<AuditAction, string> = {
   [AuditAction.IMPORT_FROM_EXPRESS]: "Sync จาก Express",
   [AuditAction.DELETE_DOCUMENT]: "ลบเอกสาร",
   [AuditAction.DELETE_EXPRESS_STOCK_COUNT]: "ลบรายการนับ Express",
+  [AuditAction.RESET_DOCUMENT]: "รีเซ็ตเอกสาร",
   [AuditAction.PUSH_TO_EXPRESS]: "ส่งกลับ Express",
 };
 

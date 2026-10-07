@@ -149,6 +149,11 @@ export function canSyncExpress(role: UserRole): boolean {
   );
 }
 
+/** Reset started count docs back to IMPORTED for Express re-sync — Admin/HQ only. */
+export function canResetCountDocument(role: UserRole): boolean {
+  return role === UserRole.ADMIN || role === UserRole.HQ;
+}
+
 export function canDeleteImportedDocument(role: UserRole): boolean {
   return canSyncExpress(role);
 }

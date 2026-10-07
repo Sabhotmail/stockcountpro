@@ -146,6 +146,8 @@ export function deriveAuditLogDetail(
       return null;
     case AuditAction.PUSH_TO_EXPRESS:
       return null;
+    case AuditAction.RESET_DOCUMENT:
+      return documentNo ? `รีเซ็ต ${documentNo}` : "รีเซ็ตเอกสาร";
     default:
       return null;
   }

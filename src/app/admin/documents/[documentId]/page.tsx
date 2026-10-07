@@ -10,6 +10,7 @@ import { ExpressPushBadge } from "@/components/ExpressPushBadge";
 import { DetailSkeleton } from "@/components/loading/PageSkeletons";
 import { LogoutButton, PageShell } from "@/components/PageShell";
 import { PushExpressButton } from "@/components/PushExpressButton";
+import { ResetDocumentDialog } from "@/components/ResetDocumentDialog";
 import { VersionCompareDetail } from "@/components/VersionCompareDetail";
 import { VersionCompareTable } from "@/components/VersionCompareTable";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,6 +18,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { canResetDocumentStatus } from "@/lib/document-reset";
 import { cn } from "@/lib/utils";
 import type { AuditLog } from "@/types/audit";
 import {
@@ -52,6 +54,9 @@ export default function AdminDocumentHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("audit");
   const [pushNotice, setPushNotice] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,6 +215,56 @@ export default function AdminDocumentHistoryPage() {
     );
   }
 
+  async function handleResetConfirm(input: {
+    reason: string;
+    confirmDocumentNo: string;
+  }) {
+    setResetSubmitting(true);
+    setResetError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/count-documents/${documentId}/reset`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(input),
+        },
+      );
+      const data = (await res.json()) as {
+        error?: string;
+        document?: CountDocumentListItem;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "รีเซ็ตไม่สำเร็จ");
+      }
+      setResetOpen(false);
+      setPushNotice(
+        "รีเซ็ตสำเร็จ — สถานะกลับเป็นยังไม่เริ่ม ไป Sync Express ได้",
+      );
+      setHistory((prev) =>
+        prev && data.document
+          ? { ...prev, document: { ...prev.document, ...data.document } }
+          : prev,
+      );
+      // Reload audit/history so RESET_DOCUMENT appears.
+      const historyRes = await fetch(
+        `/api/admin/count-documents/${documentId}`,
+        { credentials: "same-origin" },
+      );
+      if (historyRes.ok) {
+        const refreshed = (await historyRes.json()) as HistoryResponse;
+        setHistory(refreshed);
+      }
+      setVersions([]);
+      setCompare(null);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "รีเซ็ตไม่สำเร็จ");
+    } finally {
+      setResetSubmitting(false);
+    }
+  }
+
   return (
     <PageShell
       title={document.documentNo}
@@ -259,24 +314,52 @@ export default function AdminDocumentHistoryPage() {
             </p>
           )}
         </div>
-        {document.status === DocumentStatus.COMPLETED && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/print/documents/${documentId}`}
-              className={buttonVariants({ size: "sm" })}
-              target="_blank"
-              rel="noreferrer"
+        <div className="flex flex-wrap items-center gap-2">
+          {canResetDocumentStatus(document.status) && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setResetError(null);
+                setResetOpen(true);
+              }}
             >
-              พิมพ์
-            </Link>
-            <PushExpressButton
-              documentId={documentId}
-              alreadyPushed={alreadyPushed}
-              onPushed={handlePushed}
-            />
-          </div>
-        )}
+              รีเซ็ตเพื่อนับใหม่จาก Express
+            </Button>
+          )}
+          {document.status === DocumentStatus.COMPLETED && (
+            <>
+              <Link
+                href={`/print/documents/${documentId}`}
+                className={buttonVariants({ size: "sm" })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                พิมพ์
+              </Link>
+              <PushExpressButton
+                documentId={documentId}
+                alreadyPushed={alreadyPushed}
+                onPushed={handlePushed}
+              />
+            </>
+          )}
+        </div>
       </div>
+
+      <ResetDocumentDialog
+        open={resetOpen}
+        documentNo={document.documentNo}
+        submitting={resetSubmitting}
+        error={resetError}
+        onCancel={() => {
+          if (!resetSubmitting) setResetOpen(false);
+        }}
+        onConfirm={(input) => {
+          void handleResetConfirm(input);
+        }}
+      />
 
       {error && (
         <Alert variant="destructive" className="mb-4">
