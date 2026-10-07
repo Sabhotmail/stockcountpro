@@ -17,7 +17,10 @@ import {
 } from "@/lib/permissions";
 import { filterLinesForRole } from "@/lib/product-line-filter";
 import { prisma } from "@/lib/prisma";
-import { canResetDocumentStatus } from "@/lib/document-reset";
+import {
+  canResetDocumentStatus,
+  resetConfirmCode,
+} from "@/lib/document-reset";
 import { repairOffByOneDocumentDates } from "@/lib/repair-document-dates";
 import { isEntryCounted } from "@/lib/unit-converter";
 import {
@@ -665,7 +668,7 @@ export async function deleteCountDocumentForExpressDelete(
 export async function resetCountDocumentForExpressResync(
   session: MockSession,
   documentId: string,
-  input: { reason: string; confirmDocumentNo: string },
+  input: { reason: string; confirmCode: string },
 ): Promise<
   | { success: true; document: CountDocument }
   | { error: string; status: 403 | 404 | 400 }
@@ -692,8 +695,9 @@ export async function resetCountDocumentForExpressResync(
     return { error: "กรุณาระบุเหตุผลการรีเซ็ต", status: 400 };
   }
 
-  if (input.confirmDocumentNo.trim() !== doc.documentNo) {
-    return { error: "รหัสเอกสารที่ยืนยันไม่ตรง", status: 400 };
+  const expectedCode = resetConfirmCode(doc);
+  if (input.confirmCode.trim() !== expectedCode) {
+    return { error: "รหัสที่ยืนยันไม่ตรง", status: 400 };
   }
 
   const now = new Date();

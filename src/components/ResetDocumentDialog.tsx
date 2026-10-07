@@ -17,33 +17,36 @@ import { Label } from "@/components/ui/label";
 interface ResetDocumentDialogProps {
   open: boolean;
   documentNo: string;
+  /** Short code to type (usually location code). */
+  confirmCode: string;
   submitting?: boolean;
   error?: string | null;
-  onConfirm: (input: { reason: string; confirmDocumentNo: string }) => void;
+  onConfirm: (input: { reason: string; confirmCode: string }) => void;
   onCancel: () => void;
 }
 
 export function ResetDocumentDialog({
   open,
   documentNo,
+  confirmCode,
   submitting = false,
   error = null,
   onConfirm,
   onCancel,
 }: ResetDocumentDialogProps) {
   const [reason, setReason] = useState("");
-  const [confirmDocumentNo, setConfirmDocumentNo] = useState("");
+  const [typedCode, setTypedCode] = useState("");
 
   useEffect(() => {
     if (open) {
       setReason("");
-      setConfirmDocumentNo("");
+      setTypedCode("");
     }
   }, [open]);
 
   const canSubmit =
     reason.trim().length > 0 &&
-    confirmDocumentNo.trim() === documentNo &&
+    typedCode.trim() === confirmCode &&
     !submitting;
 
   return (
@@ -57,9 +60,11 @@ export function ResetDocumentDialog({
         <DialogHeader>
           <DialogTitle>รีเซ็ตเอกสาร?</DialogTitle>
           <DialogDescription>
-            เอกสาร {documentNo} จะกลับเป็นสถานะยังไม่เริ่ม
-            เพื่อให้ Sync จาก Express ได้อีกครั้ง
+            เอกสารนี้จะกลับเป็นสถานะยังไม่เริ่ม เพื่อให้ Sync จาก Express ได้อีกครั้ง
           </DialogDescription>
+          <p className="break-words text-sm font-medium text-foreground">
+            {documentNo}
+          </p>
         </DialogHeader>
 
         <Alert variant="destructive">
@@ -81,15 +86,17 @@ export function ResetDocumentDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="reset-confirm-no">
-              พิมพ์รหัสเอกสารเพื่อยืนยัน: {documentNo}
+            <Label htmlFor="reset-confirm-code">
+              พิมพ์รหัสคลังเพื่อยืนยัน:{" "}
+              <span className="font-semibold text-foreground">{confirmCode}</span>
             </Label>
             <Input
-              id="reset-confirm-no"
-              value={confirmDocumentNo}
+              id="reset-confirm-code"
+              value={typedCode}
               disabled={submitting}
-              onChange={(event) => setConfirmDocumentNo(event.target.value)}
+              onChange={(event) => setTypedCode(event.target.value)}
               autoComplete="off"
+              placeholder={confirmCode}
             />
           </div>
           {error ? (
@@ -113,7 +120,7 @@ export function ResetDocumentDialog({
             onClick={() =>
               onConfirm({
                 reason: reason.trim(),
-                confirmDocumentNo: confirmDocumentNo.trim(),
+                confirmCode: typedCode.trim(),
               })
             }
           >

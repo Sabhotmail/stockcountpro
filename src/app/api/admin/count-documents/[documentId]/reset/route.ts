@@ -12,11 +12,11 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  let body: { reason?: string; confirmDocumentNo?: string };
+  let body: { reason?: string; confirmCode?: string };
   try {
     body = (await request.json()) as {
       reason?: string;
-      confirmDocumentNo?: string;
+      confirmCode?: string;
     };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(
 
   const result = await resetCountDocumentForExpressResync(session, documentId, {
     reason: body.reason ?? "",
-    confirmDocumentNo: body.confirmDocumentNo ?? "",
+    confirmCode: body.confirmCode ?? "",
   });
 
   if ("error" in result) {

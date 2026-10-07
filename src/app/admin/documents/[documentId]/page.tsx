@@ -18,7 +18,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { canResetDocumentStatus } from "@/lib/document-reset";
+import {
+  canResetDocumentStatus,
+  resetConfirmCode,
+} from "@/lib/document-reset";
 import { cn } from "@/lib/utils";
 import type { AuditLog } from "@/types/audit";
 import {
@@ -217,7 +220,7 @@ export default function AdminDocumentHistoryPage() {
 
   async function handleResetConfirm(input: {
     reason: string;
-    confirmDocumentNo: string;
+    confirmCode: string;
   }) {
     setResetSubmitting(true);
     setResetError(null);
@@ -351,6 +354,7 @@ export default function AdminDocumentHistoryPage() {
       <ResetDocumentDialog
         open={resetOpen}
         documentNo={document.documentNo}
+        confirmCode={resetConfirmCode(document)}
         submitting={resetSubmitting}
         error={resetError}
         onCancel={() => {
