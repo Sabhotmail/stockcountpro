@@ -68,9 +68,10 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   return (
     <>
       <div className="flex items-center gap-2">
+        {/* Phone: menu only — avoids truncating / overlapping content. */}
         <nav
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-2xl",
+            "hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-2xl md:flex",
             "bg-muted/60 p-1 ring-1 ring-border/70",
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           )}
@@ -97,7 +98,7 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
         <Button
           type="button"
           variant="outline"
-          className="min-h-12 shrink-0 gap-2 rounded-2xl border-border/80 bg-background px-3.5 shadow-sm"
+          className="min-h-11 w-full gap-2 rounded-2xl border-border/80 bg-background px-3.5 shadow-sm md:min-h-12 md:w-auto"
           onClick={() => setMenuOpen(true)}
           aria-label="เปิดเมนูทั้งหมด"
         >

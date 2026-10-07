@@ -32,10 +32,10 @@ export function PageShell({
         className,
       )}
     >
-      <header className="sticky top-[var(--env-banner-h,0px)] z-40 border-b border-border/70 bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur-md supports-backdrop-filter:bg-background/75">
-        <div className="mx-auto max-w-6xl px-4 py-3.5 sm:px-6 sm:py-4">
+      <header className="sticky top-[var(--env-banner-h,0px)] z-40 border-b border-border/70 bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md supports-backdrop-filter:bg-background/80">
+        <div className="mx-auto max-w-6xl px-4 py-2.5 sm:px-6 sm:py-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {brand && (
                 <p className="flex items-baseline gap-2 text-[11px] font-medium tracking-[0.1em] text-muted-foreground uppercase">
                   <span>{brand}</span>
@@ -44,14 +44,14 @@ export function PageShell({
               )}
               <h1
                 className={cn(
-                  "break-words text-[1.35rem] font-semibold tracking-tight sm:text-2xl",
-                  brand && "mt-1",
+                  "break-words text-lg font-semibold tracking-tight sm:text-2xl",
+                  brand && "mt-0.5 sm:mt-1",
                 )}
               >
                 {title}
               </h1>
               {subtitle && (
-                <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-0.5 hidden max-w-2xl break-words text-sm leading-relaxed text-muted-foreground sm:mt-1 sm:block">
                   {subtitle}
                 </p>
               )}
@@ -61,7 +61,7 @@ export function PageShell({
               {actions}
             </div>
           </div>
-          {nav && <div className="mt-4">{nav}</div>}
+          {nav && <div className="mt-2.5 sm:mt-4">{nav}</div>}
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-6">
