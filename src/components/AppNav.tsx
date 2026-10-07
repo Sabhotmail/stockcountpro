@@ -25,13 +25,16 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   const pathname = usePathname();
 
   return (
-    <div className="-mx-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-6 sm:gap-y-2">
+    <div className="flex flex-col gap-2 sm:gap-2.5">
       {groups.map((group) => (
-        <div key={group.label} className="min-w-0">
-          <p className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">
+        <section
+          key={group.label}
+          className="rounded-xl border border-border/80 bg-muted/25 px-2 py-2 sm:px-2.5"
+        >
+          <p className="px-2 text-[11px] font-semibold tracking-wide text-muted-foreground">
             {group.label}
           </p>
-          <nav className="flex flex-wrap">
+          <nav className="mt-1 flex flex-wrap gap-1">
             {group.items.map((item) => {
               const active = isActive(pathname, item);
               return (
@@ -39,10 +42,10 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "inline-flex min-h-10 items-center px-2.5 text-sm transition-colors",
+                    "inline-flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors",
                     active
-                      ? "font-medium text-foreground shadow-[inset_0_-2px_0_0_currentColor]"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-background font-semibold text-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
                   )}
                 >
                   {item.label}
@@ -50,7 +53,7 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
               );
             })}
           </nav>
-        </div>
+        </section>
       ))}
     </div>
   );

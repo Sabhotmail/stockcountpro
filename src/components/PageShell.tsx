@@ -39,14 +39,14 @@ export function PageShell({
               )}
               <h1
                 className={cn(
-                  "text-xl font-semibold tracking-tight sm:text-[1.375rem]",
+                  "break-words text-xl font-semibold tracking-tight sm:text-[1.375rem]",
                   brand && "mt-0.5",
                 )}
               >
                 {title}
               </h1>
               {subtitle && (
-                <p className="mt-0.5 text-sm text-muted-foreground">
+                <p className="mt-0.5 break-words text-sm text-muted-foreground">
                   {subtitle}
                 </p>
               )}
@@ -56,7 +56,9 @@ export function PageShell({
               {actions}
             </div>
           </div>
-          {nav && <div className="mt-3">{nav}</div>}
+          {nav && (
+            <div className="mt-3 border-t border-border/60 pt-3">{nav}</div>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-6">

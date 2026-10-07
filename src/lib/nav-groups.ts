@@ -59,7 +59,7 @@ function opsItems(options: {
   if (options.includeExpressDelete) {
     items.push({
       href: options.expressDeleteHref,
-      label: "ลบรายการนับ Express",
+      label: "ลบ Express",
     });
   }
   return items;

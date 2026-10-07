@@ -198,9 +198,18 @@ export default function AdminDocumentHistoryPage() {
   }
 
   const { document, auditLogs, latestRecountReason } = history;
-  const location =
-    `${document.locationCode ?? document.branchCode}` +
-    (document.locationName ? ` · ${document.locationName}` : ` · ${document.branchName}`);
+  const pageTitle = document.locationCode
+    ? `${document.locationCode}${
+        document.locationName ? ` · ${document.locationName}` : ""
+      }`
+    : document.documentNo;
+  const pageSubtitle = [
+    document.documentDate,
+    document.locationCode ? null : document.branchName,
+    `V${document.currentVersionNo || "—"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const alreadyPushed = Boolean(document.lastExpressPushAt);
 
   function handlePushed(message: string) {
@@ -270,23 +279,21 @@ export default function AdminDocumentHistoryPage() {
 
   return (
     <PageShell
-      title={document.documentNo}
-      subtitle={`${document.documentDate} · ${location} · V${document.currentVersionNo || "—"}`}
+      title={pageTitle}
+      subtitle={pageSubtitle}
       actions={<LogoutButton onClick={handleLogout} />}
       nav={
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-3">
           <Link
             href="/admin/documents"
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
-              "w-fit shrink-0",
+              "inline-flex min-h-11 w-fit items-center",
             )}
           >
             ← กลับรายการ
           </Link>
-          <div className="min-w-0 lg:max-w-[70%]">
-            <AdminNav />
-          </div>
+          <AdminNav />
         </div>
       }
       className="[&_main]:max-w-7xl [&_header>div]:max-w-7xl"
