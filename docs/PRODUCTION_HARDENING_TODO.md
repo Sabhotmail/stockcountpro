@@ -4,6 +4,8 @@ These rules are important, but in the current prototype phase they can be TODO i
 
 ## 1. STAFF must not receive expectedQty from API
 
+**Status (2026-10-07):** Done for tablet document/version APIs via `filterLinesForRole` + unit tests. Keep using the filter on any new line-returning endpoint.
+
 Prototype:
 
 - STAFF should not see expectedQty on UI.
@@ -15,6 +17,8 @@ Production:
 - SUPERVISOR/ADMIN can receive expectedQty only if they have branch permission.
 
 ## 2. Every API must prevent IDOR by Branch
+
+**Status (2026-10-07):** Main count/submit/save paths use `getDocumentForSession`. Presence/lock helpers now check access. Document GET returns 403 (not 404) on denied access. Still no API-wide middleware for every `/api` route.
 
 Production:
 
@@ -56,6 +60,8 @@ Rules:
 - Use IndexedDB / Dexie.js, not LocalStorage.
 
 ## 4. Submit must be blocked if Sync is not complete
+
+**Status (2026-10-07):** Partial — count page flushes lines+note, writes sessionStorage flush receipt; summary requires receipt; readiness/submit reject when other users hold line locks. Full IndexedDB offline draft still TODO (§3). Server cannot see in-memory client queues.
 
 Production:
 
@@ -106,6 +112,8 @@ Production:
 - Do not depend on future product/unit changes for historical result
 
 ## 8. Express sync must not overwrite started documents
+
+**Status (2026-10-07):** Overwrite guard done (`!== IMPORTED` → skip). Sync results set `skippedBecauseStarted` + warning; ExpressSyncPanel shows a banner listing skipped started docs.
 
 Production:
 

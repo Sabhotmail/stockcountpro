@@ -26,6 +26,20 @@ export async function listActiveLocks(documentId: string): Promise<LineLockInfo[
   return rows.map(mapLineLock);
 }
 
+export async function listActiveLocksForSession(
+  session: MockSession,
+  documentId: string,
+): Promise<
+  | { ok: true; locks: LineLockInfo[] }
+  | { ok: false; error: string; status: 403 | 404 }
+> {
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { ok: false, error: access.error, status: access.status };
+  }
+  return { ok: true, locks: await listActiveLocks(documentId) };
+}
+
 export async function acquireOrRenewLineLock(
   session: MockSession,
   documentId: string,

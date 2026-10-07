@@ -114,10 +114,14 @@ async function applyEntrySave(
 
   // Solo counters skip line locks. With two or more people on the document,
   // claim/renew a lock and only block if another user currently holds it.
-  const [viewers, existingLocks] = await Promise.all([
+  const [viewersResult, existingLocks] = await Promise.all([
     touchDocumentPresence(session, documentId),
     listActiveLocks(documentId),
   ]);
+  if ("error" in viewersResult) {
+    return { error: viewersResult.error };
+  }
+  const viewers = viewersResult;
   if (
     shouldEnforceLineLocks(
       [

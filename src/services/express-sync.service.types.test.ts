@@ -44,6 +44,7 @@ async function assertSyncContract() {
   const item = result.results[0];
   expectType<ExpressSyncDocumentResult>(item);
   expectType<string | undefined>(item.warning);
+  expectType<boolean | undefined>(item.skippedBecauseStarted);
   expectType<string[] | undefined>(item.duplicateProductCodes);
 }
 

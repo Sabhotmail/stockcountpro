@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { CountDocumentSkeleton } from "@/components/loading/PageSkeletons";
@@ -13,6 +13,10 @@ import { Label } from "@/components/ui/label";
 import { isCountDocumentEditable } from "@/lib/permissions";
 import { formatCountQtyCasePiece } from "@/lib/count-qty";
 import { filterCountableLines } from "@/lib/line-filter";
+import {
+  clearFlushReceipt,
+  hasValidFlushReceipt,
+} from "@/lib/submit-flush-receipt";
 import { cn } from "@/lib/utils";
 import { type CountSummary, type CountSummaryLine } from "@/types/count";
 
@@ -32,8 +36,8 @@ type SubmitReadiness =
       versionStatus: string | null;
     };
 
-const PENDING_FLUSH_MESSAGE =
-  "ยังมีรายการที่กำลังบันทึก — กลับไปหน้านับให้บันทึกครบก่อน";
+const MISSING_FLUSH_RECEIPT_MESSAGE =
+  'ยังไม่ได้ยืนยันการบันทึกจากหน้านับ — กลับไปหน้านับแล้วกด "สรุปและส่ง" อีกครั้ง';
 
 function formatLineQty(line: CountSummaryLine): string {
   return formatCountQtyCasePiece({
@@ -118,15 +122,14 @@ function SummaryLineCard({ line }: { line: CountSummaryLine }) {
 export default function TabletSummaryPage() {
   const params = useParams<{ documentId: string }>();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const documentId = params.documentId;
-  const hasPendingFlush = searchParams.get("pending") === "1";
 
   const [summary, setSummary] = useState<CountSummary | null>(null);
   const [readiness, setReadiness] = useState<SubmitReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasFlushReceipt, setHasFlushReceipt] = useState(false);
   const [codeFilter, setCodeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
   const [showUncountedOnly, setShowUncountedOnly] = useState(false);
@@ -168,6 +171,14 @@ export default function TabletSummaryPage() {
         if (!cancelled) {
           setSummary(data.summary);
           setReadiness(readinessData);
+          const versionId = data.summary?.document?.currentVersionId as
+            | string
+            | undefined;
+          setHasFlushReceipt(
+            Boolean(
+              versionId && hasValidFlushReceipt(documentId, versionId),
+            ),
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -196,6 +207,12 @@ export default function TabletSummaryPage() {
   async function handleSubmit() {
     const versionId = summary?.document.currentVersionId;
     if (!versionId) return;
+
+    if (!hasValidFlushReceipt(documentId, versionId)) {
+      setHasFlushReceipt(false);
+      setError(MISSING_FLUSH_RECEIPT_MESSAGE);
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -227,6 +244,7 @@ export default function TabletSummaryPage() {
         const data = await res.json();
         throw new Error(data.error ?? "Submit failed");
       }
+      clearFlushReceipt(documentId, versionId);
       router.push("/tablet/documents");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submit failed");
@@ -261,7 +279,7 @@ export default function TabletSummaryPage() {
   const hasUncounted = summary.uncountedLines > 0;
   const canSubmit =
     isEditable &&
-    !hasPendingFlush &&
+    hasFlushReceipt &&
     readiness?.ok === true;
 
   return (
@@ -339,9 +357,9 @@ export default function TabletSummaryPage() {
           </Alert>
         )}
 
-        {hasPendingFlush && (
+        {!hasFlushReceipt && isEditable && (
           <Alert className="mb-4 border-orange-200/80 bg-orange-50 text-orange-950">
-            <AlertDescription>{PENDING_FLUSH_MESSAGE}</AlertDescription>
+            <AlertDescription>{MISSING_FLUSH_RECEIPT_MESSAGE}</AlertDescription>
           </Alert>
         )}
 

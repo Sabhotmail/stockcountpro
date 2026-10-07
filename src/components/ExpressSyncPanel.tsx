@@ -171,14 +171,24 @@ export function ExpressSyncPanel({
       const created = data.results.filter((item) => item.status === "created").length;
       const updated = data.results.filter((item) => item.status === "updated").length;
       const skipped = data.results.filter((item) => item.status === "skipped").length;
+      const skippedStarted = data.results.filter(
+        (item) => item.skippedBecauseStarted,
+      ).length;
       const warned = data.results.filter((item) => item.warning).length;
 
       setSyncResults(data.results);
-      setSyncMessage(
-        warned > 0
-          ? `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped} — พบรหัสสินค้าซ้ำ ${warned} คลัง`
-          : `Sync สำเร็จ: สร้างใหม่ ${created}, อัปเดต ${updated}, ข้าม ${skipped}`,
-      );
+      const parts = [
+        `สร้างใหม่ ${created}`,
+        `อัปเดต ${updated}`,
+        `ข้าม ${skipped}`,
+      ];
+      if (skippedStarted > 0) {
+        parts.push(`ข้ามเพราะเริ่มนับแล้ว ${skippedStarted}`);
+      }
+      if (warned > 0) {
+        parts.push(`มีคำเตือน ${warned}`);
+      }
+      setSyncMessage(`Sync สำเร็จ: ${parts.join(", ")}`);
       onSynced?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
@@ -404,6 +414,34 @@ export function ExpressSyncPanel({
             </AlertDescription>
           </Alert>
         )}
+
+        {syncResults &&
+          syncResults.some((item) => item.skippedBecauseStarted) && (
+            <Alert className="border-amber-200/80 bg-amber-50 text-amber-950">
+              <AlertDescription>
+                <p className="font-medium">
+                  ข้าม{" "}
+                  {
+                    syncResults.filter((item) => item.skippedBecauseStarted)
+                      .length
+                  }{" "}
+                  เอกสารที่เริ่มนับ/ส่งแล้ว — ไม่ sync ทับ
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                  {syncResults
+                    .filter((item) => item.skippedBecauseStarted)
+                    .map((item) => (
+                      <li
+                        key={`${item.documentId ?? item.locationCode}-${item.reason}`}
+                      >
+                        {item.documentNo ?? item.locationCode ?? item.branchCode}
+                        {item.reason ? ` · ${item.reason}` : null}
+                      </li>
+                    ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
         {syncResults && syncResults.length > 0 && (
           <div className="space-y-3">

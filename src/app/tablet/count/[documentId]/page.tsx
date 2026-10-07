@@ -30,6 +30,7 @@ import {
 import { requiresQtySaveConfirmation } from "@/lib/count-qty";
 import { toIsoInstant, dateKeyToDmy } from "@/lib/datetime";
 import { canAccessAdmin, canSupervise, isCountDocumentEditable } from "@/lib/permissions";
+import { writeFlushReceipt } from "@/lib/submit-flush-receipt";
 import { cn } from "@/lib/utils";
 import {
   convertPieceOverflowToCase,
@@ -161,6 +162,8 @@ export default function TabletCountPage() {
     Record<string, SyncStatus>
   >({});
   const [noteSyncStatus, setNoteSyncStatus] = useState<SyncStatus>("idle");
+  const noteSyncStatusRef = useRef<SyncStatus>("idle");
+  const documentNoteRef = useRef("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState("");
@@ -239,6 +242,14 @@ export default function TabletCountPage() {
   useEffect(() => {
     syncStatusByLineRef.current = syncStatusByLine;
   }, [syncStatusByLine]);
+
+  useEffect(() => {
+    noteSyncStatusRef.current = noteSyncStatus;
+  }, [noteSyncStatus]);
+
+  useEffect(() => {
+    documentNoteRef.current = documentNote;
+  }, [documentNote]);
 
   useEffect(() => {
     const releaseTimers = releaseTimersRef.current;
@@ -818,23 +829,42 @@ export default function TabletCountPage() {
       }
     }
 
+    if (noteSaveTimerRef.current) {
+      clearTimeout(noteSaveTimerRef.current);
+      noteSaveTimerRef.current = null;
+      savePromises.push(saveDocumentNote(documentNoteRef.current));
+    } else if (
+      noteSyncStatusRef.current === "waiting" ||
+      noteSyncStatusRef.current === "failed"
+    ) {
+      savePromises.push(saveDocumentNote(documentNoteRef.current));
+    }
+
     await Promise.all(savePromises);
 
     const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     while (true) {
       const statuses = syncStatusByLineRef.current;
+      const noteStatus = noteSyncStatusRef.current;
       const stillActive =
         Object.values(statuses).some(
           (status) => status === "saving" || status === "waiting",
-        ) || savingLinesRef.current.size > 0;
+        ) ||
+        savingLinesRef.current.size > 0 ||
+        noteStatus === "saving" ||
+        noteStatus === "waiting";
       if (!stillActive) break;
       if (Date.now() >= deadline) return false;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     const finalStatuses = syncStatusByLineRef.current;
-    return !Object.values(finalStatuses).some((status) => status === "failed");
-  }, [saveEntry]);
+    const linesOk = !Object.values(finalStatuses).some(
+      (status) => status === "failed",
+    );
+    const noteOk = noteSyncStatusRef.current !== "failed";
+    return linesOk && noteOk;
+  }, [saveDocumentNote, saveEntry]);
 
   function buildPayload(
     line: ProductLine,
@@ -1227,6 +1257,10 @@ export default function TabletCountPage() {
                   "บันทึกบางรายการไม่สำเร็จ กรุณาตรวจสอบก่อนส่งสรุป",
                 );
                 return;
+              }
+              const versionIdForReceipt = document?.currentVersionId;
+              if (versionIdForReceipt) {
+                writeFlushReceipt(documentId, versionIdForReceipt);
               }
               router.push(`/tablet/count/${documentId}/summary`);
             }}

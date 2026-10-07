@@ -49,6 +49,8 @@ export type ExpressSyncDocumentResult = {
   status: "created" | "updated" | "skipped";
   reason?: string;
   warning?: string;
+  /** True when skip is because the document already left IMPORTED (counting/submitted/…). */
+  skippedBecauseStarted?: boolean;
   duplicateProductCodes?: string[];
 };
 
@@ -524,6 +526,8 @@ async function upsertImportedDocument(
   });
 
   if (existing && existing.status !== DocumentStatus.IMPORTED) {
+    const startedWarning =
+      "มีรายการใน Express ของคลังนี้แต่ไม่ได้อัปเดตเอกสาร เพราะเริ่มนับ/ส่งแล้ว";
     return {
       branchCode: branch.code,
       branchName: branch.name,
@@ -537,8 +541,12 @@ async function upsertImportedDocument(
       documentNo: existing.documentNo,
       lineCount: existing.totalLines,
       status: "skipped",
+      skippedBecauseStarted: true,
       reason: `เอกสารอยู่ในสถานะ ${existing.status} — ไม่ sync ทับ`,
       ...duplicateWarning,
+      warning: duplicateWarning.warning
+        ? `${startedWarning} · ${duplicateWarning.warning}`
+        : startedWarning,
     };
   }
 

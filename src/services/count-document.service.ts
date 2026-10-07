@@ -175,14 +175,32 @@ export async function getDocumentDetail(
 export async function getDocumentDetailWithLocks(
   session: MockSession,
   documentId: string,
-) {
+): Promise<
+  | {
+      document: CountDocumentDetail;
+      locks: Awaited<ReturnType<typeof listActiveLocks>>;
+      viewers: import("@/types/count").DocumentViewerInfo[];
+    }
+  | { error: string; status: 403 | 404 }
+  | null
+> {
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { error: access.error, status: access.status };
+  }
+
   const document = await getDocumentDetail(session, documentId);
   if (!document) return null;
-  const [locks, viewers] = await Promise.all([
+
+  const [locks, viewersResult] = await Promise.all([
     listActiveLocks(documentId),
     touchDocumentPresence(session, documentId),
   ]);
-  return { document, locks, viewers };
+  if ("error" in viewersResult) {
+    return { error: viewersResult.error, status: viewersResult.status };
+  }
+
+  return { document, locks, viewers: viewersResult };
 }
 
 export async function startCount(
@@ -289,6 +307,19 @@ export async function submitVersion(
 
   if (version.status !== VersionStatus.DRAFT) {
     return { error: "Version is not editable" };
+  }
+
+  const locks = await listActiveLocks(documentId);
+  const locksByOthers = locks.filter(
+    (lock) => lock.lockedByUserId !== session.userId,
+  );
+  if (locksByOthers.length > 0) {
+    const names = [
+      ...new Set(locksByOthers.map((lock) => lock.lockedByUserName)),
+    ].join(", ");
+    return {
+      error: `มีรายการที่กำลังถูกนับโดยผู้อื่น (${names}) — ไม่สามารถส่งได้`,
+    };
   }
 
   const now = new Date();
@@ -427,6 +458,17 @@ export async function getSubmitReadiness(
     doc.status !== DocumentStatus.RECOUNT_REQUESTED
   ) {
     reasons.push("เอกสารไม่ได้อยู่สถานะนับ");
+  }
+
+  const locks = await listActiveLocks(documentId);
+  const locksByOthers = locks.filter(
+    (lock) => lock.lockedByUserId !== session.userId,
+  );
+  if (locksByOthers.length > 0) {
+    const names = [
+      ...new Set(locksByOthers.map((lock) => lock.lockedByUserName)),
+    ].join(", ");
+    reasons.push(`มีรายการที่กำลังถูกนับโดยผู้อื่น (${names})`);
   }
 
   if (reasons.length > 0) {

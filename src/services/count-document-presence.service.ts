@@ -1,4 +1,5 @@
 import { DOCUMENT_PRESENCE_TTL_MS } from "@/lib/count-collab-constants";
+import { getDocumentForSession } from "@/lib/document-access";
 import { canMutateCount } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { DocumentViewerInfo } from "@/types/count";
@@ -36,7 +37,12 @@ export async function listActivePresences(
 export async function touchDocumentPresence(
   session: MockSession,
   documentId: string,
-): Promise<DocumentViewerInfo[]> {
+): Promise<DocumentViewerInfo[] | { error: string; status: 403 | 404 }> {
+  const access = await getDocumentForSession(session, documentId);
+  if (!access.ok) {
+    return { error: access.error, status: access.status };
+  }
+
   if (!canMutateCount(session.role)) {
     return listActivePresences(documentId);
   }

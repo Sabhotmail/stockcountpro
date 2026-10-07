@@ -77,12 +77,15 @@ export async function compareDocumentVersions(
     return { error: "Version not found" };
   }
 
-  const lines = (
-    await prisma.productLine.findMany({
-      where: { documentId },
-      orderBy: { lineNo: "asc" },
-    })
-  ).map(mapProductLine);
+  const lines = filterLinesForRole(
+    (
+      await prisma.productLine.findMany({
+        where: { documentId },
+        orderBy: { lineNo: "asc" },
+      })
+    ).map(mapProductLine),
+    session.role,
+  );
 
   const fromEntries = await getEntriesForVersion(documentId, fromVersion.id);
   const toEntries = await getEntriesForVersion(documentId, toVersion.id);
