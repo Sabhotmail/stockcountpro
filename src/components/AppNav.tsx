@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Menu } from "lucide-react";
+import { ChevronRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -39,35 +40,6 @@ function isActive(pathname: string, item: AppNavItem): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-function NavLink({
-  item,
-  pathname,
-  onNavigate,
-  className,
-}: {
-  item: AppNavItem;
-  pathname: string;
-  onNavigate?: () => void;
-  className?: string;
-}) {
-  const active = isActive(pathname, item);
-  return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      className={cn(
-        "inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-sm transition-colors",
-        active
-          ? "bg-background font-semibold text-foreground shadow-sm ring-1 ring-border"
-          : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
-        className,
-      )}
-    >
-      {item.label}
-    </Link>
-  );
-}
-
 export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,45 +68,97 @@ export function AppNav({ groups }: { groups: AppNavGroup[] }) {
   return (
     <>
       <div className="flex items-center gap-2">
-        <nav className="-mx-1 flex min-w-0 flex-1 gap-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {primaryItems.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
-          ))}
+        <nav
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-2xl",
+            "bg-muted/60 p-1 ring-1 ring-border/70",
+            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          )}
+        >
+          {primaryItems.map((item) => {
+            const active = isActive(pathname, item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "inline-flex min-h-10 shrink-0 items-center rounded-xl px-3.5 text-sm transition-all",
+                  active
+                    ? "bg-background font-semibold text-foreground shadow-sm ring-1 ring-black/5"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
+
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="min-h-11 shrink-0 gap-1.5 px-3"
+          className="min-h-12 shrink-0 gap-2 rounded-2xl border-border/80 bg-background px-3.5 shadow-sm"
           onClick={() => setMenuOpen(true)}
           aria-label="เปิดเมนูทั้งหมด"
         >
-          <Menu className="size-4" />
-          เมนู
+          <Menu className="size-4 opacity-80" />
+          <span className="text-sm font-medium">เมนู</span>
         </Button>
       </div>
 
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
-        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>เมนูทั้งหมด</DialogTitle>
+        <DialogContent className="max-h-[85dvh] gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border/70 px-5 py-4 text-left">
+            <DialogTitle className="text-lg tracking-tight">
+              เมนูทั้งหมด
+            </DialogTitle>
+            <DialogDescription>
+              เลือกหน้าที่จะไป — จัดเป็นกลุ่มให้ง่ายต่อการหา
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pb-2">
+
+          <div className="max-h-[min(70dvh,32rem)] space-y-5 overflow-y-auto px-3 py-4">
             {groups.map((group) => (
-              <section key={group.label}>
-                <p className="mb-1.5 px-1 text-[11px] font-semibold tracking-wide text-muted-foreground">
+              <section key={group.label} className="space-y-1.5">
+                <p className="px-3 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
                   {group.label}
                 </p>
-                <nav className="grid gap-1">
-                  {group.items.map((item) => (
-                    <NavLink
-                      key={item.href}
-                      item={item}
-                      pathname={pathname}
-                      onNavigate={() => setMenuOpen(false)}
-                      className="w-full justify-start"
-                    />
-                  ))}
+                <nav className="overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border/60">
+                  {group.items.map((item, index) => {
+                    const active = isActive(pathname, item);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMenuOpen(false)}
+                        className={cn(
+                          "flex min-h-12 items-center justify-between gap-3 px-4 text-sm transition-colors",
+                          index > 0 && "border-t border-border/50",
+                          active
+                            ? "bg-background font-semibold text-foreground"
+                            : "text-foreground/85 hover:bg-background/80",
+                        )}
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              active ? "bg-foreground" : "bg-border",
+                            )}
+                          />
+                          {item.label}
+                        </span>
+                        <ChevronRight
+                          className={cn(
+                            "size-4 shrink-0",
+                            active
+                              ? "text-foreground/70"
+                              : "text-muted-foreground/50",
+                          )}
+                        />
+                      </Link>
+                    );
+                  })}
                 </nav>
               </section>
             ))}
