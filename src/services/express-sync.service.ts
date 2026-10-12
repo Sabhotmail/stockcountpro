@@ -83,6 +83,8 @@ export type ExpressSyncLocationPreview = {
 export type ExpressSyncPreviewResult = {
   date: string;
   locations: ExpressSyncLocationPreview[];
+  /** Locations from Express omitted because inaccessible or unmapped. */
+  hiddenCount: number;
 };
 
 type DocumentDestination =
@@ -365,11 +367,17 @@ function buildLocationPreviews(
   branches: Branch[],
   hubs: Hub[],
   session: MockSession,
-): ExpressSyncLocationPreview[] {
-  return locations
+): { locations: ExpressSyncLocationPreview[]; hiddenCount: number } {
+  const all = locations
     .map((item) => buildLocationPreview(item, branches, hubs, session))
     .filter((item) => item.locationCode.length > 0)
     .sort((a, b) => a.locationCode.localeCompare(b.locationCode));
+
+  const selectable = all.filter((item) => item.selectable);
+  return {
+    locations: selectable,
+    hiddenCount: all.length - selectable.length,
+  };
 }
 
 function getDocumentGroupKey(destination: DocumentDestination): DocumentGroupKey {
@@ -741,7 +749,7 @@ export async function previewExpressCountDate(
 
   const branches = await loadBranchesForExpressLookup();
   const hubs = await loadActiveHubs();
-  const locations = buildLocationPreviews(
+  const { locations, hiddenCount } = buildLocationPreviews(
     expressResult.locations,
     branches,
     hubs,
@@ -751,5 +759,6 @@ export async function previewExpressCountDate(
   return {
     date: countDate,
     locations,
+    hiddenCount,
   };
 }

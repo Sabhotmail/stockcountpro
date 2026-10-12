@@ -31,6 +31,7 @@ type Props = {
 type PreviewResponse = {
   date: string;
   locations: ExpressSyncLocationPreview[];
+  hiddenCount?: number;
 };
 
 type SyncResponse = {
@@ -46,6 +47,7 @@ export function ExpressSyncPanel({
   const router = useRouter();
   const [countDate, setCountDate] = useState(todayDateKeyBangkok());
   const [locations, setLocations] = useState<ExpressSyncLocationPreview[]>([]);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -91,6 +93,9 @@ export function ExpressSyncPanel({
       if (!res.ok) throw new Error(data.error ?? "โหลดคลังไม่สำเร็จ");
 
       setLocations(data.locations);
+      setHiddenCount(
+        typeof data.hiddenCount === "number" ? data.hiddenCount : 0,
+      );
       const nextSelectableCodes = new Set(
         data.locations
           .filter((item) => item.selectable)
@@ -101,6 +106,7 @@ export function ExpressSyncPanel({
       );
     } catch (err) {
       setLocations([]);
+      setHiddenCount(0);
       setSelectedCodes([]);
       setError(err instanceof Error ? err.message : "โหลดคลังไม่สำเร็จ");
     } finally {
@@ -268,10 +274,14 @@ export function ExpressSyncPanel({
               <p className="text-sm font-medium text-foreground">
                 {error
                   ? "ยังไม่มีคลังให้เลือกสำหรับวันนี้"
-                  : "ไม่พบคลังที่คุณมีสิทธิ์สำหรับวันที่นี้"}
+                  : hiddenCount > 0
+                    ? "ไม่มีคลังที่คุณมีสิทธิ์ Sync ในวันนี้"
+                    : "ไม่พบคลังใน Express สำหรับวันที่นี้"}
               </p>
               <p className="text-sm text-muted-foreground">
-                เลือกวันที่มีใบตรวจนับใน Express แล้วกด 「โหลดคลัง」
+                {hiddenCount > 0 && !error
+                  ? `ซ่อน ${hiddenCount} รายการที่ไม่มีสิทธิ์หรือยังไม่ map — ตรวจสิทธิ์ Hub หรือเปลี่ยนวันแล้วโหลดคลังอีกครั้ง`
+                  : "เลือกวันที่มีใบตรวจนับใน Express แล้วกด 「โหลดคลัง」"}
               </p>
               <Button
                 type="button"
@@ -357,13 +367,11 @@ export function ExpressSyncPanel({
           )}
         </div>
 
-        {locations.length > 0 && selectableCodes.length === 0 && !loadingLocations && (
-          <Alert>
-            <AlertDescription>
-              มีคลังใน Express แต่ยังเลือก Sync ไม่ได้ — ตรวจการ map สาขา/Hub
-              หรือว่าเอกสารถูกนับไปแล้ว
-            </AlertDescription>
-          </Alert>
+        {locations.length > 0 && hiddenCount > 0 && !loadingLocations && (
+          <p className="text-sm text-muted-foreground">
+            แสดง {locations.length} คลังที่คุณมีสิทธิ์ (ซ่อน {hiddenCount}{" "}
+            รายการที่ไม่มีสิทธิ์หรือยังไม่ map)
+          </p>
         )}
 
         {locations.length > 0 &&

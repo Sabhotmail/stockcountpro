@@ -23,6 +23,7 @@ async function assertPreviewContract() {
   if ("error" in result) return;
 
   expectType<ExpressSyncPreviewResult>(result);
+  expectType<number>(result.hiddenCount);
 
   const location = result.locations[0];
   expectType<ExpressSyncLocationPreview>(location);
