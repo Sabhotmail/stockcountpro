@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>คิวบันทึกจำนวนนับ — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --sky: #0284c7; --sky-soft: #e0f2fe;
+      --red: #b91c1c; --red-soft: #fef2f2; --green: #15803d; --amber: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-card.active { border-color: #38bdf8; background: #f0f9ff; box-shadow: 0 0 0 2px #bae6fd; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 700; }
+    .badge-save { color: var(--sky); }
+    .badge-ok { color: var(--green); }
+    .badge-fail { color: var(--red); }
+    .line-top { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+    .code { font-weight: 700; }
+    .name { color: var(--muted); font-size: 0.92rem; }
+    .qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+    .qty-field { display: flex; align-items: center; gap: 0.4rem; }
+    .qty-field input {
+      width: 4.2rem; padding: 0.45rem 0.4rem; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 1rem; font-weight: 700; text-align: center;
+    }
+    .qty-field span { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .banner { border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.88rem; margin-bottom: 0.75rem; }
+    .banner-red { background: var(--red-soft); color: #991b1b; }
+    .banner button, .retry {
+      margin-top: 0.55rem; border: 0; border-radius: 8px; padding: 0.4rem 0.75rem;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+    .banner button { background: #dc2626; color: #fff; }
+    .retry { background: #0f172a; color: #fff; display: inline-block; }
+    .toast {
+      margin-top: 0.75rem; background: #0f172a; color: #fff; border-radius: 10px;
+      padding: 0.75rem 1rem; font-size: 0.9rem;
+    }
+    .footer-btn {
+      display: block; text-align: center; background: #0f172a; color: #fff;
+      border-radius: 10px; padding: 0.85rem 1rem; font-weight: 700;
+    }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>คิวบันทึกจำนวนนับเมื่อกรอกลังและชิ้น</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-10-26</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> <code>/tablet/count/[documentId]</code> · Counter / Supervisor</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>กรอกลังแล้วกรอกชิ้นต่อได้ทันที แม้คำขอบันทึกลังยังไม่กลับมา และแม้เน็ตช้า</li>
+        <li>จำนวนล่าสุดบนจอต้องถูกบันทึก ไม่ถูกผลของรอบแรกทับ และไม่ขึ้นบันทึกไม่สำเร็จเพียงเพราะตอบช้า</li>
+        <li>เมื่อเน็ตขาดจริง ผู้ใช้กด <strong>บันทึกอีกครั้ง</strong> ได้โดยไม่ต้องลบจำนวน</li>
+        <li>คนอื่นบันทึกทับรายการเดียวกัน ยังหยุดให้ตรวจ และกด <strong>ใช้ข้อมูลของระบบ</strong> ได้เหมือนเดิม</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่เปลี่ยน dialog ยืนยันจำนวนครั้งแรกทีละช่อง</li>
+        <li>ไม่เปลี่ยนการแปลงชิ้นที่ครบลัง (<code>convertPieceOverflowToCase</code>)</li>
+        <li>ไม่ให้บันทึกของเราทับจำนวนของคนอื่นอัตโนมัติ</li>
+        <li>ไม่เพิ่ม timeout ที่ยกเลิกคำขอที่ยังค้างอยู่</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>ยืนยันจำนวนแล้วหน้ารอ 1 วินาที (<code>AUTO_SAVE_DELAY_MS</code>) แล้วส่ง <code>PATCH</code> หนึ่งรายการ พร้อม <code>baseRevision</code> ที่จับไว้ตอนกดยืนยัน</li>
+        <li>รายการที่ยังไม่เคยบันทึก รอบแรกสร้าง revision 1 รอบสองที่ส่งระหว่างรอบแรกยังค้างจะใช้ revision เก่า เซิร์ฟเวอร์ตอบ 409 หน้าจอขึ้น <strong>บันทึกไม่สำเร็จ</strong></li>
+        <li>เมื่อรอบแรกสำเร็จ หน้าเอาจำนวนทั้งก้อนจากเซิร์ฟเวอร์มาทับ state ทำให้ชิ้นที่กรอกไว้ระหว่างรอหาย</li>
+        <li>คำขอไม่มี abort ตามเวลา เน็ตช้าจึงทำให้หน้าต่างชนกันนานขึ้น ป้าย <strong>กำลังบันทึก...</strong> ค้างจนกว่าจะตอบหรือเน็ตขาด</li>
+        <li>กดสรุปและส่งจะรออย่างมาก 30 วินาที (<code>FLUSH_PENDING_SAVES_MAX_MS</code>) ถ้ายังไม่จบจะไม่พาไปหน้าสรุป และ toast ว่าบันทึกบางรายการไม่สำเร็จ</li>
+        <li>การ์ดที่มีคนอื่นทับมีแถบแดงและปุ่ม <strong>ใช้ข้อมูลของระบบ</strong> ไม่มีปุ่มส่งจำนวนเดิมอีกครั้งเมื่อเน็ตขาด</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>เปิดหน้านับ เลือกสินค้า กรอกจำนวนลัง แล้วยืนยัน</li>
+        <li>กรอกจำนวนชิ้นต่อได้เลย ไม่ต้องรอให้ลังขึ้นบันทึกแล้ว</li>
+        <li>ระหว่างรอเน็ต ป้ายเป็น <strong>กำลังบันทึก...</strong> จำนวนที่กรอกยังอยู่บนจอ</li>
+        <li>เมื่อทุกรอบของรายการนั้นสำเร็จ ป้ายเป็น <strong>บันทึกแล้ว</strong></li>
+        <li>ถ้าขึ้น <strong>บันทึกไม่สำเร็จ</strong> โดยไม่มีแถบแดง ผู้ใช้กด <strong>บันทึกอีกครั้ง</strong> จำนวนบนจอถูกส่งซ้ำ</li>
+        <li>ถ้ามีแถบแดงว่ามีคนบันทึกทับ ผู้ใช้กด <strong>ใช้ข้อมูลของระบบ</strong> หรือกรอกจำนวนที่นับได้ใหม่หลังกดปุ่มนั้น</li>
+        <li>กด <strong>สรุปและส่งให้หัวหน้างาน</strong> ได้เมื่อไม่มีรายการที่ยังกำลังบันทึกหรือบันทึกไม่สำเร็จ</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>กำลังบันทึก — /tablet/count/[documentId]</h3>
+      <p>เข้าถึงได้: Counter, Supervisor ที่เอกสารยังแก้ไขได้</p>
+      <div class="mockup">
+        <div class="mockup-header">เน็ตช้า · ลังส่งไปแล้ว ชิ้นกรอกต่อระหว่างรอ</div>
+        <div class="mockup-card active">
+          <div class="line-top">
+            <div>
+              <div class="code">1010010001</div>
+              <div class="name">เจเล่ไลท์ ส้ม 5 (6x12)</div>
+            </div>
+            <span class="badge badge-save">กำลังบันทึก...</span>
+          </div>
+          <div class="qty-row">
+            <div class="qty-field"><input value="2" readonly /><span>ลัง</span></div>
+            <div class="qty-field"><input value="5" readonly /><span>ชิ้น</span></div>
+          </div>
+        </div>
+        <p class="mockup-note">ยังไม่ขึ้นบันทึกไม่สำเร็จ ผู้ใช้ไม่ต้องลบจำนวน แก้ตัวเลขซ้ำได้ ระบบเก็บแค่ชุดล่าสุด</p>
+      </div>
+
+      <h3>บันทึกไม่สำเร็จ — เน็ตขาด</h3>
+      <p>เข้าถึงได้: Counter, Supervisor ที่เอกสารยังแก้ไขได้</p>
+      <div class="mockup">
+        <div class="mockup-header">คำขอจบด้วย error · จำนวนบนจอยังเป็นของที่ผู้ใช้กรอก</div>
+        <div class="mockup-card">
+          <div class="line-top">
+            <div>
+              <div class="code">1010010001</div>
+              <div class="name">เจเล่ไลท์ ส้ม 5 (6x12)</div>
+            </div>
+            <span class="badge badge-fail">บันทึกไม่สำเร็จ</span>
+          </div>
+          <div class="qty-row">
+            <div class="qty-field"><input value="2" readonly /><span>ลัง</span></div>
+            <div class="qty-field"><input value="5" readonly /><span>ชิ้น</span></div>
+            <button type="button" class="retry">บันทึกอีกครั้ง</button>
+          </div>
+        </div>
+        <p class="mockup-note">กดบันทึกอีกครั้งส่ง 2 ลัง 5 ชิ้น ด้วยเลขแก้ไขล่าสุดที่รู้ และใช้ <code>clientMutationId</code> ใหม่ ไม่ต้องลบช่อง</p>
+      </div>
+
+      <h3>คนอื่นบันทึกทับ — ขัดแย้ง</h3>
+      <p>เข้าถึงได้: Counter, Supervisor ที่เอกสารยังแก้ไขได้</p>
+      <div class="mockup">
+        <div class="mockup-header">409 CONFLICT จากผู้ใช้อื่น · ไม่ส่งจำนวนของเราทับอัตโนมัติ</div>
+        <div class="mockup-card">
+          <div class="banner banner-red">
+            รายการนี้ถูกแก้ไขโดย สมชาย แล้ว
+            <br />
+            <button type="button">ใช้ข้อมูลของระบบ</button>
+          </div>
+          <div class="line-top">
+            <div>
+              <div class="code">1010010001</div>
+              <div class="name">เจเล่ไลท์ ส้ม 5 (6x12)</div>
+            </div>
+            <span class="badge badge-fail">บันทึกไม่สำเร็จ</span>
+          </div>
+          <div class="qty-row">
+            <div class="qty-field"><input value="1" readonly /><span>ลัง</span></div>
+            <div class="qty-field"><input value="0" readonly /><span>ชิ้น</span></div>
+          </div>
+        </div>
+        <p class="mockup-note">ไม่มีปุ่มบันทึกอีกครั้งคู่กับแถบแดง ผู้ใช้เลือกใช้ข้อมูลของระบบ หรือกรอกจำนวนที่นับได้ใหม่หลังกดปุ่มนั้น</p>
+      </div>
+
+      <h3>สรุปและส่ง — ยังบันทึกไม่ครบ</h3>
+      <p>เข้าถึงได้: Counter, Supervisor ที่เอกสารยังแก้ไขได้</p>
+      <div class="mockup">
+        <div class="mockup-header">กดสรุปขณะมีรายการกำลังบันทึกหรือล้มเหลว</div>
+        <div class="footer-btn">สรุปและส่งให้หัวหน้างาน (12/221)</div>
+        <div class="toast">ยังบันทึกไม่เสร็จ กรุณารอแล้วกดสรุปอีกครั้ง</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-header">มีรายการที่บันทึกไม่สำเร็จ</div>
+        <div class="toast">บันทึกบางรายการไม่สำเร็จ กรุณากดบันทึกอีกครั้งก่อนส่งสรุป</div>
+      </div>
+      <p class="mockup-note">รอคำขอที่ค้างและรอบที่ตามมาภายใน 30 วินาที ครบเวลาแล้วยังไม่จบจะไม่พาไปหน้าสรุป และไม่เปลี่ยนป้ายกำลังบันทึกเป็นบันทึกไม่สำเร็จเอง</p>
+    </section>
+
+    <section id="data-api">
+      <h2>Data model / API</h2>
+      <ul>
+        <li>ไม่เพิ่ม field ใน DB และไม่เปลี่ยนสัญญา <code>PATCH .../entries/[lineId]</code></li>
+        <li>แต่ละบรรทัดมีคำขอที่กำลังส่งได้ครั้งละหนึ่งรายการ ถ้ามีคำขอค้างอยู่ การแก้ถัดไปเขียนทับ payload ที่รออยู่เท่านั้น</li>
+        <li><code>baseRevision</code> ถูกใส่ตอนจะส่ง จากเลขแก้ไขล่าสุดที่ได้จากเซิร์ฟเวอร์หรือจากตอนโหลดเอกสาร ไม่ใช้ revision 0 ที่ใส่ไว้ชั่วคราวบนจอ</li>
+        <li>รอบที่ส่งตามหลังรอบแรกใช้ <code>clientMutationId</code> ใหม่ รอบที่ยังไม่ถูกส่งและถูกแทนที่ก่อนยิง ใช้ id เดิมได้</li>
+        <li>เมื่อรอบแรกสำเร็จและยังมี payload รออยู่ ให้นำ revision / ผู้บันทึก / เวลาจากผลตอบกลับมาใส่ในแถวบนจอ แต่คงจำนวนลัง แพ๊ค ชิ้นที่ผู้ใช้กรอกล่าสุด แล้วส่ง payload นั้นทันทีโดยไม่รออีก 1 วินาที</li>
+        <li>แถวยังถือว่ายังไม่พร้อมถูก poll ทับ ตราบใดที่กำลังส่งหรือมี payload รออยู่</li>
+        <li>แยกตัวตัดสินใจนี้เป็นฟังก์ชันบริสุทธิ์ที่ทดสอบได้: รับผลเซิร์ฟเวอร์ จำนวนบนจอ และ payload ที่รออยู่ แล้วคืนจำนวนที่จะโชว์ คำขอถัดไป หรือสถานะขัดแย้ง</li>
+      </ul>
+    </section>
+
+    <section id="errors-tests">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead>
+          <tr><th>กรณี</th><th>ผลที่คาด</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ยืนยันลัง แล้วยืนยันชิ้นก่อนรอบแรกกลับ</td><td>ชิ้นไม่หาย ส่งรอบสองด้วย revision จากรอบแรก สุดท้ายขึ้นบันทึกแล้ว</td></tr>
+          <tr><td>เน็ตช้า แต่คำขอยังไม่ error</td><td>ป้ายค้างที่กำลังบันทึก... จำนวนบนจอไม่เปลี่ยนเป็นค่าเก่า</td></tr>
+          <tr><td>แก้ตัวเลขซ้ำขณะคำขอค้าง</td><td>มีคำขอตามหลังเพียงหนึ่งรอบ เป็นจำนวนชุดล่าสุด</td></tr>
+          <tr><td>เน็ตขาด</td><td>ขึ้นบันทึกไม่สำเร็จ จำนวนบนจอคงอยู่ มีปุ่มบันทึกอีกครั้ง</td></tr>
+          <tr><td>กดบันทึกอีกครั้ง</td><td>ส่งจำนวนบนจอด้วยเลขแก้ไขล่าสุดและ mutation id ใหม่</td></tr>
+          <tr><td>409 จากผู้ใช้อื่น</td><td>แถบแดงและปุ่มใช้ข้อมูลของระบบ ไม่มีปุ่มบันทึกอีกครั้ง และไม่ส่งทับเอง</td></tr>
+          <tr><td>กดสรุปขณะยังกำลังบันทึก</td><td>รอไม่เกิน 30 วินาที แล้วยังไม่จบจะไม่ไปหน้าสรุป toast ยังบันทึกไม่เสร็จ</td></tr>
+          <tr><td>กดสรุปเมื่อมีรายการล้มเหลว</td><td>ไม่ไปหน้าสรุป toast ให้กดบันทึกอีกครั้ง</td></tr>
+          <tr><td>ชิ้นครบหนึ่งลัง</td><td>ยังแปลงเป็นลังเหมือนเดิม ทั้งบนจอและตอนเซิร์ฟเวอร์บันทึก</td></tr>
+          <tr><td>ล็อกโดยคนอื่น</td><td>ยังขึ้นว่าถูกจอง และบันทึกไม่สำเร็จเหมือนเดิม</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>StockCount Pro · count save queue design · 2026-10-26</footer>
+  </div>
+</body>
+</html>
