@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { newClientMutationId } from "@/lib/client-id";
+import { summaryFlushToast } from "@/lib/count-save-flush";
 import {
   payloadForSend,
   replacePendingSave,
@@ -1339,9 +1340,11 @@ export default function TabletCountPage() {
               event.preventDefault();
               const ok = await flushPendingSaves();
               if (!ok) {
-                pushToast(
-                  "บันทึกบางรายการไม่สำเร็จ กรุณาตรวจสอบก่อนส่งสรุป",
-                );
+                const toast = summaryFlushToast({
+                  lineStatuses: Object.values(syncStatusByLineRef.current),
+                  noteFailed: noteSyncStatusRef.current === "failed",
+                });
+                pushToast(toast ?? "ยังบันทึกไม่เสร็จ กรุณารอแล้วกดสรุปอีกครั้ง");
                 return;
               }
               const versionIdForReceipt = document?.currentVersionId;
