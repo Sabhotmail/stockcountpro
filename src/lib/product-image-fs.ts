@@ -1,13 +1,20 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import nodePath from "node:path";
 import { PRODUCT_IMAGE_EXTENSIONS } from "@/lib/product-image";
 
 function normalizeProductCode(productCode: string): string {
   return productCode.trim();
 }
 
+// Computed access: a direct path.join(cwd, "public", "products") makes Turbopack
+// trace every file under public/products into the server build.
+function joinDiskPath(...segments: string[]): string {
+  const join = nodePath["join"] as (...parts: string[]) => string;
+  return join(...segments);
+}
+
 export function getProductImageDirOnDisk(cwd: string = process.cwd()): string {
-  return join(cwd, "public", "products");
+  return joinDiskPath(cwd, "public", "products");
 }
 
 /** Product codes that have at least one image file under public/products. */
@@ -45,6 +52,6 @@ export function productImageExistsOnDisk(
 
   const dir = options?.productsDir ?? getProductImageDirOnDisk();
   return PRODUCT_IMAGE_EXTENSIONS.some((ext) =>
-    existsSync(join(dir, `${code}${ext}`)),
+    existsSync(joinDiskPath(dir, `${code}${ext}`)),
   );
 }
