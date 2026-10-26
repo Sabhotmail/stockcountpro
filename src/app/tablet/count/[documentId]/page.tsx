@@ -690,12 +690,15 @@ export default function TabletCountPage() {
     ): Promise<"saved" | "conflict" | "failed"> => {
       if (!versionId) return "failed";
 
-      const gotLock = await ensureLock(lineId);
-      if (!gotLock) return "failed";
-
-      const stamped = payloadForSend(payload, serverRevisionRef.current[lineId]);
-
       try {
+        const gotLock = await ensureLock(lineId);
+        if (!gotLock) return "failed";
+
+        const stamped = payloadForSend(
+          payload,
+          serverRevisionRef.current[lineId],
+        );
+
         const res = await fetch(
           `/api/count-documents/${documentId}/versions/${versionId}/entries/${lineId}`,
           {
@@ -801,6 +804,8 @@ export default function TabletCountPage() {
             break;
           }
         }
+      } catch {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
       } finally {
         savingLinesRef.current.delete(lineId);
       }
