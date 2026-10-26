@@ -17,6 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { newClientMutationId } from "@/lib/client-id";
+import { summaryFlushToast } from "@/lib/count-save-flush";
+import {
+  payloadForSend,
+  replacePendingSave,
+  resolveSuccessfulLineSave,
+} from "@/lib/count-save-queue";
 import {
   filterCountableLines,
   type CountStatusFilter,
@@ -107,6 +113,7 @@ function CountLineRow({
   isEditable,
   conflictMessage,
   onAcceptServer,
+  onRetry,
   onEditStart,
   onEditEnd,
   onQtyChange,
@@ -120,6 +127,7 @@ function CountLineRow({
   isEditable: boolean;
   conflictMessage: string | null;
   onAcceptServer: () => void;
+  onRetry: () => void;
   onEditStart: () => void;
   onEditEnd: () => void;
   onQtyChange: (field: "qtyCase" | "qtyPack" | "qtyPiece", value: number | null) => void;
@@ -142,6 +150,7 @@ function CountLineRow({
       lockHeldByOther={lockHeldByOther}
       conflictMessage={conflictMessage}
       onAcceptServer={onAcceptServer}
+      onRetry={onRetry}
       onEditStart={onEditStart}
       onEditEnd={onEditEnd}
       onQtyChange={onQtyChange}
@@ -192,6 +201,8 @@ export default function TabletCountPage() {
   const dirtyLinesRef = useRef(new Set<string>());
   const notifiedRevisionsRef = useRef(new Set<string>());
   const entriesRef = useRef<Record<string, CountEntry>>({});
+  /** Last revision the server confirmed per line (undefined = never saved). */
+  const serverRevisionRef = useRef<Record<string, number>>({});
   const syncStatusByLineRef = useRef<Record<string, SyncStatus>>({});
   const scrollYRef = useRef(0);
   const releaseTimersRef = useRef<
@@ -210,6 +221,10 @@ export default function TabletCountPage() {
     if (!timer) return;
     clearTimeout(timer);
     delete releaseTimersRef.current[lineId];
+  }, []);
+
+  const rememberServerRevision = useCallback((entry: CountEntry) => {
+    serverRevisionRef.current[entry.lineId] = entry.revision;
   }, []);
 
   const pushToast = useCallback((message: string) => {
@@ -364,6 +379,9 @@ export default function TabletCountPage() {
         for (const entry of doc.entries) {
           entryMap[entry.lineId] = entry;
         }
+        for (const entry of doc.entries) {
+          serverRevisionRef.current[entry.lineId] = entry.revision;
+        }
 
         if (cancelled) return;
         setDocument(doc);
@@ -446,6 +464,7 @@ export default function TabletCountPage() {
 
           if (!local) {
             next[lineId] = server;
+            rememberServerRevision(server);
             continue;
           }
 
@@ -477,6 +496,7 @@ export default function TabletCountPage() {
             server.updatedBy !== currentUserId
           ) {
             next[lineId] = server;
+            rememberServerRevision(server);
             markOverwriteNotified(
               lineId,
               server.revision,
@@ -501,6 +521,7 @@ export default function TabletCountPage() {
     markOverwriteNotified,
     parseLocks,
     productCodeByLineId,
+    rememberServerRevision,
   ]);
 
   useEffect(() => {
@@ -666,21 +687,21 @@ export default function TabletCountPage() {
   );
   const visibleWorkers = lockEnforced ? activeWorkers : [];
 
-  const saveEntry = useCallback(
-    async (lineId: string, payload: SaveEntryPayload) => {
-      if (!versionId) {
-        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
-        return;
-      }
+  const sendEntryOnce = useCallback(
+    async (
+      lineId: string,
+      payload: SaveEntryPayload,
+    ): Promise<"saved" | "conflict" | "failed"> => {
+      if (!versionId) return "failed";
 
-      savingLinesRef.current.add(lineId);
-      setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
       try {
         const gotLock = await ensureLock(lineId);
-        if (!gotLock) {
-          setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
-          return;
-        }
+        if (!gotLock) return "failed";
+
+        const stamped = payloadForSend(
+          payload,
+          serverRevisionRef.current[lineId],
+        );
 
         const res = await fetch(
           `/api/count-documents/${documentId}/versions/${versionId}/entries/${lineId}`,
@@ -688,23 +709,21 @@ export default function TabletCountPage() {
             method: "PATCH",
             credentials: "same-origin",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(stamped),
           },
         );
 
         if (res.status === 409) {
           const data = (await res.json()) as SaveEntryErrorResponse;
+          delete pendingSavesRef.current[lineId];
 
           if (data.error === "CONFLICT" && data.entry) {
-            setEntries((prev) => ({ ...prev, [lineId]: data.entry as CountEntry }));
-            setServerEntryByLine((prev) => ({
-              ...prev,
-              [lineId]: data.entry as CountEntry,
-            }));
-            setConflictByLine((prev) => ({
-              ...prev,
-              [lineId]: data.message,
-            }));
+            const serverEntry = data.entry as CountEntry;
+            rememberServerRevision(serverEntry);
+            entriesRef.current[lineId] = serverEntry;
+            setEntries((prev) => ({ ...prev, [lineId]: serverEntry }));
+            setServerEntryByLine((prev) => ({ ...prev, [lineId]: serverEntry }));
+            setConflictByLine((prev) => ({ ...prev, [lineId]: data.message }));
             pushToast(
               `${productCodeByLineId.get(lineId) ?? lineId} ${data.message}`,
             );
@@ -714,36 +733,46 @@ export default function TabletCountPage() {
           }
 
           setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
-          return;
+          return "conflict";
         }
 
-        if (!res.ok) {
-          throw new Error("Save failed");
-        }
+        if (!res.ok) return "failed";
 
-        const data = await res.json();
-        setEntries((prev) => ({
-          ...prev,
-          [lineId]: data.entry,
-        }));
-        dirtyLinesRef.current.delete(lineId);
-        setConflictByLine((prev) => {
-          if (!prev[lineId]) return prev;
-          const next = { ...prev };
-          delete next[lineId];
-          return next;
+        const data = (await res.json()) as { entry: CountEntry };
+        const serverEntry = data.entry;
+        rememberServerRevision(serverEntry);
+        const pending = pendingSavesRef.current[lineId] ?? null;
+        const decision = resolveSuccessfulLineSave({
+          serverEntry,
+          localEntry: entriesRef.current[lineId] ?? serverEntry,
+          pending,
+          nextClientMutationId: newClientMutationId(),
         });
-        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saved" }));
 
-        // If focus already left this line, free the lock immediately so another
-        // counter (e.g. staff after supervisor) can edit without waiting for TTL.
-        if (activeEditLineIdRef.current !== lineId) {
-          void releaseLock(lineId);
+        if (decision.nextPayload) {
+          pendingSavesRef.current[lineId] = decision.nextPayload;
+        } else {
+          delete pendingSavesRef.current[lineId];
+          dirtyLinesRef.current.delete(lineId);
+          setConflictByLine((prev) => {
+            if (!prev[lineId]) return prev;
+            const next = { ...prev };
+            delete next[lineId];
+            return next;
+          });
+          // If focus already left this line, free the lock immediately so another
+          // counter (e.g. staff after supervisor) can edit without waiting for TTL.
+          if (activeEditLineIdRef.current !== lineId) {
+            void releaseLock(lineId);
+          }
         }
+
+        entriesRef.current[lineId] = decision.entry;
+        setEntries((prev) => ({ ...prev, [lineId]: decision.entry }));
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: decision.status }));
+        return "saved";
       } catch {
-        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
-      } finally {
-        savingLinesRef.current.delete(lineId);
+        return "failed";
       }
     },
     [
@@ -752,8 +781,63 @@ export default function TabletCountPage() {
       productCodeByLineId,
       pushToast,
       releaseLock,
+      rememberServerRevision,
       versionId,
     ],
+  );
+
+  const runSaveQueue = useCallback(
+    async (lineId: string) => {
+      if (savingLinesRef.current.has(lineId)) return;
+      if (!versionId) {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+        return;
+      }
+
+      savingLinesRef.current.add(lineId);
+      setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
+      try {
+        while (pendingSavesRef.current[lineId]) {
+          const pending = pendingSavesRef.current[lineId];
+          delete pendingSavesRef.current[lineId];
+          const outcome = await sendEntryOnce(lineId, pending);
+          if (outcome !== "saved") {
+            if (outcome === "failed") {
+              setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+            }
+            break;
+          }
+        }
+      } catch {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "failed" }));
+      } finally {
+        savingLinesRef.current.delete(lineId);
+      }
+    },
+    [sendEntryOnce, versionId],
+  );
+
+  const retryFailedLine = useCallback(
+    (line: ProductLine) => {
+      if (!isEditable) return;
+      if (conflictByLine[line.lineId]) return;
+      const entry = entriesRef.current[line.lineId];
+      if (!entry) return;
+
+      dirtyLinesRef.current.add(line.lineId);
+      pendingSavesRef.current[line.lineId] = {
+        qtyCase: entry.qtyCase,
+        qtyPack: entry.qtyPack,
+        qtyPiece: entry.qtyPiece,
+        clientMutationId: newClientMutationId(),
+      };
+      if (saveTimersRef.current[line.lineId]) {
+        clearTimeout(saveTimersRef.current[line.lineId]);
+        delete saveTimersRef.current[line.lineId];
+      }
+      void runSaveQueue(line.lineId);
+    },
+    [conflictByLine, isEditable, runSaveQueue],
   );
 
   const saveDocumentNote = useCallback(
@@ -785,30 +869,32 @@ export default function TabletCountPage() {
 
   const scheduleSave = useCallback(
     (lineId: string, payload: SaveEntryPayload) => {
-      const existingPending = pendingSavesRef.current[lineId];
-      if (existingPending?.clientMutationId) {
-        payload.clientMutationId = existingPending.clientMutationId;
+      const inFlight = savingLinesRef.current.has(lineId);
+      pendingSavesRef.current[lineId] = replacePendingSave(
+        pendingSavesRef.current[lineId],
+        payload,
+        inFlight,
+      );
+
+      if (inFlight) {
+        setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "saving" }));
+        return;
       }
 
-      pendingSavesRef.current[lineId] = payload;
       setSyncStatusByLine((prev) => ({ ...prev, [lineId]: "waiting" }));
-
       if (saveTimersRef.current[lineId]) {
         clearTimeout(saveTimersRef.current[lineId]);
       }
-
       saveTimersRef.current[lineId] = setTimeout(() => {
-        const pending = pendingSavesRef.current[lineId];
-        if (pending) {
-          void saveEntry(lineId, pending);
-          delete pendingSavesRef.current[lineId];
-        }
+        delete saveTimersRef.current[lineId];
+        void runSaveQueue(lineId);
       }, AUTO_SAVE_DELAY_MS);
     },
-    [saveEntry],
+    [runSaveQueue],
   );
 
   const flushPendingSaves = useCallback(async (): Promise<boolean> => {
+    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     const lineIdsToFlush = new Set([
       ...Object.keys(saveTimersRef.current),
       ...Object.keys(pendingSavesRef.current),
@@ -822,10 +908,12 @@ export default function TabletCountPage() {
         delete saveTimersRef.current[lineId];
       }
 
-      const pending = pendingSavesRef.current[lineId];
-      if (pending) {
-        delete pendingSavesRef.current[lineId];
-        savePromises.push(saveEntry(lineId, pending));
+      // A line already in flight picks up its pending payload in its own loop.
+      if (
+        pendingSavesRef.current[lineId] &&
+        !savingLinesRef.current.has(lineId)
+      ) {
+        savePromises.push(runSaveQueue(lineId));
       }
     }
 
@@ -840,9 +928,19 @@ export default function TabletCountPage() {
       savePromises.push(saveDocumentNote(documentNoteRef.current));
     }
 
-    await Promise.all(savePromises);
+    // Bound the whole flush (including in-flight saves) from the start of the wait.
+    let raceTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all(savePromises).then(() => undefined),
+        new Promise<void>((resolve) => {
+          raceTimer = setTimeout(resolve, Math.max(0, deadline - Date.now()));
+        }),
+      ]);
+    } finally {
+      if (raceTimer) clearTimeout(raceTimer);
+    }
 
-    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     while (true) {
       const statuses = syncStatusByLineRef.current;
       const noteStatus = noteSyncStatusRef.current;
@@ -854,8 +952,11 @@ export default function TabletCountPage() {
         noteStatus === "saving" ||
         noteStatus === "waiting";
       if (!stillActive) break;
-      if (Date.now() >= deadline) return false;
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return false;
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(50, remaining)),
+      );
     }
 
     const finalStatuses = syncStatusByLineRef.current;
@@ -864,7 +965,7 @@ export default function TabletCountPage() {
     );
     const noteOk = noteSyncStatusRef.current !== "failed";
     return linesOk && noteOk;
-  }, [saveDocumentNote, saveEntry]);
+  }, [runSaveQueue, saveDocumentNote]);
 
   function buildPayload(
     line: ProductLine,
@@ -908,20 +1009,19 @@ export default function TabletCountPage() {
     const existing = entriesRef.current[line.lineId];
     const payload = buildPayload(line, field, value);
 
-    setEntries((prev) => ({
-      ...prev,
-      [line.lineId]: {
-        lineId: line.lineId,
-        qtyCase: payload.qtyCase as number | null,
-        qtyPack: payload.qtyPack as number | null,
-        qtyPiece: payload.qtyPiece as number | null,
-        totalBaseQty: existing?.totalBaseQty ?? null,
-        note: null,
-        revision: existing?.revision ?? 0,
-        updatedAt: toIsoInstant(),
-        updatedBy: existing?.updatedBy ?? "",
-      },
-    }));
+    const optimisticEntry: CountEntry = {
+      lineId: line.lineId,
+      qtyCase: payload.qtyCase as number | null,
+      qtyPack: payload.qtyPack as number | null,
+      qtyPiece: payload.qtyPiece as number | null,
+      totalBaseQty: existing?.totalBaseQty ?? null,
+      note: null,
+      revision: existing?.revision ?? 0,
+      updatedAt: toIsoInstant(),
+      updatedBy: existing?.updatedBy ?? "",
+    };
+    entriesRef.current[line.lineId] = optimisticEntry;
+    setEntries((prev) => ({ ...prev, [line.lineId]: optimisticEntry }));
     setConflictByLine((prev) => {
       if (!prev[line.lineId]) return prev;
       const next = { ...prev };
@@ -1211,6 +1311,7 @@ export default function TabletCountPage() {
               isEditable={isEditable}
               conflictMessage={conflictByLine[line.lineId] ?? null}
               onAcceptServer={() => acceptServerEntry(line.lineId)}
+              onRetry={() => retryFailedLine(line)}
               onEditStart={() => {
                 activeEditLineIdRef.current = line.lineId;
                 setActiveEditLineId(line.lineId);
@@ -1253,9 +1354,11 @@ export default function TabletCountPage() {
               event.preventDefault();
               const ok = await flushPendingSaves();
               if (!ok) {
-                pushToast(
-                  "บันทึกบางรายการไม่สำเร็จ กรุณาตรวจสอบก่อนส่งสรุป",
-                );
+                const toast = summaryFlushToast({
+                  lineStatuses: Object.values(syncStatusByLineRef.current),
+                  noteFailed: noteSyncStatusRef.current === "failed",
+                });
+                pushToast(toast ?? "ยังบันทึกไม่เสร็จ กรุณารอแล้วกดสรุปอีกครั้ง");
                 return;
               }
               const versionIdForReceipt = document?.currentVersionId;
