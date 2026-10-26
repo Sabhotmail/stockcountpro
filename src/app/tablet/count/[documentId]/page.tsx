@@ -112,6 +112,7 @@ function CountLineRow({
   isEditable,
   conflictMessage,
   onAcceptServer,
+  onRetry,
   onEditStart,
   onEditEnd,
   onQtyChange,
@@ -125,6 +126,7 @@ function CountLineRow({
   isEditable: boolean;
   conflictMessage: string | null;
   onAcceptServer: () => void;
+  onRetry: () => void;
   onEditStart: () => void;
   onEditEnd: () => void;
   onQtyChange: (field: "qtyCase" | "qtyPack" | "qtyPiece", value: number | null) => void;
@@ -147,6 +149,7 @@ function CountLineRow({
       lockHeldByOther={lockHeldByOther}
       conflictMessage={conflictMessage}
       onAcceptServer={onAcceptServer}
+      onRetry={onRetry}
       onEditStart={onEditStart}
       onEditEnd={onEditEnd}
       onQtyChange={onQtyChange}
@@ -813,6 +816,29 @@ export default function TabletCountPage() {
     [sendEntryOnce, versionId],
   );
 
+  const retryFailedLine = useCallback(
+    (line: ProductLine) => {
+      if (!isEditable) return;
+      if (conflictByLine[line.lineId]) return;
+      const entry = entriesRef.current[line.lineId];
+      if (!entry) return;
+
+      dirtyLinesRef.current.add(line.lineId);
+      pendingSavesRef.current[line.lineId] = {
+        qtyCase: entry.qtyCase,
+        qtyPack: entry.qtyPack,
+        qtyPiece: entry.qtyPiece,
+        clientMutationId: newClientMutationId(),
+      };
+      if (saveTimersRef.current[line.lineId]) {
+        clearTimeout(saveTimersRef.current[line.lineId]);
+        delete saveTimersRef.current[line.lineId];
+      }
+      void runSaveQueue(line.lineId);
+    },
+    [conflictByLine, isEditable, runSaveQueue],
+  );
+
   const saveDocumentNote = useCallback(
     async (note: string) => {
       setNoteSyncStatus("saving");
@@ -1270,6 +1296,7 @@ export default function TabletCountPage() {
               isEditable={isEditable}
               conflictMessage={conflictByLine[line.lineId] ?? null}
               onAcceptServer={() => acceptServerEntry(line.lineId)}
+              onRetry={() => retryFailedLine(line)}
               onEditStart={() => {
                 activeEditLineIdRef.current = line.lineId;
                 setActiveEditLineId(line.lineId);

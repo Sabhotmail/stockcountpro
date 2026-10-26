@@ -20,6 +20,7 @@ interface ProductCardProps {
   lockHeldByOther?: string | null;
   conflictMessage?: string | null;
   onAcceptServer?: () => void;
+  onRetry?: () => void;
   onQtyChange: (
     field: "qtyCase" | "qtyPack" | "qtyPiece",
     value: number | null,
@@ -67,6 +68,7 @@ export function ProductCard({
   lockHeldByOther,
   conflictMessage,
   onAcceptServer,
+  onRetry,
   onQtyChange,
   onEditStart,
   onEditEnd,
@@ -274,6 +276,11 @@ export function ProductCard({
                     onBlur={handleQtyBlur}
                   >
                     <Calculator />
+                  </Button>
+                )}
+                {syncStatus === "failed" && !conflictMessage && !disabled && onRetry && (
+                  <Button type="button" size="sm" className="min-h-10" onClick={onRetry}>
+                    บันทึกอีกครั้ง
                   </Button>
                 )}
               </>
