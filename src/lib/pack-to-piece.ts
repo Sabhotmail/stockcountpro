@@ -17,7 +17,8 @@ export function calculatePackToPiece(
 
 /**
  * Parse pieces-per-pack from a product name packing hint like "(6x12)".
- * Uses the last `(packs x pieces)` group; returns the second number (pieces).
+ * The hint is `(pieces x packs)`: first number is pieces per pack, second is packs per case.
+ * Uses the last group and returns the first number.
  */
 export function parsePiecesPerPackFromProductName(
   productName: string,
@@ -30,8 +31,8 @@ export function parsePiecesPerPackFromProductName(
   }
   if (!last) return null;
 
-  const packsPerCase = Number.parseInt(last[1]!, 10);
-  const piecesPerPack = Number.parseInt(last[2]!, 10);
+  const piecesPerPack = Number.parseInt(last[1]!, 10);
+  const packsPerCase = Number.parseInt(last[2]!, 10);
   if (
     !Number.isInteger(packsPerCase) ||
     !Number.isInteger(piecesPerPack) ||

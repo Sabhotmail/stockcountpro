@@ -17,28 +17,33 @@ assert.equal(calculatePackToPiece(5, NaN), null, "NaN piecesPerPack invalid");
 
 assert.equal(
   parsePiecesPerPackFromProductName("เจเล่ไลท์ ส้ม 5 (6x12)"),
+  6,
+  "parses (6x12) as 6 pieces × 12 packs",
+);
+assert.equal(
+  parsePiecesPerPackFromProductName("เบนโตะปลาอบ ตำรับไทย 20 (12x3)"),
   12,
-  "parses (6x12) pieces-per-pack",
+  "first number is pieces, not packs",
 );
 assert.equal(
   parsePiecesPerPackFromProductName("สินค้า (6X12)"),
-  12,
+  6,
   "parses uppercase X",
 );
 assert.equal(
   parsePiecesPerPackFromProductName("สินค้า (6×12)"),
-  12,
+  6,
   "parses multiply sign",
 );
 assert.equal(
   parsePiecesPerPackFromProductName("สินค้า (6 x 12)"),
-  12,
+  6,
   "parses spaced x",
 );
 assert.equal(
   parsePiecesPerPackFromProductName("A (2x6) B (3x24)"),
-  24,
-  "uses last packing hint",
+  3,
+  "uses pieces from the last packing hint",
 );
 assert.equal(
   parsePiecesPerPackFromProductName("ไม่มีแพ็กกิ้ง"),
