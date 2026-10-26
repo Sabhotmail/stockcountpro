@@ -278,12 +278,12 @@ export function ProductCard({
                     <Calculator />
                   </Button>
                 )}
-                {syncStatus === "failed" && !conflictMessage && !disabled && onRetry && (
-                  <Button type="button" size="sm" className="min-h-10" onClick={onRetry}>
-                    บันทึกอีกครั้ง
-                  </Button>
-                )}
               </>
+            )}
+            {syncStatus === "failed" && !conflictMessage && !disabled && onRetry && (
+              <Button type="button" size="sm" className="min-h-10" onClick={onRetry}>
+                บันทึกอีกครั้ง
+              </Button>
             )}
           </div>
 

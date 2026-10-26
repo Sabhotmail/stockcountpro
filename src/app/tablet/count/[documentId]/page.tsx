@@ -894,6 +894,7 @@ export default function TabletCountPage() {
   );
 
   const flushPendingSaves = useCallback(async (): Promise<boolean> => {
+    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     const lineIdsToFlush = new Set([
       ...Object.keys(saveTimersRef.current),
       ...Object.keys(pendingSavesRef.current),
@@ -927,9 +928,19 @@ export default function TabletCountPage() {
       savePromises.push(saveDocumentNote(documentNoteRef.current));
     }
 
-    await Promise.all(savePromises);
+    // Bound the whole flush (including in-flight saves) from the start of the wait.
+    let raceTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all(savePromises).then(() => undefined),
+        new Promise<void>((resolve) => {
+          raceTimer = setTimeout(resolve, Math.max(0, deadline - Date.now()));
+        }),
+      ]);
+    } finally {
+      if (raceTimer) clearTimeout(raceTimer);
+    }
 
-    const deadline = Date.now() + FLUSH_PENDING_SAVES_MAX_MS;
     while (true) {
       const statuses = syncStatusByLineRef.current;
       const noteStatus = noteSyncStatusRef.current;
@@ -941,8 +952,11 @@ export default function TabletCountPage() {
         noteStatus === "saving" ||
         noteStatus === "waiting";
       if (!stillActive) break;
-      if (Date.now() >= deadline) return false;
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return false;
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(50, remaining)),
+      );
     }
 
     const finalStatuses = syncStatusByLineRef.current;
