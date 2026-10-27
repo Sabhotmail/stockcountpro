@@ -74,12 +74,16 @@ export function QtyInput({
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
     setFocused(true);
     setDraft(formatQtyValue(value));
     onFocus?.();
     // Defer so mobile browsers keep the selection after the focus caret moves.
+    // Capture the element first — currentTarget is cleared after this handler returns.
     requestAnimationFrame(() => {
-      event.currentTarget.select();
+      if (document.activeElement === input) {
+        input.select();
+      }
     });
   };
 
