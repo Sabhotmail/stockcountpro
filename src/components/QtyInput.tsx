@@ -73,10 +73,14 @@ export function QtyInput({
     onBlur?.(event);
   };
 
-  const handleFocus = () => {
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     setFocused(true);
     setDraft(formatQtyValue(value));
     onFocus?.();
+    // Defer so mobile browsers keep the selection after the focus caret moves.
+    requestAnimationFrame(() => {
+      event.currentTarget.select();
+    });
   };
 
   const handleChange = (raw: string) => {

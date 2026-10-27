@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เลือกทั้งช่องจำนวนตอนโฟกัส — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --sky: #0284c7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 880px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.65rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.3rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.25rem 0 0.75rem; font-size: 1.05rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 0; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+    .qty-field { display: flex; align-items: center; gap: 0.35rem; }
+    .qty-field input {
+      width: 4.2rem; padding: 0.45rem 0.35rem; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 1rem; font-weight: 700; text-align: center;
+    }
+    .qty-field input.selected {
+      border-color: var(--sky);
+      box-shadow: 0 0 0 2px #bae6fd;
+      background: #dbeafe;
+      color: #0c4a6e;
+    }
+    .qty-field span { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .code { font-weight: 700; }
+    .name { color: var(--muted); font-size: 0.92rem; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>เลือกทั้งช่องจำนวนตอนโฟกัส</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-10-27</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> <code>QtyInput</code> บน <code>/tablet/count/[documentId]</code> · Counter / Supervisor</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>แตะช่องจำนวนแล้วพิมพ์เลขใหม่ได้ทันที โดยไม่ต้องลบ <code>0</code> หรือตัวเลขเดิมก่อน</li>
+        <li>ถ้าแตะแล้วออกโดยไม่พิมพ์ ค่าเดิมยังอยู่ ไม่ยิงบันทึกใหม่</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ซ่อนเลข <code>0</code> บนจอเมื่อยังไม่ได้โฟกัส</li>
+        <li>ไม่เปลี่ยนความหมายของ <code>0</code> / <code>-1</code> / ช่องว่าง</li>
+        <li>ไม่แตะเครื่องคิดเลขแพ๊ค→ชิ้น คิวบันทึก หรือ API</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li><code>QtyInput</code> แสดงค่าจริงในช่อง รวมถึง <code>0</code></li>
+        <li>ตอนโฟกัสเคอร์เซอร์อยู่ท้ายข้อความ พิมพ์ต่อท้ายหรือต้องลบก่อน</li>
+        <li>ยังไม่นับเป็นช่องว่างพร้อม placeholder <code>—</code></li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>ผู้ใช้นับเห็นช่องลังเป็น <code>0</code> (หรือจำนวนอื่น)</li>
+        <li>แตะช่อง → ข้อความทั้งช่องถูกเลือก</li>
+        <li>พิมพ์จำนวนใหม่ เช่น <code>5</code> → แทนค่าเดิมทันที</li>
+        <li>ออกจากช่อง → commit ตามเดิม (debounce / คิวบันทึกไม่เปลี่ยน)</li>
+        <li>ถ้าแตะแล้วออกโดยไม่พิมพ์ → ค่าเดิมยังอยู่ ไม่เรียก <code>onChange</code></li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>หน้านับสินค้า — /tablet/count/[documentId] · Counter / Supervisor</h3>
+
+      <div class="mockup">
+        <div class="mockup-header">ก่อนแตะ · ค่า 0 ยังโชว์ตามปกติ</div>
+        <div class="mockup-card">
+          <div class="code">1010030013</div>
+          <div class="name">นมสด UHT (6x12)</div>
+          <div class="qty-row">
+            <label class="qty-field"><input value="0" readonly /><span>ลัง</span></label>
+            <label class="qty-field"><input value="" placeholder="—" readonly /><span>ชิ้น</span></label>
+          </div>
+        </div>
+        <p class="mockup-note">ช่องที่ยังไม่นับยังว่าง ไม่เปลี่ยน</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-header">ตอนแตะช่องลัง · เลือกทั้งช่อง</div>
+        <div class="mockup-card">
+          <div class="code">1010030013</div>
+          <div class="name">นมสด UHT (6x12)</div>
+          <div class="qty-row">
+            <label class="qty-field"><input class="selected" value="0" readonly /><span>ลัง</span></label>
+            <label class="qty-field"><input value="" placeholder="—" readonly /><span>ชิ้น</span></label>
+          </div>
+        </div>
+        <p class="mockup-note">พื้นหลังฟ้าจำลองข้อความที่ถูกเลือก พิมพ์เลขใหม่แทนทันที</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-header">พิมพ์ 5 แล้ว · ค่าเป็น 5</div>
+        <div class="mockup-card">
+          <div class="code">1010030013</div>
+          <div class="name">นมสด UHT (6x12)</div>
+          <div class="qty-row">
+            <label class="qty-field"><input value="5" readonly /><span>ลัง</span></label>
+            <label class="qty-field"><input value="" placeholder="—" readonly /><span>ชิ้น</span></label>
+          </div>
+        </div>
+        <p class="mockup-note">พฤติกรรม commit / ยืนยันนับครั้งแรก / คิวเซฟเหมือนเดิม</p>
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>Data model / API</h2>
+      <p>ไม่มี — เปลี่ยนเฉพาะ UI โฟกัสใน <code>QtyInput</code> (<code>HTMLInputElement.select()</code> หลังโฟกัส ผ่าน <code>requestAnimationFrame</code> เพื่อให้มือถือยังไฮไลต์ได้)</p>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead>
+          <tr><th>กรณี</th><th>ผลที่ต้องการ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>โฟกัสช่องที่เป็น <code>0</code> แล้วพิมพ์ <code>5</code></td><td>ได้ <code>5</code> ไม่ใช่ <code>05</code></td></tr>
+          <tr><td>โฟกัส <code>12</code> แล้วพิมพ์ <code>3</code></td><td>ได้ <code>3</code></td></tr>
+          <tr><td>โฟกัส <code>-1</code> แล้วพิมพ์ <code>2</code></td><td>ได้ <code>2</code></td></tr>
+          <tr><td>โฟกัสแล้ว blur โดยไม่พิมพ์</td><td>ค่าเดิม คงเดิม ไม่ยิง <code>onChange</code></td></tr>
+          <tr><td>ช่องว่าง / placeholder <code>—</code></td><td>ยังว่าง พิมพ์ได้ตามเดิม</td></tr>
+          <tr><td>ล็อกโดยคนอื่น / disabled</td><td>โฟกัสไม่ได้ตามเดิม</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>StockCount Pro · qty input select-on-focus · 2026-10-27</footer>
+  </div>
+</body>
+</html>
