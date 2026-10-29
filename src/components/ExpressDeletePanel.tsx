@@ -408,7 +408,7 @@ export function ExpressDeletePanel({
                 onClick={() => void handleDelete()}
                 disabled={!canDelete}
               >
-                {deleting ? "กำลังลบ..." : "ลบเอกสารและ Express"}
+                {deleting ? "กำลังลบ..." : "ลบเอกสาร"}
               </Button>
             </div>
           ) : null}
