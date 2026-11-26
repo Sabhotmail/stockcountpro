@@ -10,6 +10,7 @@ import {
   assertLoginAllowed,
   clearLoginFailuresForUsername,
   getClientIp,
+  LOGIN_RETRY_AFTER_SECONDS,
   recordLoginFailure,
 } from "@/lib/auth/login-rate-limit";
 import { logLogin } from "@/services/audit-log.service";
@@ -35,7 +36,10 @@ export async function POST(request: Request) {
   if (!gate.ok) {
     return NextResponse.json(
       { error: "ลองเข้าสู่ระบบใหม่ในอีกสักครู่" },
-      { status: 429 },
+      {
+        status: 429,
+        headers: { "Retry-After": String(LOGIN_RETRY_AFTER_SECONDS) },
+      },
     );
   }
 

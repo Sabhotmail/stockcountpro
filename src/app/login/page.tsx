@@ -11,12 +11,12 @@ import { getHomePathForRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types/user";
 
-function loginErrorMessage(status: number, serverError?: string): string {
+function loginErrorMessage(status: number): string {
   if (status === 429) return "ลองเข้าสู่ระบบใหม่ในอีกสักครู่";
   if (status === 401) return "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
-  if (status === 400) return serverError || "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน";
+  if (status === 400) return "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน";
   if (status === 404) return "ไม่พบบริการเข้าสู่ระบบ — ลองรีเฟรชหน้านี้";
-  return serverError || "เข้าสู่ระบบไม่สำเร็จ";
+  return "เข้าสู่ระบบไม่สำเร็จ";
 }
 
 const fieldClass =
@@ -51,11 +51,10 @@ export default function LoginPage() {
       }
 
       const data = (await res.json()) as {
-        error?: string;
         user?: { role: UserRole };
       };
       if (!res.ok) {
-        throw new Error(loginErrorMessage(res.status, data.error));
+        throw new Error(loginErrorMessage(res.status));
       }
       if (!data.user?.role) {
         throw new Error("เข้าสู่ระบบไม่สำเร็จ");

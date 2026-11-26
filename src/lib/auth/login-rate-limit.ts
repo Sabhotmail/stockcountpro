@@ -2,6 +2,8 @@ const USER_LIMIT = 5;
 const IP_LIMIT = 20;
 const WINDOW_MS = 60_000;
 
+export const LOGIN_RETRY_AFTER_SECONDS = WINDOW_MS / 1000;
+
 type Bucket = { count: number; resetAt: number };
 
 const byUser = new Map<string, Bucket>();
