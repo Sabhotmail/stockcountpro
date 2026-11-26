@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJsonBody } from "@/lib/api/parse-body";
 import { resetCountDocumentForExpressResync } from "@/services/count-document.service";
 import { getServerSession } from "@/services/mock-session.service";
 
@@ -12,15 +13,17 @@ export async function POST(
   }
 
   const { documentId } = await params;
-  let body: { reason?: string; confirmCode?: string };
-  try {
-    body = (await request.json()) as {
-      reason?: string;
-      confirmCode?: string;
-    };
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  const raw = await readJsonBody(request);
+  if (!raw.ok) {
+    return NextResponse.json(
+      { error: raw.error },
+      { status: raw.status ?? 400 },
+    );
   }
+  const body =
+    raw.data !== null && typeof raw.data === "object"
+      ? (raw.data as { reason?: string; confirmCode?: string })
+      : {};
 
   const result = await resetCountDocumentForExpressResync(session, documentId, {
     reason: body.reason ?? "",

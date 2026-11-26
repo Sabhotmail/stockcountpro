@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { formatZodError, parseWithSchema } from "@/lib/api/parse-body";
+import {
+  MAX_JSON_BODY_BYTES,
+  formatZodError,
+  parseWithSchema,
+  readJsonBody,
+} from "@/lib/api/parse-body";
 
 function testFormatZodErrorUsesFirstIssue() {
   const result = z
@@ -31,8 +36,40 @@ function testParseWithSchemaFailure() {
   assert.ok(parsed.error.length > 0);
 }
 
-testFormatZodErrorUsesFirstIssue();
-testParseWithSchemaSuccess();
-testParseWithSchemaFailure();
+async function testReadJsonBodyParsesObject() {
+  const parsed = await readJsonBody(
+    new Request("http://local/api", {
+      method: "POST",
+      body: JSON.stringify({ date: "2026-07-14" }),
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.data, { date: "2026-07-14" });
+}
 
-console.log("parse-body.test: OK");
+async function testReadJsonBodyRejectsOversizedPayload() {
+  const parsed = await readJsonBody(
+    new Request("http://local/api", {
+      method: "POST",
+      body: "x".repeat(MAX_JSON_BODY_BYTES + 1),
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  assert.equal(parsed.ok, false);
+  if (parsed.ok) return;
+  assert.equal(parsed.status, 413);
+  assert.equal(parsed.error, "Request body is too large");
+}
+
+async function main() {
+  testFormatZodErrorUsesFirstIssue();
+  testParseWithSchemaSuccess();
+  testParseWithSchemaFailure();
+  await testReadJsonBodyParsesObject();
+  await testReadJsonBodyRejectsOversizedPayload();
+  console.log("parse-body.test: OK");
+}
+
+void main();

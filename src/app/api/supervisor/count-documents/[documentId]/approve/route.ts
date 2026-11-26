@@ -17,10 +17,11 @@ export async function POST(
   const { documentId } = await params;
 
   const raw = await readJsonBody(request);
-  if (raw.ok) {
-    const parsed = parseWithSchema(approveBodySchema, raw.data);
-    if (!parsed.ok) return validationErrorResponse(parsed.error);
+  if (!raw.ok) {
+    return validationErrorResponse(raw.error, raw.status ?? 400);
   }
+  const parsed = parseWithSchema(approveBodySchema, raw.data);
+  if (!parsed.ok) return validationErrorResponse(parsed.error);
 
   const result = await approveDocument(session, documentId);
 
