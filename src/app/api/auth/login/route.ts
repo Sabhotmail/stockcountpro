@@ -25,6 +25,7 @@ import {
 export async function POST(request: Request) {
   const parsed = await parseRequestBody(request, loginBodySchema);
   if (!parsed.ok) {
+    if (parsed.response.status === 413) return parsed.response;
     return NextResponse.json(
       { error: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" },
       { status: 400 },
