@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockCount Pro — เทียบผลต่าง Express — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.6rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 1rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .diff-pos { color: var(--ok); font-weight: 600; }
+    .diff-neg { color: var(--danger); font-weight: 600; }
+    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>เทียบผลต่าง Express บนหน้า Review</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-11-27</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Phase 2 — UI + Next proxy เรียก FastAPI variance</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>ให้ผู้ใช้กดดึงผลต่างจาก Express แล้วเห็นเทียบคู่ขนานกับยอดนับในแอป</li>
+        <li>เรียกผ่าน Next.js proxy เท่านั้น — ไม่เปิด token ให้เบราว์เซอร์</li>
+        <li>ใช้ <code>documentDate</code> + <code>locationCode</code> ของเอกสาร แมปแถวด้วย <code>productCode</code></li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ auto-fetch ตอนโหลดหน้า</li>
+        <li>ไม่แทนที่คอลัมน์ผลต่างเดิมของแอป</li>
+        <li>ไม่แก้สูตร FastAPI / ไม่ post ปรับยอด Express</li>
+        <li>ไม่บังคับมีผลต่าง ≠ 0 จึงถือว่าสำเร็จ</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>หน้า <code>/supervisor/review/[documentId]</code> แสดง <code>difference = totalBaseQty − expectedQty</code> จาก snapshot ตอน sync</li>
+        <li>FastAPI variance พร้อมแล้ว: <code>GET /api/stockcount/variance/countdate/{date}/locations/{codes}</code></li>
+        <li>เอกสารมี <code>documentDate</code> และ <code>locationCode</code> สำหรับเรียก Express</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>Supervisor+ เปิดหน้ารีวิวเอกสารที่มี <code>locationCode</code></li>
+        <li>กดปุ่ม <strong>ดึงผลต่างจาก Express</strong></li>
+        <li>ระบบแสดงสถานะกำลังโหลด</li>
+        <li>สำเร็จ → ตารางมีคอลัมน์ Express เพิ่ม; แสดงเวลาดึงล่าสุด</li>
+        <li>ล้มเหลว → ข้อความไทยสั้นๆ + ปุ่มลองใหม่</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>หน้ารีวิว — /supervisor/review/[documentId]</h3>
+      <p>เข้าถึงได้: Supervisor / Branch Manager / HQ / Admin (ตามสิทธิ์เอกสารเดิม)</p>
+      <div class="mockup">
+        <div class="mockup-header">idle — ยังไม่ดึง Express</div>
+        <div class="mockup-card">
+          <div class="row">
+            <strong>CNT-BKK3-20261126 · คลัง 2411</strong>
+            <span class="badge badge-amber">รอเทียบ Express</span>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn btn-primary">ดึงผลต่างจาก Express</button>
+            <button type="button" class="btn">ขอให้นับใหม่</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th>ชื่อ</th>
+                <th>ยอดนับแอป</th>
+                <th>ผลต่างแอป</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1010010001</td>
+                <td>เจเล่ไลท์ ส้ม</td>
+                <td>72</td>
+                <td>0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">ก่อนกดปุ่ม ไม่มีคอลัมน์ Express — ไม่เรียก FastAPI</p>
+
+      <h3>กำลังโหลด</h3>
+      <div class="mockup">
+        <div class="mockup-header">loading</div>
+        <div class="mockup-card">
+          <div class="row">
+            <button type="button" class="btn btn-primary" disabled>กำลังดึง…</button>
+            <span class="badge badge-amber">กำลังโหลดผลต่างจาก Express…</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>สำเร็จ — คอลัมน์คู่ขนาน</h3>
+      <div class="mockup">
+        <div class="mockup-header">success</div>
+        <div class="mockup-card">
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงผลต่างจาก Express</button>
+            <span class="badge badge-ok">อัปเดตล่าสุด 27 พ.ย. 2026 14:52</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th>ชื่อ</th>
+                <th>ยอดนับแอป</th>
+                <th>ผลต่างแอป</th>
+                <th>ยอดนับ Express</th>
+                <th>คงเหลือ Express</th>
+                <th>ผลต่าง Express</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1010010001</td>
+                <td>เจเล่ไลท์ ส้ม</td>
+                <td>72</td>
+                <td>0</td>
+                <td>72</td>
+                <td>72</td>
+                <td>0</td>
+              </tr>
+              <tr>
+                <td>1060010004</td>
+                <td>สินค้าตัวอย่าง</td>
+                <td>3648</td>
+                <td>+12</td>
+                <td>3648</td>
+                <td>3600</td>
+                <td class="diff-pos">+48</td>
+              </tr>
+              <tr>
+                <td>APP-ONLY-01</td>
+                <td>มีในแอปอย่างเดียว</td>
+                <td>5</td>
+                <td>—</td>
+                <td colspan="3"><em>ไม่พบใน Express</em></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">แมปด้วยรหัสสินค้า; ถ้า Express ไม่มีรหัสนั้น แสดง “ไม่พบใน Express”</p>
+
+      <h3>Error</h3>
+      <div class="mockup">
+        <div class="mockup-header">error states</div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">โหลดไม่สำเร็จ</span>
+          <p style="margin:0.5rem 0">ไม่พบข้อมูลผลต่างใน Express สำหรับวันที่และคลังนี้</p>
+          <button type="button" class="btn">ลองใหม่</button>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">ตั้งค่าไม่ครบ</span>
+          <p style="margin:0.5rem 0">ยังไม่ได้ตั้ง EXPRESS_VARIANCE_API_BASE_URL</p>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">เอกสารไม่มีคลัง Express</span>
+          <p style="margin:0.5rem 0">เอกสารนี้ไม่มีรหัสคลัง Express — ดึงผลต่างไม่ได้</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>Data model / API</h2>
+
+      <h3>Next.js proxy</h3>
+      <pre>GET /api/count-documents/[documentId]/express-variance
+Cookie session (Supervisor+ + document access)</pre>
+      <p>Server:</p>
+      <ol>
+        <li>ตรวจ session + สิทธิ์เอกสาร</li>
+        <li>อ่าน <code>documentDate</code> (yyyy-MM-dd) และ <code>locationCode</code></li>
+        <li>ถ้าไม่มี locationCode → 400</li>
+        <li>เรียก FastAPI:<br />
+          <code>GET {EXPRESS_VARIANCE_API_BASE_URL}/api/stockcount/variance/countdate/{date}/locations/{locationCode}</code><br />
+          Header: <code>Authorization: Bearer {EXPRESS_VARIANCE_API_TOKEN}</code>
+        </li>
+        <li>คืน JSON ให้ UI</li>
+      </ol>
+
+      <h3>Response ตัวอย่าง (Next → UI)</h3>
+      <pre>{
+  "success": true,
+  "countDate": "2026-11-26",
+  "locationCode": "2411",
+  "fetchedAt": "2026-11-27T07:52:00.000Z",
+  "varianceByProductCode": {
+    "1010010001": {
+      "PhysicalBalance": 72,
+      "LocationBalance": 72,
+      "DifferentQty": 0,
+      "CountFlag": "3"
+    }
+  }
+}</pre>
+
+      <h3>Env</h3>
+      <table>
+        <thead><tr><th>ตัวแปร</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr><td><code>EXPRESS_VARIANCE_API_BASE_URL</code></td><td>เช่น <code>http://127.0.0.1:8090</code></td></tr>
+          <tr><td><code>EXPRESS_VARIANCE_API_TOKEN</code></td><td>Bearer ตรงกับ FastAPI <code>VARIANCE_API_TOKEN</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>ไฟล์หลักที่คาดว่าจะแตะ</h3>
+      <ul>
+        <li><code>src/app/api/count-documents/[documentId]/express-variance/route.ts</code></li>
+        <li><code>src/services/express-variance.service.ts</code> (ใหม่)</li>
+        <li><code>src/services/express-api.service.ts</code> หรือ client แยกสำหรับ variance base URL</li>
+        <li><code>src/app/supervisor/review/[documentId]/page.tsx</code></li>
+        <li><code>src/components/ReviewLineList.tsx</code> (คอลัมน์ใหม่)</li>
+        <li><code>.env.example</code></li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead><tr><th>กรณี</th><th>พฤติกรรม UI</th></tr></thead>
+        <tbody>
+          <tr><td>401/403 จาก Next</td><td>redirect login หรือ Access denied</td></tr>
+          <tr><td>เอกสารไม่มี locationCode</td><td>ข้อความเอกสารไม่มีคลัง Express</td></tr>
+          <tr><td>FastAPI 404</td><td>ไม่พบข้อมูลผลต่าง…</td></tr>
+          <tr><td>FastAPI/เครือข่ายพัง</td><td>โหลดไม่สำเร็จ + ลองใหม่</td></tr>
+          <tr><td>env ไม่ครบ</td><td>ตั้งค่าไม่ครบ (503 จาก API)</td></tr>
+        </tbody>
+      </table>
+      <h3>Test checklist</h3>
+      <ul>
+        <li>□ กดปุ่มแล้วเห็นคอลัมน์ Express หลังสำเร็จ</li>
+        <li>□ แมป productCode ถูกต้องกับ BKK3 ตัวอย่าง</li>
+        <li>□ สินค้าไม่มีใน Express แสดง “ไม่พบใน Express”</li>
+        <li>□ ไม่มี token ฝั่ง browser (ตรวจ Network tab)</li>
+        <li>□ ไม่มี locationCode → error ชัดเจน</li>
+        <li>□ ผลต่างเดิมของแอปยังแสดงเหมือนเดิม</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · Express variance compare · 2026-11-27</footer>
+  </div>
+</body>
+</html>
