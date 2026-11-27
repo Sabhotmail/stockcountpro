@@ -1,25 +1,33 @@
 import { NextResponse } from "next/server";
-import { getExpressVarianceReportContext } from "@/services/express-variance.service";
+import { getExpressVarianceReportContext } from "@/services/express-variance-report.service";
 import { getServerSession } from "@/services/mock-session.service";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ documentId: string }> },
 ) {
-  const session = await getServerSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const { documentId } = await params;
-  const result = await getExpressVarianceReportContext(session, documentId);
+    const { documentId } = await params;
+    const result = await getExpressVarianceReportContext(session, documentId);
 
-  if ("error" in result) {
+    if ("error" in result) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.status },
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("express-variance-report failed", error);
     return NextResponse.json(
-      { error: result.error },
-      { status: result.status },
+      { error: "โหลดหน้ารายงานไม่สำเร็จ" },
+      { status: 500 },
     );
   }
-
-  return NextResponse.json(result);
 }

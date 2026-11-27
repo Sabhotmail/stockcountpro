@@ -66,11 +66,27 @@ export default function ExpressVarianceDocumentReportPage() {
           router.push("/login");
           return;
         }
-        const data = await res.json();
+        const raw = await res.text();
+        let data: { error?: string } & Partial<ExpressVarianceReportContext> =
+          {};
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch {
+          throw new Error("โหลดหน้ารายงานไม่สำเร็จ");
+        }
         if (!res.ok) {
           throw new Error(data.error ?? "โหลดหน้ารายงานไม่สำเร็จ");
         }
-        if (!cancelled) setReport(data as ExpressVarianceReportContext);
+        if (!data.success || !data.document || !data.lines) {
+          throw new Error("รูปแบบข้อมูลรายงานไม่ถูกต้อง");
+        }
+        if (!cancelled) {
+          setReport({
+            success: true,
+            document: data.document,
+            lines: data.lines,
+          });
+        }
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -108,11 +124,14 @@ export default function ExpressVarianceDocumentReportPage() {
         router.push("/login");
         return;
       }
-      const data = (await res.json()) as {
-        error?: string;
-        fetchedAt?: string;
-        varianceByProductCode?: Record<string, ExpressVarianceLine>;
-      };
+      const raw = await res.text();
+      const data = raw
+        ? (JSON.parse(raw) as {
+            error?: string;
+            fetchedAt?: string;
+            varianceByProductCode?: Record<string, ExpressVarianceLine>;
+          })
+        : {};
       if (!res.ok) {
         throw new Error(data.error ?? "โหลดรายงานผลต่างจาก Express ไม่สำเร็จ");
       }
