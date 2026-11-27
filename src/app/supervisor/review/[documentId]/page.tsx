@@ -28,19 +28,6 @@ import { cn } from "@/lib/utils";
 import { canRequestRecount } from "@/lib/permissions";
 import { filterCountableLines } from "@/lib/line-filter";
 import { DocumentStatus, type ReviewDetail } from "@/types/count";
-import type { ExpressVarianceLine } from "@/types/express-variance";
-
-function formatFetchedAt(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("th-TH", {
-      dateStyle: "short",
-      timeStyle: "medium",
-      timeZone: "Asia/Bangkok",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 export default function SupervisorReviewPage() {
   const params = useParams<{ documentId: string }>();
@@ -57,13 +44,6 @@ export default function SupervisorReviewPage() {
   const [codeFilter, setCodeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
   const [showUncountedOnly, setShowUncountedOnly] = useState(false);
-  const [expressVariance, setExpressVariance] = useState<Record<
-    string,
-    ExpressVarianceLine
-  > | null>(null);
-  const [expressFetchedAt, setExpressFetchedAt] = useState<string | null>(null);
-  const [expressLoading, setExpressLoading] = useState(false);
-  const [expressError, setExpressError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,37 +155,6 @@ export default function SupervisorReviewPage() {
     router.push("/supervisor/documents");
   }
 
-  async function fetchExpressVariance() {
-    setExpressLoading(true);
-    setExpressError(null);
-    try {
-      const res = await fetch(
-        `/api/count-documents/${documentId}/express-variance`,
-      );
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      const data = (await res.json()) as {
-        error?: string;
-        success?: boolean;
-        fetchedAt?: string;
-        varianceByProductCode?: Record<string, ExpressVarianceLine>;
-      };
-      if (!res.ok) {
-        throw new Error(data.error ?? "โหลดผลต่างจาก Express ไม่สำเร็จ");
-      }
-      setExpressVariance(data.varianceByProductCode ?? {});
-      setExpressFetchedAt(data.fetchedAt ?? new Date().toISOString());
-    } catch (err) {
-      setExpressError(
-        err instanceof Error ? err.message : "โหลดผลต่างจาก Express ไม่สำเร็จ",
-      );
-    } finally {
-      setExpressLoading(false);
-    }
-  }
-
   if (loading) {
     return (
       <PageShell title="กำลังโหลด..." subtitle="ข้อมูลตรวจสอบ">
@@ -267,6 +216,12 @@ export default function SupervisorReviewPage() {
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
               เปรียบเทียบเวอร์ชัน
+            </Link>
+            <Link
+              href={`/supervisor/review/${documentId}/express-variance`}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              รายงานผลต่าง Express
             </Link>
             {canPrint && (
               <Link
@@ -409,59 +364,20 @@ export default function SupervisorReviewPage() {
               <p className="text-sm text-muted-foreground tabular-nums">
                 แสดง {filteredLines.length} จาก {reviewLines.length} รายการ
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant={showUncountedOnly ? "secondary" : "outline"}
-                  size="sm"
-                  className={
-                    showUncountedOnly
-                      ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                      : undefined
-                  }
-                  onClick={() => setShowUncountedOnly((v) => !v)}
-                >
-                  {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    expressLoading || !document.locationCode?.trim()
-                  }
-                  onClick={() => void fetchExpressVariance()}
-                >
-                  {expressLoading ? "กำลังดึง…" : "ดึงผลต่างจาก Express"}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant={showUncountedOnly ? "secondary" : "outline"}
+                size="sm"
+                className={
+                  showUncountedOnly
+                    ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                    : undefined
+                }
+                onClick={() => setShowUncountedOnly((v) => !v)}
+              >
+                {showUncountedOnly ? "แสดงทั้งหมด" : "เฉพาะที่ยังไม่นับ"}
+              </Button>
             </div>
-            {!document.locationCode?.trim() && (
-              <p className="mt-2 text-sm text-amber-700">
-                เอกสารนี้ไม่มีรหัสคลัง Express — ดึงผลต่างไม่ได้
-              </p>
-            )}
-            {expressFetchedAt && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                อัปเดตล่าสุด {formatFetchedAt(expressFetchedAt)}
-              </p>
-            )}
-            {expressError && (
-              <Alert variant="destructive" className="mt-3">
-                <AlertDescription className="flex flex-wrap items-center gap-3">
-                  <span>{expressError}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={expressLoading}
-                    onClick={() => void fetchExpressVariance()}
-                  >
-                    ลองใหม่
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
 
           <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -473,12 +389,7 @@ export default function SupervisorReviewPage() {
 
           <div className="md:hidden">
             {filteredLines.map((line) => (
-              <ReviewLineCard
-                key={line.lineId}
-                line={line}
-                showExpressColumns={expressVariance != null}
-                expressVarianceByProductCode={expressVariance}
-              />
+              <ReviewLineCard key={line.lineId} line={line} />
             ))}
             {filteredLines.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -487,11 +398,7 @@ export default function SupervisorReviewPage() {
             )}
           </div>
           <div className="hidden overflow-hidden rounded-lg border border-border/80 bg-background md:block">
-            <ReviewLineTable
-              lines={filteredLines}
-              showExpressColumns={expressVariance != null}
-              expressVarianceByProductCode={expressVariance}
-            />
+            <ReviewLineTable lines={filteredLines} />
             {filteredLines.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 ไม่พบรายการที่ตรงกับตัวกรอง
