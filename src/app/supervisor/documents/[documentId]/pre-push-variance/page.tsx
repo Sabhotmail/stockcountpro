@@ -194,7 +194,7 @@ export default function PrePushVariancePage() {
       <Alert className="mb-5 border-amber-200/80 bg-amber-50 text-amber-950">
         <AlertDescription>
           หน้านี้เทียบ <strong>ยอดนับในแอปที่จะส่ง</strong> กับ{" "}
-          <strong>คงเหลือ Express ตอนนี้ (LOCBAL)</strong> เพื่อประมาณผลต่างก่อนกดส่ง
+          <strong>คงเหลือใน Express</strong> เพื่อประมาณผลต่างก่อนกดส่ง
           — <strong>ยังไม่ได้เขียนเข้า Express</strong>
         </AlertDescription>
       </Alert>

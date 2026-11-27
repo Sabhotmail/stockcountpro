@@ -459,32 +459,20 @@ export default function SupervisorDocumentsPage() {
                                     variant: "outline",
                                     size: "sm",
                                   }),
-                                  "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
+                                  "min-h-9 border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
                                 )}
                               >
                                 ขอนับใหม่
                               </Link>
                               <Link
-                                href={`/supervisor/documents/${doc.id}/pre-push-variance`}
-                                className={buttonVariants({
-                                  variant: "outline",
-                                  size: "sm",
-                                })}
-                              >
-                                เทียบก่อนส่ง Express
-                              </Link>
-                              <Link
-                                href={`/supervisor/documents/${doc.id}/express-variance`}
-                                className={buttonVariants({
-                                  variant: "outline",
-                                  size: "sm",
-                                })}
-                              >
-                                รายงานผลต่าง Express
-                              </Link>
-                              <Link
                                 href={`/print/documents/${doc.id}`}
-                                className={buttonVariants({ size: "sm" })}
+                                className={cn(
+                                  buttonVariants({
+                                    variant: "outline",
+                                    size: "sm",
+                                  }),
+                                  "min-h-9",
+                                )}
                                 target="_blank"
                                 rel="noreferrer"
                               >
@@ -493,6 +481,8 @@ export default function SupervisorDocumentsPage() {
                               <PushExpressButton
                                 documentId={doc.id}
                                 alreadyPushed={pushed}
+                                variant="default"
+                                className="min-h-9"
                                 onPushed={(message) =>
                                   handlePushed(doc.id, message)
                                 }

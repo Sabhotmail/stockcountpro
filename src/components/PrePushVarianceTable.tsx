@@ -82,7 +82,7 @@ export function PrePushVarianceTable({
               นับได้ (ที่จะส่ง)
             </th>
             <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
-              คงเหลือ LOCBAL
+              คงเหลือใน Express
             </th>
             <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
               ผลต่างที่คาด

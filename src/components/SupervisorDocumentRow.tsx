@@ -86,39 +86,24 @@ export function SupervisorDocumentRow({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
         {mode === "completed" ? (
           <>
             <Link
               href={`/supervisor/review/${doc.id}`}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "min-h-11",
+                "min-h-11 border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
               )}
             >
               ขอนับใหม่
             </Link>
             <Link
-              href={`/supervisor/documents/${doc.id}/pre-push-variance`}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "min-h-11",
-              )}
-            >
-              เทียบก่อนส่ง Express
-            </Link>
-            <Link
-              href={`/supervisor/documents/${doc.id}/express-variance`}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "min-h-11",
-              )}
-            >
-              รายงานผลต่าง Express
-            </Link>
-            <Link
               href={`/print/documents/${doc.id}`}
-              className={cn(buttonVariants({ size: "sm" }), "min-h-11")}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-11",
+              )}
               target="_blank"
               rel="noreferrer"
             >
@@ -127,6 +112,8 @@ export function SupervisorDocumentRow({
             <PushExpressButton
               documentId={doc.id}
               alreadyPushed={pushed}
+              variant="default"
+              className="min-h-11"
               onPushed={(message) => onPushed(doc.id, message)}
             />
           </>
