@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockCount Pro — หน้ารายงานผลต่าง Express ต่อเอกสาร — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.55rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.45rem 0.55rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 1rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .diff-neg { color: var(--danger); font-weight: 600; }
+    .hint { background: var(--accent-soft); border: 1px solid #99f6e4; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; margin: 0.75rem 0; }
+    .group { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; color: var(--muted); text-align: center; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>หน้ารายงานผลต่าง Express ต่อเอกสาร</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-11-27</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> ย้าย UX เทียบ Express ออกจากตารางรีวิวไปหน้าแยกของเอกสาร</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>แยก flow <strong>อนุมัติ/ขอนับใหม่</strong> ออกจาก <strong>รายงานผลต่าง Express</strong> เพื่อไม่ให้งง</li>
+        <li>สื่อชัดว่าหน้านี้แสดงยอดที่ <strong>อยู่ใน Express แล้ว</strong> ไม่ใช่ยอดที่จะส่งจากแอป</li>
+        <li>เข้าถึงจากเอกสารเดิม: วัน + คลัง + รายการสินค้าของเอกสาร</li>
+        <li>ใช้ proxy FastAPI เดิม ไม่เปลี่ยนสูตร</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่สร้างเมนูหลักใหม่ใน sidebar</li>
+        <li>ไม่ทำหน้าตรวจก่อนส่ง Express ในงานนี้</li>
+        <li>ไม่แก้ FastAPI / สูตร STTAK3</li>
+        <li>ไม่ auto-fetch ตอนเปิดหน้า</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>ปุ่ม + คอลัมน์ Express ฝังใน <code>/supervisor/review/[documentId]</code> ทำให้ปนกับ flow อนุมัติ</li>
+        <li>API พร้อมแล้ว: <code>GET /api/count-documents/[documentId]/express-variance</code></li>
+        <li>ผู้ใช้เข้าใจผิดว่าเป็นการตรวจก่อนส่งเข้า Express</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>Supervisor+ เปิดหน้ารีวิวเอกสาร</li>
+        <li>กดลิงก์/ปุ่มรอง <strong>รายงานผลต่าง Express</strong> (ไม่ใช่ปุ่มหลักอนุมัติ)</li>
+        <li>เข้าหน้า <code>/supervisor/review/[documentId]/express-variance</code></li>
+        <li>อ่านคำอธิบายสั้น แล้วกด <strong>ดึงรายงานผลต่างจาก Express</strong></li>
+        <li>ดูตารางฝั่งแอป vs ฝั่ง Express · กลับหน้ารีวิวเมื่อเสร็จ</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>หน้ารีวิว (หลังย้าย) — /supervisor/review/[documentId]</h3>
+      <p>เข้าถึงได้: ตามสิทธิ์รีวิวเดิม</p>
+      <div class="mockup">
+        <div class="mockup-header">review — ไม่มีคอลัมน์ Express</div>
+        <div class="mockup-card">
+          <div class="row">
+            <a href="#">← รายการรออนุมัติ</a>
+            <a href="#">ประวัติการทำงาน</a>
+            <a href="#">เปรียบเทียบเวอร์ชัน</a>
+            <a href="#"><strong>รายงานผลต่าง Express</strong></a>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th>ชื่อสินค้า</th>
+                <th>นับได้</th>
+                <th>ผลต่างแอป</th>
+                <th>สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1010030003</td>
+                <td>สินค้าตัวอย่าง</td>
+                <td>283</td>
+                <td>—</td>
+                <td>นับแล้ว</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="row" style="margin-top:1rem;justify-content:flex-end">
+            <button type="button" class="btn">ขอนับใหม่</button>
+            <button type="button" class="btn btn-primary">อนุมัติและปิดเอกสาร</button>
+          </div>
+        </div>
+      </div>
+      <p class="mockup-note">ลบปุ่ม「ดึงผลต่างจาก Express」และคอลัมน์ Express ออกจากหน้านี้</p>
+
+      <h3>หน้ารายงาน — /supervisor/review/[documentId]/express-variance</h3>
+      <p>เข้าถึงได้: เดียวกับหน้ารีวิวเอกสารนั้น (Supervisor+ + document access)</p>
+      <div class="mockup">
+        <div class="mockup-header">idle</div>
+        <div class="mockup-card">
+          <div class="row">
+            <a href="#">← กลับหน้ารีวิว</a>
+          </div>
+          <h3 style="margin-top:0">รายงานผลต่าง Express</h3>
+          <p style="margin:0 0 0.5rem"><strong>2425 · คลัง Van S PNL คันที่ 5</strong> · วันที่ 2026-11-26</p>
+          <div class="hint">
+            หน้านี้แสดงยอดที่อยู่ใน Express แล้ว (ยอดนับ = PHYBAL, คงเหลือ = LOCBAL, ผลต่าง = PHYBAL − LOCBAL)
+            <strong>ไม่ใช่</strong> ขั้นตอนตรวจก่อนส่งยอดจากแอปเข้า Express
+          </div>
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงรายงานผลต่างจาก Express</button>
+            <span class="badge badge-amber">ยังไม่ได้ดึง</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>กำลังโหลด</h3>
+      <div class="mockup">
+        <div class="mockup-header">loading</div>
+        <div class="mockup-card">
+          <button type="button" class="btn btn-primary" disabled>กำลังดึง…</button>
+          <span class="badge badge-amber">กำลังโหลดรายงานจาก Express…</span>
+        </div>
+      </div>
+
+      <h3>สำเร็จ</h3>
+      <div class="mockup">
+        <div class="mockup-header">success</div>
+        <div class="mockup-card">
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงรายงานผลต่างจาก Express</button>
+            <span class="badge badge-ok">อัปเดตล่าสุด 27 พ.ย. 2026 15:30</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">รหัส</th>
+                <th rowspan="2">ชื่อ</th>
+                <th colspan="2" class="group">ฝั่งแอป</th>
+                <th colspan="3" class="group">ฝั่ง Express</th>
+              </tr>
+              <tr>
+                <th>นับได้</th>
+                <th>ผลต่างแอป</th>
+                <th>ยอดนับ</th>
+                <th>คงเหลือ</th>
+                <th>ผลต่าง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1010030003</td>
+                <td>สินค้าตัวอย่าง</td>
+                <td>283</td>
+                <td>—</td>
+                <td>283</td>
+                <td>7,483</td>
+                <td class="diff-neg">-7,200</td>
+              </tr>
+              <tr>
+                <td>APP-ONLY</td>
+                <td>มีในแอปอย่างเดียว</td>
+                <td>5</td>
+                <td>—</td>
+                <td colspan="3"><em>ไม่พบใน Express</em></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">จัดกลุ่มหัวตาราง ฝั่งแอป / ฝั่ง Express ชัดเจน</p>
+
+      <h3>Error states</h3>
+      <div class="mockup">
+        <div class="mockup-card">
+          <span class="badge badge-danger">โหลดไม่สำเร็จ</span>
+          <p style="margin:0.5rem 0">ไม่พบข้อมูลผลต่างใน Express สำหรับวันที่และคลังนี้</p>
+          <button type="button" class="btn">ลองใหม่</button>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">เอกสารไม่มีคลัง Express</span>
+          <p style="margin:0.5rem 0">เอกสารนี้ไม่มีรหัสคลัง Express — ดึงรายงานไม่ได้</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>Data model / API</h2>
+      <ul>
+        <li>ใช้ endpoint เดิม: <code>GET /api/count-documents/[documentId]/express-variance</code></li>
+        <li>หน้าใหม่โหลด review lines จาก API รีวิวเดิม (หรือ endpoint ที่หน้า review ใช้อยู่) เพื่อคอลัมน์ฝั่งแอป</li>
+        <li>Env เดิม: <code>EXPRESS_VARIANCE_API_BASE_URL</code>, <code>EXPRESS_VARIANCE_API_TOKEN</code></li>
+      </ul>
+      <h3>ไฟล์หลักที่คาดว่าจะแตะ</h3>
+      <ul>
+        <li>สร้าง <code>src/app/supervisor/review/[documentId]/express-variance/page.tsx</code></li>
+        <li>แก้ <code>src/app/supervisor/review/[documentId]/page.tsx</code> — เอาปุ่ม/คอลัมน์ Express ออก ใส่ลิงก์</li>
+        <li>ปรับ <code>ReviewLineList.tsx</code> — รองรับโหมดรายงาน หรือ component แยกถ้าสะอาดกว่า</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead><tr><th>กรณี</th><th>พฤติกรรม</th></tr></thead>
+        <tbody>
+          <tr><td>เปิดหน้ารายงานโดยตรง</td><td>ต้อง login + สิทธิ์เอกสารเหมือนรีวิว</td></tr>
+          <tr><td>กดดึงสำเร็จ</td><td>ตารางมีกลุ่มแอป/Express + เวลาอัปเดต</td></tr>
+          <tr><td>หน้ารีวิว</td><td>ไม่มีคอลัมน์ Express; มีลิงก์ไปหน้ารายงาน</td></tr>
+          <tr><td>ไม่มี locationCode</td><td>ปุ่มดึง disable + ข้อความไทย</td></tr>
+          <tr><td>FastAPI 404/502</td><td>ข้อความเดิม + ลองใหม่</td></tr>
+          <tr><td>คำอธิบายบนหน้า</td><td>ระบุชัดว่าไม่ใช่ตรวจก่อนส่ง</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>แทนที่ UX ใน spec เปรียบเทียบบนตารางรีวิว (2026-11-27) สำหรับตำแหน่ง UI — API/สูตรเดิมยังใช้ได้</footer>
+  </div>
+</body>
+</html>
