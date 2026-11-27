@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastAPI Express Stock Count Variance API — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.45; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 1rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .diff-pos { color: var(--ok); font-weight: 600; }
+    .diff-neg { color: var(--danger); font-weight: 600; }
+    .api-path { font-family: Consolas, monospace; font-size: 0.9rem; background: #0f172a; color: #e2e8f0; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.75rem; }
+    .api-path span.method { color: #34d399; font-weight: 700; margin-right: 0.5rem; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>FastAPI — Express Stock Count Variance API</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-11-27</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Phase 1 — FastAPI เฉพาะ variance ที่ <code>external/express-variance-api/</code></span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>สร้างบริการ FastAPI อ่านผลต่างตรวจนับแบบ Express <code>STTAK3</code></li>
+        <li>คืน <code>PhysicalBalance</code>, <code>LocationBalance</code>, <code>DifferentQty</code> ต่อวัน + คลัง</li>
+        <li>Auth MVP ด้วย Bearer token คงที่จาก <code>.env</code> (<code>VARIANCE_API_TOKEN</code>)</li>
+        <li>แยกจาก Pode ExpressAPI — ไม่แก้ OneDrive ต้นทาง</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่ย้าย ExpressAPI ทั้งก้อนไป FastAPI</li>
+        <li>ยังไม่ผูก StockCount Pro UI / Next.js proxy (Phase 2)</li>
+        <li>ยังไม่ใช้ login ของ Pode เป็นแหล่ง token</li>
+        <li>ยังไม่ dual-unit <code>STTAKD</code> / post ปรับยอด / รายงาน 465</li>
+        <li>ไม่ลบ prototype PowerShell บน branch <code>feature/express-stockcount-variance</code> ในรอบนี้ (เส้นทางหลักคือ FastAPI)</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>สูตร Express: <code>DIF = STTAK.PHYBAL − STLOC.LOCBAL</code> กรอง <code>TAKFLG ∈ {'2','3'}</code></li>
+        <li>มี design/plan ของ Pode variance แล้ว และมี prototype บน worktree — แต่ตัดสินใจทำ FastAPI เฉพาะ variance แทนเป็นเส้นทางหลัก</li>
+        <li>StockCount Pro ยังคำนวณผลต่างจาก snapshot ตอน sync ไม่ใช่ LOCBAL สด</li>
+        <li>การเข้าถึงแชร์ Express อาจติด credential — API ต้อง configurable ผ่าน <code>EXPRESS_DB_PATH</code></li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>ตั้งค่า <code>EXPRESS_DB_PATH</code> และ <code>VARIANCE_API_TOKEN</code> ใน <code>.env</code></li>
+        <li>รัน FastAPI (<code>uvicorn app.main:app</code>)</li>
+        <li>เรียก GET variance พร้อม <code>Authorization: Bearer …</code></li>
+        <li>ได้ JSON สำหรับเทียบ / ใช้ใน Phase 2 จาก StockCount Pro</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>Phase 1 เป็น API — mockup ด้านล่างสำหรับ client / เฟสถัดไป</p>
+
+      <h3>API success</h3>
+      <div class="mockup">
+        <div class="mockup-header">express-variance-api · Bearer token จาก .env</div>
+        <div class="api-path"><span class="method">GET</span>/api/stockcount/variance/countdate/2026-03-11/locations/24A1,24GA</div>
+        <div class="mockup-card">
+          <div class="row">
+            <span class="badge badge-ok">200 OK</span>
+            <span>success = true</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>คลัง</th>
+                <th>รหัสสินค้า</th>
+                <th>ยอดตรวจนับ</th>
+                <th>ยอดคงเหลือ</th>
+                <th>ผลต่าง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>24A1</td>
+                <td>1060010004</td>
+                <td>3,648</td>
+                <td>3,600</td>
+                <td class="diff-pos">+48</td>
+              </tr>
+              <tr>
+                <td>24A1</td>
+                <td>2060020011</td>
+                <td>10</td>
+                <td>12</td>
+                <td class="diff-neg">−2</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">ผลต่างคำนวณสดจาก LOCBAL ณ เวลาเรียก — ไม่ใช้ DIFQTY ใน STTAK เป็นหลัก</p>
+
+      <h3>Unauthorized / validation / empty</h3>
+      <div class="mockup">
+        <div class="mockup-header">สถานะ error หลัก</div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">401</span>
+          <p style="margin:0.5rem 0 0">ไม่มี Bearer หรือ token ไม่ตรง <code>VARIANCE_API_TOKEN</code></p>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">400</span>
+          <p style="margin:0.5rem 0 0">Invalid countDate / Invalid locations</p>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">404</span>
+          <p style="margin:0.5rem 0 0">Variance data not found</p>
+        </div>
+      </div>
+
+      <h3>Phase 2 preview — StockCount Pro (ยังไม่ทำ)</h3>
+      <div class="mockup">
+        <div class="mockup-header">/supervisor/review/[documentId] · Supervisor+</div>
+        <div class="mockup-card">
+          <div class="row">
+            <strong>CNT-BKK3-20260311 · 24A1</strong>
+            <span class="badge badge-amber">เทียบกับ Express</span>
+          </div>
+          <button type="button" class="btn btn-primary">ดึงผลต่างจาก Express</button>
+        </div>
+      </div>
+      <p class="mockup-note">Phase 2 จะชี้ <code>EXPRESS_VARIANCE_API_BASE_URL</code> ไปที่บริการ FastAPI นี้</p>
+    </section>
+
+    <section id="api">
+      <h2>Data model / API</h2>
+
+      <h3>Endpoint</h3>
+      <pre>GET /api/stockcount/variance/countdate/{yyyy-MM-dd}/locations/{codes}
+Authorization: Bearer {VARIANCE_API_TOKEN}</pre>
+
+      <h3>Environment</h3>
+      <table>
+        <thead><tr><th>ตัวแปร</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr><td><code>EXPRESS_DB_PATH</code></td><td>โฟลเดอร์บริษัท Express ที่มี STTAK.DBF / STLOC.DBF / STMAS.DBF</td></tr>
+          <tr><td><code>VARIANCE_API_TOKEN</code></td><td>Bearer token สำหรับเรียก API (ต้องไม่ commit ค่าจริง)</td></tr>
+          <tr><td><code>HOST</code> / <code>PORT</code></td><td>optional — ค่าเริ่มต้น localhost:8090 (ไม่ชน Pode 8080)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>สูตรและฟิลด์</h3>
+      <table>
+        <thead><tr><th>JSON</th><th>ที่มา</th></tr></thead>
+        <tbody>
+          <tr><td><code>LocationCode</code></td><td><code>STTAK.LOCCOD</code></td></tr>
+          <tr><td><code>ProductCode</code></td><td><code>STTAK.STKCOD</code></td></tr>
+          <tr><td><code>ProductName</code></td><td><code>STMAS.STKDES</code></td></tr>
+          <tr><td><code>Area</code></td><td><code>STLOC.AREA</code> fallback <code>STTAK.AREA</code></td></tr>
+          <tr><td><code>CountDate</code></td><td><code>STTAK.TAKDAT</code> → <code>yyyy-MM-dd</code></td></tr>
+          <tr><td><code>PhysicalBalance</code></td><td><code>STTAK.PHYBAL</code></td></tr>
+          <tr><td><code>LocationBalance</code></td><td><code>STLOC.LOCBAL</code> สด</td></tr>
+          <tr><td><code>DifferentQty</code></td><td><code>PhysicalBalance − LocationBalance</code></td></tr>
+          <tr><td><code>CountFlag</code></td><td><code>STTAK.TAKFLG</code></td></tr>
+        </tbody>
+      </table>
+      <p>Filter: <code>TAKFLG</code> เป็น <code>2</code> หรือ <code>3</code>, <code>TAKDAT</code> ตรงวันที่, <code>LOCCOD</code> อยู่ในรายการที่ขอ</p>
+      <p>ไม่มีแถว STLOC: คืนแถว STTAK โดย <code>LocationBalance = null</code>, <code>DifferentQty = null</code></p>
+
+      <h3>Response 200</h3>
+      <pre>{
+  "success": true,
+  "countDate": "2026-03-11",
+  "locations": ["24A1", "24GA"],
+  "varianceData": [
+    {
+      "LocationCode": "24A1",
+      "ProductCode": "1060010004",
+      "ProductName": "สินค้าตัวอย่าง",
+      "Area": "A-01",
+      "CountDate": "2026-03-11",
+      "PhysicalBalance": 3648.0,
+      "LocationBalance": 3600.0,
+      "DifferentQty": 48.0,
+      "CountFlag": "3"
+    }
+  ]
+}</pre>
+
+      <h3>โครงสร้างโค้ด</h3>
+      <pre>external/express-variance-api/
+  app/main.py
+  app/auth.py
+  app/config.py
+  app/variance.py
+  tests/test_variance_math.py
+  tests/test_validation.py
+  requirements.txt
+  .env.example
+  README.md</pre>
+
+      <h3>การอ่าน DBF</h3>
+      <ul>
+        <li>รอบแรกใช้ไลบรารี Python อ่าน DBF โดยตรง (เป้าหมาย: ไม่บังคับ VFPOLEDB)</li>
+        <li>ถ้าฟิลด์ binary/encoding ของ Express อ่านไม่ครบ ให้ปรับใน <code>variance.py</code> เป็นชั้นเดียว ไม่เปลี่ยนสัญญา API</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead><tr><th>กรณี</th><th>HTTP</th><th>message</th></tr></thead>
+        <tbody>
+          <tr><td>ไม่มี/ผิด token</td><td>401</td><td>Unauthorized</td></tr>
+          <tr><td>date ไม่ใช่ yyyy-MM-dd</td><td>400</td><td>Invalid countDate</td></tr>
+          <tr><td>locations ว่าง/ไม่ปลอดภัย</td><td>400</td><td>Invalid locations</td></tr>
+          <tr><td>ไม่มีแถวหลังกรอง</td><td>404</td><td>Variance data not found</td></tr>
+          <tr><td>path DBF พัง / IO error</td><td>500</td><td>Internal error</td></tr>
+        </tbody>
+      </table>
+      <h3>Test checklist</h3>
+      <ul>
+        <li>□ unit: วันที่ / รหัสคลัง / สูตร diff รวมกรณี null</li>
+        <li>□ auth: ไม่มี token → 401, token ถูก → ผ่าน</li>
+        <li>□ 404 เมื่อไม่มีข้อมูล</li>
+        <li>□ smoke กับ EXPRESS_DB_PATH จริงเมื่อมีสิทธิ์เข้าถึงแชร์</li>
+        <li>□ ไม่ commit ค่า token / ไม่แก้ OneDrive ExpressAPI</li>
+        <li>□ พอร์ตไม่ชน Pode (ค่าเริ่ม 8090)</li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · FastAPI variance design · 2026-11-27</footer>
+  </div>
+</body>
+</html>
