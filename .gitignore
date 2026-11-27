@@ -60,3 +60,8 @@ next-env.d.ts
 /external/ExpressAPI/tokens.db
 /external/ExpressAPI/tokens.db-journal
 /external/ExpressAPI/.pode/
+
+# Python
+**/__pycache__/
+*.py[cod]
+
