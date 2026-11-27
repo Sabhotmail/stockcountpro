@@ -30,3 +30,10 @@ export type ExpressVarianceReportContext = {
   };
   lines: ReviewLineItem[];
 };
+
+export type PrePushBalancesResult = {
+  success: true;
+  locationCode: string;
+  fetchedAt: string;
+  balanceByProductCode: Record<string, number | null>;
+};

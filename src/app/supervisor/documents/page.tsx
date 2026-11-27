@@ -465,6 +465,15 @@ export default function SupervisorDocumentsPage() {
                                 ขอนับใหม่
                               </Link>
                               <Link
+                                href={`/supervisor/documents/${doc.id}/pre-push-variance`}
+                                className={buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                })}
+                              >
+                                เทียบก่อนส่ง Express
+                              </Link>
+                              <Link
                                 href={`/supervisor/documents/${doc.id}/express-variance`}
                                 className={buttonVariants({
                                   variant: "outline",
@@ -490,12 +499,23 @@ export default function SupervisorDocumentsPage() {
                               />
                             </div>
                           ) : (
-                            <Link
-                              href={`/supervisor/review/${doc.id}`}
-                              className={buttonVariants({ size: "sm" })}
-                            >
-                              ตรวจสอบ
-                            </Link>
+                            <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                              <Link
+                                href={`/supervisor/review/${doc.id}`}
+                                className={buttonVariants({ size: "sm" })}
+                              >
+                                ตรวจสอบ
+                              </Link>
+                              <Link
+                                href={`/supervisor/documents/${doc.id}/pre-push-variance`}
+                                className={buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                })}
+                              >
+                                เทียบก่อนส่ง Express
+                              </Link>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>

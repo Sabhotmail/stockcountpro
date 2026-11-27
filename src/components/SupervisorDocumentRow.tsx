@@ -99,6 +99,15 @@ export function SupervisorDocumentRow({
               ขอนับใหม่
             </Link>
             <Link
+              href={`/supervisor/documents/${doc.id}/pre-push-variance`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-11",
+              )}
+            >
+              เทียบก่อนส่ง Express
+            </Link>
+            <Link
               href={`/supervisor/documents/${doc.id}/express-variance`}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
@@ -122,12 +131,26 @@ export function SupervisorDocumentRow({
             />
           </>
         ) : (
-          <Link
-            href={`/supervisor/review/${doc.id}`}
-            className={cn(buttonVariants({ size: "sm" }), "min-h-11 w-full sm:w-auto")}
-          >
-            ตรวจสอบ
-          </Link>
+          <>
+            <Link
+              href={`/supervisor/review/${doc.id}`}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "min-h-11 w-full sm:w-auto",
+              )}
+            >
+              ตรวจสอบ
+            </Link>
+            <Link
+              href={`/supervisor/documents/${doc.id}/pre-push-variance`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-11 w-full sm:w-auto",
+              )}
+            >
+              เทียบก่อนส่ง Express
+            </Link>
+          </>
         )}
       </div>
     </div>
