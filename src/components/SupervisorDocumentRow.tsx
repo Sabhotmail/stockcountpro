@@ -99,7 +99,7 @@ export function SupervisorDocumentRow({
               ขอนับใหม่
             </Link>
             <Link
-              href={`/supervisor/review/${doc.id}/express-variance`}
+              href={`/supervisor/documents/${doc.id}/express-variance`}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "min-h-11",

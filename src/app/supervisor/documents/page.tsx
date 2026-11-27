@@ -465,7 +465,7 @@ export default function SupervisorDocumentsPage() {
                                 ขอนับใหม่
                               </Link>
                               <Link
-                                href={`/supervisor/review/${doc.id}/express-variance`}
+                                href={`/supervisor/documents/${doc.id}/express-variance`}
                                 className={buttonVariants({
                                   variant: "outline",
                                   size: "sm",

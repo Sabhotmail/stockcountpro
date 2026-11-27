@@ -217,12 +217,6 @@ export default function SupervisorReviewPage() {
             >
               เปรียบเทียบเวอร์ชัน
             </Link>
-            <Link
-              href={`/supervisor/review/${documentId}/express-variance`}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              รายงานผลต่าง Express
-            </Link>
             {canPrint && (
               <Link
                 href={`/print/documents/${documentId}`}
