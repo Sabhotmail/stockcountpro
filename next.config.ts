@@ -6,6 +6,8 @@ const { version } = JSON.parse(
   readFileSync(join(process.cwd(), "package.json"), "utf8"),
 ) as { version: string };
 
+const isDev = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -14,7 +16,10 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      // React/Next dev tooling needs eval(); keep production strict.
+      isDev
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' https://placehold.co data:",
       "frame-ancestors 'none'",
