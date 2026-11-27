@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockCount Pro — เทียบผลต่างก่อนส่ง Express — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.55rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.45rem 0.55rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 1rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .diff-neg { color: var(--danger); font-weight: 600; }
+    .diff-pos { color: var(--ok); font-weight: 600; }
+    .hint { background: var(--amber-bg); border: 1px solid #fcd34d; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; margin: 0.75rem 0; }
+    .group { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; color: var(--muted); text-align: center; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>เทียบผลต่างก่อนส่ง Express</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-11-27</span>
+        <span><strong>Owner:</strong> StockCount Pro</span>
+        <span><strong>Scope:</strong> Pre-push compare — ยอดนับแอป vs LOCBAL สด จาก STLOC</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>ให้ตรวจ <strong>ก่อนส่งยอดเข้า Express</strong> ว่าผลต่างที่คาดจะเป็นเท่าไร</li>
+        <li>สูตร: <code>ผลต่างที่คาด = ยอดนับในแอป (ที่จะส่ง) − LOCBAL สด</code></li>
+        <li>ดึง LOCBAL สดจาก Express DBF (<code>STLOC</code>) ผ่าน FastAPI + Next proxy</li>
+        <li>แยกชัดจากรายงานหลังอยู่ใน Express (PHYBAL − LOCBAL) และจากหน้าขอนับใหม่</li>
+      </ul>
+      <h3>Non-goals</h3>
+      <ul>
+        <li>ไม่บังคับต้องดึงก่อนถึงจะกดส่ง Express (ยังส่งจากรายการเอกสารได้)</li>
+        <li>ไม่เขียน PHYBAL / ไม่แก้ STTAK ในหน้านี้</li>
+        <li>ไม่แทนที่รายงานหลัง Express ที่มีอยู่แล้วในงานนี้ (คงปุ่มคนละความหมาย)</li>
+        <li>ไม่ดึงผ่าน Pode ExpressAPI</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>มีรายงาน <code>/supervisor/documents/[id]/express-variance</code> ที่ดึง STTAK3 หลังมีข้อมูลใน Express — ไม่ตอบโจทย์ก่อนส่ง</li>
+        <li>FastAPI variance อ่าน STTAK+STLOC ได้แล้ว แต่ยังไม่มี endpoint เฉพาะ LOCBAL</li>
+        <li>การส่ง Express อยู่ที่อนุมัติ / ปุ่มส่งมือบนแท็บเสร็จสิ้น</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>Supervisor+ เปิดรายการเอกสาร (รอตรวจหรือเสร็จสิ้น)</li>
+        <li>กดปุ่ม <strong>เทียบก่อนส่ง Express</strong> ของใบนั้น</li>
+        <li>เข้าหน้า <code>/supervisor/documents/[documentId]/pre-push-variance</code></li>
+        <li>อ่านคำอธิบาย แล้วกด <strong>ดึงคงเหลือ Express</strong></li>
+        <li>ดูตาราง: นับได้ (แอป) vs คงเหลือสด vs ผลต่างที่คาด</li>
+        <li>กลับรายการเอกสาร แล้วค่อยอนุมัติ/ส่ง Express ตามปกติ</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+
+      <h3>รายการเอกสาร — ปุ่มใหม่</h3>
+      <p>เข้าถึงได้: Supervisor / Branch Manager / HQ / Admin</p>
+      <div class="mockup">
+        <div class="mockup-header">แท็บเสร็จสิ้น (และรอตรวจที่ส่งแล้ว)</div>
+        <div class="mockup-card">
+          <div class="row">
+            <button type="button" class="btn">ขอนับใหม่</button>
+            <button type="button" class="btn btn-primary">เทียบก่อนส่ง Express</button>
+            <button type="button" class="btn">รายงานผลต่าง Express</button>
+            <button type="button" class="btn">พิมพ์</button>
+            <button type="button" class="btn">ส่ง Express</button>
+          </div>
+        </div>
+      </div>
+      <p class="mockup-note">ชื่อปุ่มต้องแยก: เทียบก่อนส่ง ≠ รายงานหลังอยู่ใน Express ≠ ขอนับใหม่</p>
+
+      <h3>หน้ารายงานก่อนส่ง — /supervisor/documents/[documentId]/pre-push-variance</h3>
+      <div class="mockup">
+        <div class="mockup-header">idle</div>
+        <div class="mockup-card">
+          <div class="row"><a href="#">← กลับรายการเอกสาร</a></div>
+          <h3 style="margin-top:0">เทียบผลต่างก่อนส่ง Express</h3>
+          <p style="margin:0 0 0.5rem"><strong>2425 · คลัง Van S PNL คันที่ 5</strong></p>
+          <div class="hint">
+            หน้านี้เทียบ <strong>ยอดนับในแอปที่จะส่ง</strong> กับ <strong>คงเหลือ Express ตอนนี้ (LOCBAL)</strong>
+            เพื่อประมาณผลต่างก่อนกดส่ง — <strong>ยังไม่ได้เขียนเข้า Express</strong>
+          </div>
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงคงเหลือ Express</button>
+            <span class="badge badge-amber">ยังไม่ได้ดึง</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>กำลังโหลด</h3>
+      <div class="mockup">
+        <div class="mockup-header">loading</div>
+        <div class="mockup-card">
+          <button type="button" class="btn btn-primary" disabled>กำลังดึง…</button>
+          <span class="badge badge-amber">กำลังโหลด LOCBAL จาก Express…</span>
+        </div>
+      </div>
+
+      <h3>สำเร็จ</h3>
+      <div class="mockup">
+        <div class="mockup-header">success</div>
+        <div class="mockup-card">
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงคงเหลือ Express</button>
+            <span class="badge badge-ok">อัปเดตล่าสุด 27 พ.ย. 2026 16:00</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">รหัส</th>
+                <th rowspan="2">ชื่อ</th>
+                <th colspan="1" class="group">ฝั่งแอป</th>
+                <th colspan="1" class="group">ฝั่ง Express สด</th>
+                <th rowspan="2">ผลต่างที่คาด</th>
+              </tr>
+              <tr>
+                <th>นับได้ (ที่จะส่ง)</th>
+                <th>คงเหลือ LOCBAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1010030003</td>
+                <td>สินค้าตัวอย่าง</td>
+                <td>283</td>
+                <td>7,483</td>
+                <td class="diff-neg">-7,200</td>
+              </tr>
+              <tr>
+                <td>1010010001</td>
+                <td>เจเล่ไลท์ ส้ม</td>
+                <td>72</td>
+                <td>72</td>
+                <td>0</td>
+              </tr>
+              <tr>
+                <td>NEW-001</td>
+                <td>ยังไม่มีใน STLOC</td>
+                <td>10</td>
+                <td><em>ไม่พบคงเหลือ</em></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>UNC-001</td>
+                <td>ยังไม่นับในแอป</td>
+                <td>—</td>
+                <td>100</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">ผลต่างที่คาด = นับได้ − LOCBAL เมื่อทั้งสองฝั่งมีตัวเลข; ยังไม่นับหรือไม่มี LOCBAL → แสดง —</p>
+
+      <h3>Error states</h3>
+      <div class="mockup">
+        <div class="mockup-card">
+          <span class="badge badge-danger">โหลดไม่สำเร็จ</span>
+          <p style="margin:0.5rem 0">โหลดคงเหลือจาก Express ไม่สำเร็จ</p>
+          <button type="button" class="btn">ลองใหม่</button>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">เอกสารไม่มีคลัง Express</span>
+          <p style="margin:0.5rem 0">เอกสารนี้ไม่มีรหัสคลัง Express — ดึงคงเหลือไม่ได้</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>Data model / API</h2>
+
+      <h3>FastAPI (ใหม่)</h3>
+      <pre>GET /api/stockcount/locations/{locationCode}/balances
+Authorization: Bearer {VARIANCE_API_TOKEN}</pre>
+      <p>อ่าน <code>STLOC.DBF</code> ของบริษัท (เช่น 240BKK3) กรอง <code>LOCCOD</code> = location</p>
+      <pre>{
+  "success": true,
+  "locationCode": "2425",
+  "fetchedAt": "2026-11-27T09:00:00.000Z",
+  "balances": [
+    { "ProductCode": "1010030003", "LocationBalance": 7483.0 }
+  ]
+}</pre>
+      <ul>
+        <li>ไม่มีแถวในคลัง → 404 หรือ <code>balances: []</code> (เลือก: คืน 200 + ว่าง แล้ว UI แสดงไม่พบต่อ SKU)</li>
+        <li>แนะนำ: 200 + รายการที่มีจริง; SKU ในแอปที่ไม่มีใน map = ไม่พบคงเหลือ</li>
+      </ul>
+
+      <h3>Next.js proxy</h3>
+      <pre>GET /api/count-documents/[documentId]/pre-push-variance
+Cookie session (Supervisor+ + document access)</pre>
+      <ol>
+        <li>โหลดเอกสาร + บรรทัดนับ (ยอดที่จะส่ง = totalBaseQty / effective entry)</li>
+        <li>เรียก FastAPI balances ด้วย <code>locationCode</code></li>
+        <li>แมปด้วย productCode; คำนวณ <code>projectedDiff</code></li>
+        <li>คืน JSON ให้ UI (หรือแยก context + fetch balances เป็น 2 ขั้นเหมือนเดิมก็ได้)</li>
+      </ol>
+      <p>แนะนำ UX: หน้าโหลด context ก่อน (ไม่เรียก Express) แล้วปุ่มดึงค่อยเรียก balances — ไม่ auto-fetch</p>
+
+      <h3>สูตร</h3>
+      <table>
+        <thead><tr><th>ฟิลด์</th><th>ที่มา</th></tr></thead>
+        <tbody>
+          <tr><td>นับได้ (ที่จะส่ง)</td><td>ยอดนับในแอป (<code>totalBaseQty</code> ของ entry มีผล) — สอดคล้องของที่ push เป็น PHYBAL</td></tr>
+          <tr><td>คงเหลือ LOCBAL</td><td><code>STLOC.LOCBAL</code> สด</td></tr>
+          <tr><td>ผลต่างที่คาด</td><td>นับได้ − LOCBAL</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Env</h3>
+      <p>ใช้ <code>EXPRESS_VARIANCE_API_BASE_URL</code> / <code>EXPRESS_VARIANCE_API_TOKEN</code> ชุดเดียวกับ FastAPI เดิม</p>
+
+      <h3>ไฟล์หลักที่คาดว่าจะแตะ</h3>
+      <ul>
+        <li><code>external/express-variance-api/app/</code> — endpoint balances ใหม่</li>
+        <li><code>src/services/express-variance*.ts</code> — client + report context ก่อนส่ง</li>
+        <li><code>src/app/api/count-documents/[documentId]/pre-push-variance/route.ts</code></li>
+        <li><code>src/app/supervisor/documents/[documentId]/pre-push-variance/page.tsx</code></li>
+        <li><code>src/app/supervisor/documents/page.tsx</code> + <code>SupervisorDocumentRow.tsx</code> — ปุ่มใหม่</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+      <table>
+        <thead><tr><th>กรณี</th><th>พฤติกรรม</th></tr></thead>
+        <tbody>
+          <tr><td>ไม่มี locationCode</td><td>ปุ่มดึง disable + ข้อความไทย</td></tr>
+          <tr><td>FastAPI/เครือข่ายพัง</td><td>ข้อความโหลดไม่สำเร็จ + ลองใหม่</td></tr>
+          <tr><td>SKU ไม่มีใน STLOC</td><td>คงเหลือ = ไม่พบคงเหลือ, ผลต่าง = —</td></tr>
+          <tr><td>บรรทัดยังไม่นับ</td><td>นับได้ = — หรือว่าง, ผลต่าง = —</td></tr>
+          <tr><td>คำอธิบายบนหน้า</td><td>ระบุชัดว่าก่อนส่ง / ยังไม่เขียน Express</td></tr>
+          <tr><td>ปุ่มบนรายการ</td><td>ชื่อไม่ปนกับรายงานหลัง Express / ขอนับใหม่</td></tr>
+          <tr><td>เทียบตัวเลข</td><td>สุ่ม 3 SKU: LOCBAL จาก DBF = ค่าใน API</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      แทนที่ความเข้าใจผิดของรายงานหลัง Express สำหรับโจทย์ “ตรวจก่อนส่ง” —
+      รายงาน STTAK3 หลัง push ยังมีคนละปุ่ม
+    </footer>
+  </div>
+</body>
+</html>
