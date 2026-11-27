@@ -51,8 +51,11 @@ function testMissingLocationCode() {
     documentDate: "2026-11-26",
     locationCode: null,
   });
-  assert.equal(result.status, 400);
-  assert.match(result.error, /ไม่มีรหัสคลัง Express/);
+  assert.equal("error" in result, true);
+  if ("error" in result) {
+    assert.equal(result.status, 400);
+    assert.match(result.error, /ไม่มีรหัสคลัง Express/);
+  }
 }
 
 async function testFastApi404() {
