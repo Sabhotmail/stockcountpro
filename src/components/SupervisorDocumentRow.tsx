@@ -99,6 +99,15 @@ export function SupervisorDocumentRow({
               ขอนับใหม่
             </Link>
             <Link
+              href={`/supervisor/review/${doc.id}/express-variance`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-11",
+              )}
+            >
+              รายงานผลต่าง Express
+            </Link>
+            <Link
               href={`/print/documents/${doc.id}`}
               className={cn(buttonVariants({ size: "sm" }), "min-h-11")}
               target="_blank"

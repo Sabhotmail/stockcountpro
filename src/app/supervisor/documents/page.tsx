@@ -451,7 +451,7 @@ export default function SupervisorDocumentsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {tab === "completed" ? (
-                            <div className="inline-flex flex-nowrap items-center justify-end gap-1.5">
+                            <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
                               <Link
                                 href={`/supervisor/review/${doc.id}`}
                                 className={cn(
@@ -463,6 +463,15 @@ export default function SupervisorDocumentsPage() {
                                 )}
                               >
                                 ขอนับใหม่
+                              </Link>
+                              <Link
+                                href={`/supervisor/review/${doc.id}/express-variance`}
+                                className={buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                })}
+                              >
+                                รายงานผลต่าง Express
                               </Link>
                               <Link
                                 href={`/print/documents/${doc.id}`}
