@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Express Stock Count Variance API — Design Spec</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --accent: #0f766e; --accent-soft: #f0fdfa;
+      --code-bg: #f1f5f9; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #047857; --ok-bg: #ecfdf5; --amber: #b45309; --amber-bg: #fffbeb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; color: var(--text); background: var(--bg); }
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header.doc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
+    header.doc-header h1 { margin: 0 0 0.75rem; font-size: 1.75rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .meta strong { color: var(--text); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.25rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.35rem; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 0.4rem; }
+    h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    code { font-family: Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; }
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.45; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0 0 1rem; }
+    th, td { border: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    .mockup { border: 2px dashed var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; background: #fafbfc; }
+    .mockup-header { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+    .mockup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .mockup-note { font-size: 0.88rem; color: var(--muted); margin: 0.5rem 0 1rem; padding-left: 0.5rem; border-left: 3px solid var(--accent); }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; background: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .diff-pos { color: var(--ok); font-weight: 600; }
+    .diff-neg { color: var(--danger); font-weight: 600; }
+    .api-path { font-family: Consolas, monospace; font-size: 0.9rem; background: #0f172a; color: #e2e8f0; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.75rem; }
+    .api-path span.method { color: #34d399; font-weight: 700; margin-right: 0.5rem; }
+    footer { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <h1>Express Stock Count Variance API</h1>
+      <div class="meta">
+        <span><strong>Date:</strong> 2026-11-27</span>
+        <span><strong>Owner:</strong> StockCount Pro / ExpressAPI</span>
+        <span><strong>Scope:</strong> Phase 1 — API ใน <code>external/ExpressAPI</code> เท่านั้น</span>
+      </div>
+    </header>
+
+    <section id="goals">
+      <h2>Goals / Non-goals</h2>
+      <h3>Goals</h3>
+      <ul>
+        <li>เพิ่ม endpoint อ่านผลต่างการตรวจนับแบบ Express รายงาน <code>STTAK3</code></li>
+        <li>คืนรายการต่อวัน + คลัง: <code>PhysicalBalance</code>, <code>LocationBalance</code>, <code>DifferentQty</code></li>
+        <li>ให้ StockCount Pro ดึงมาเทียบในเฟสถัดไปได้ โดยไม่ต้องเปิด ExpressI พิมพ์รายงานทุกครั้ง</li>
+        <li>แก้เฉพาะสำเนาในโปรเจกต์ (<code>external/ExpressAPI</code>) — ไม่แตะ OneDrive ต้นทาง</li>
+      </ul>
+      <h3>Non-goals (รอบนี้)</h3>
+      <ul>
+        <li>ยังไม่ผูก UI / proxy ใน StockCount Pro (Phase 2)</li>
+        <li>ยังไม่ทำ dual-unit แบบรายงาน <code>STTAKD</code></li>
+        <li>ยังไม่ Post Physical Count / ปรับยอด / เขียน DBF</li>
+        <li>ยังไม่ทำรายงานเมนู 465 (<code>STTAKX</code> จาก <code>STTRN</code>)</li>
+        <li>ยังไม่รวม stockcount sync/push อื่นที่ยังไม่มีในสำเนา API นี้</li>
+      </ul>
+    </section>
+
+    <section id="current">
+      <h2>Current state</h2>
+      <ul>
+        <li>ExpressI คำนวณผลต่างตอนพิมพ์ <code>STTAK3</code>: <code>DIF = STTAK.PHYBAL − STLOC.LOCBAL</code> กรอง <code>TAKFLG ∈ {'2','3'}</code></li>
+        <li>StockCount Pro sync ใช้ <code>GET /api/stockcount/locations/countdate/{date}</code> และ <code>GET /api/stockcount/countdate/{date}/locations/{codes}</code> จากเซิร์ฟเวอร์ Express อื่น — สำเนา <code>external/ExpressAPI</code> ยังไม่มี route กลุ่ม stockcount</li>
+        <li>หน้า review ในแอปคำนวณ <code>totalBaseQty − expectedQty</code> จาก snapshot ตอน sync — อาจไม่เท่า <code>STTAK3</code> ถ้า <code>LOCBAL</code> เปลี่ยนหลัง sync</li>
+        <li>ฟิลด์ <code>DifferentQty</code> จาก Express stock-count line มีใน type แต่ยังไม่ใช่แหล่งความจริงของรายงานผลต่าง</li>
+      </ul>
+    </section>
+
+    <section id="workflow">
+      <h2>User workflow</h2>
+      <ol>
+        <li>ผู้ใช้ (หรือ StockCount Pro ภายหลัง) login ExpressAPI ได้ Bearer token</li>
+        <li>เรียก variance endpoint ด้วยวันที่นับ + รหัสคลัง (หนึ่งหรือหลายคลังคั่นด้วย comma)</li>
+        <li>API อ่าน <code>STTAK</code> ของวัน/คลังที่นับแล้ว แล้วอ่าน <code>STLOC.LOCBAL</code> สด</li>
+        <li>คำนวณ <code>DifferentQty = PhysicalBalance − LocationBalance</code> ต่อบรรทัด</li>
+        <li>คืน JSON ให้ client นำไปเทียบ / แสดงผล (Phase 2: หน้า review หรือแผงเทียบหลัง push)</li>
+      </ol>
+    </section>
+
+    <section id="ui-details">
+      <h2>UI Details</h2>
+      <p>Phase 1 เป็น API — mockup ด้านล่างครอบคลุมรูปแบบที่ client / เฟสถัดไปใน StockCount Pro จะเห็น</p>
+
+      <h3>API success — GET variance (ผู้เรียก: service / Postman / ภายหลัง StockCount Pro server)</h3>
+      <div class="mockup">
+        <div class="mockup-header">ExpressAPI · Auth: Bearer · role: authenticated user</div>
+        <div class="api-path"><span class="method">GET</span>/api/stockcount/variance/countdate/2026-03-11/locations/24A1,24GA</div>
+        <div class="mockup-card">
+          <div class="row">
+            <span class="badge badge-ok">200 OK</span>
+            <span>success = true · 2 คลัง · 414 บรรทัด</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>คลัง</th>
+                <th>รหัสสินค้า</th>
+                <th>ยอดตรวจนับ (PHYBAL)</th>
+                <th>ยอดคงเหลือ (LOCBAL)</th>
+                <th>ผลต่าง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>24A1</td>
+                <td>1060010004</td>
+                <td>3,648</td>
+                <td>3,600</td>
+                <td class="diff-pos">+48</td>
+              </tr>
+              <tr>
+                <td>24A1</td>
+                <td>2060020011</td>
+                <td>10</td>
+                <td>12</td>
+                <td class="diff-neg">−2</td>
+              </tr>
+              <tr>
+                <td>24GA</td>
+                <td>1060010004</td>
+                <td>720</td>
+                <td>720</td>
+                <td>0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">ผลต่างคำนวณสดจาก LOCBAL ณ เวลาเรียก API — ไม่อ่านฟิลด์ DIFQTY ที่เก็บใน STTAK เป็นหลัก</p>
+
+      <h3>API empty / not found</h3>
+      <div class="mockup">
+        <div class="mockup-header">ไม่มีรายการ TAKFLG 2|3 สำหรับวัน+คลัง</div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">404</span>
+          <p style="margin:0.75rem 0 0">Variance data not found</p>
+        </div>
+      </div>
+      <p class="mockup-note">ใช้ 404 เมื่อไม่มีแถวหลังกรอง — ไม่คืน <code>varianceData: []</code> แบบ 200 (ให้สอดคล้อง route อ่าน Express อื่นใน API นี้ เช่น stocktransfer)</p>
+
+      <h3>Phase 2 preview — แผงเทียบใน StockCount Pro (ยังไม่ implement)</h3>
+      <div class="mockup">
+        <div class="mockup-header">หน้ารีวิวเอกสาร · /supervisor/review/[documentId] · Supervisor / Branch Manager / HQ / Admin</div>
+        <div class="mockup-card">
+          <div class="row">
+            <strong>CNT-BKK3-20260311 · คลัง 24A1</strong>
+            <span class="badge badge-amber">เทียบกับ Express</span>
+          </div>
+          <div class="row">
+            <button type="button" class="btn btn-primary">ดึงผลต่างจาก Express</button>
+            <span style="font-size:0.85rem;color:var(--muted)">อัปเดตล่าสุด 11 มี.ค. 2026 14:32</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>สินค้า</th>
+                <th>ยอดนับในแอป</th>
+                <th>ยอดนับ Express (PHYBAL)</th>
+                <th>คงเหลือ Express (LOCBAL)</th>
+                <th>ผลต่าง Express</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1060010004 · สินค้าตัวอย่าง</td>
+                <td>3,648</td>
+                <td>3,648</td>
+                <td>3,600</td>
+                <td class="diff-pos">+48</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="mockup-note">ปุ่มและตารางนี้เป็น wireframe เฟสถัดไปเท่านั้น — Phase 1 ส่งมอบแค่ ExpressAPI endpoint</p>
+
+      <h3>Phase 2 loading / error (preview)</h3>
+      <div class="mockup">
+        <div class="mockup-header">สถานะแผงเทียบ</div>
+        <div class="mockup-card">
+          <span class="badge badge-amber">กำลังโหลดผลต่างจาก Express…</span>
+        </div>
+        <div class="mockup-card">
+          <span class="badge badge-danger">โหลดไม่สำเร็จ</span>
+          <p style="margin:0.5rem 0 0">ไม่พบข้อมูลผลต่างใน Express สำหรับวันที่และคลังนี้</p>
+          <button type="button" class="btn" style="margin-top:0.75rem">ลองใหม่</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>Data model / API</h2>
+
+      <h3>Endpoint</h3>
+      <pre>GET /api/stockcount/variance/countdate/{yyyy-MM-dd}/locations/{codes}
+Authorization: Bearer {token}</pre>
+      <ul>
+        <li><code>{yyyy-MM-dd}</code> — วันที่นับ (= <code>STTAK.TAKDAT</code>)</li>
+        <li><code>{codes}</code> — รหัสคลังคั่นด้วย comma ใน path เช่น <code>24A1,24GA</code> (ไม่ encode comma เป็น <code>%2C</code>)</li>
+        <li>Auth บังคับเหมือน route อื่นของ ExpressAPI</li>
+      </ul>
+
+      <h3>สูตรและแหล่งข้อมูล</h3>
+      <table>
+        <thead>
+          <tr><th>ฟิลด์ JSON</th><th>ที่มา</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>LocationCode</code></td><td><code>STTAK.LOCCOD</code></td></tr>
+          <tr><td><code>ProductCode</code></td><td><code>STTAK.STKCOD</code></td></tr>
+          <tr><td><code>ProductName</code></td><td><code>STMAS.STKDES</code></td></tr>
+          <tr><td><code>Area</code></td><td><code>STLOC.AREA</code> (fallback <code>STTAK.AREA</code>)</td></tr>
+          <tr><td><code>CountDate</code></td><td><code>STTAK.TAKDAT</code> เป็น <code>yyyy-MM-dd</code></td></tr>
+          <tr><td><code>PhysicalBalance</code></td><td><code>STTAK.PHYBAL</code></td></tr>
+          <tr><td><code>LocationBalance</code></td><td><code>STLOC.LOCBAL</code> (อ่านสด)</td></tr>
+          <tr><td><code>DifferentQty</code></td><td><code>PhysicalBalance − LocationBalance</code></td></tr>
+          <tr><td><code>CountFlag</code></td><td><code>STTAK.TAKFLG</code></td></tr>
+        </tbody>
+      </table>
+      <p>Filter: <code>TAKFLG = '2' OR TAKFLG = '3'</code> และ <code>LOCCOD</code> อยู่ในรายการที่ขอ และ <code>TAKDAT</code> ตรงวันที่</p>
+      <p>Join: <code>STLOC</code> บน <code>STKCOD + LOCCOD</code> · <code>STMAS</code> บน <code>STKCOD</code></p>
+      <p>ถ้าไม่มีแถว <code>STLOC</code>: ยังคืนแถวจาก <code>STTAK</code> โดยตั้ง <code>LocationBalance = null</code> และ <code>DifferentQty = null</code> (ไม่ drop แถว)</p>
+
+      <h3>Response 200</h3>
+      <pre>{
+  "success": true,
+  "countDate": "2026-03-11",
+  "locations": ["24A1", "24GA"],
+  "varianceData": [
+    {
+      "LocationCode": "24A1",
+      "ProductCode": "1060010004",
+      "ProductName": "สินค้าตัวอย่าง",
+      "Area": "A-01",
+      "CountDate": "2026-03-11",
+      "PhysicalBalance": 3648,
+      "LocationBalance": 3600,
+      "DifferentQty": 48,
+      "CountFlag": "3"
+    }
+  ]
+}</pre>
+
+      <h3>ไฟล์ใน <code>external/ExpressAPI</code></h3>
+      <table>
+        <thead>
+          <tr><th>ไฟล์</th><th>งาน</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>helpers/express-stockcount-variance-helper.ps1</code></td><td>OleDb อ่าน STTAK/STLOC/STMAS + คำนวณ diff</td></tr>
+          <tr><td><code>routes/stockcount-variance.ps1</code></td><td>Validate params, auth, JSON response</td></tr>
+          <tr><td><code>ExpressAPI.ps1</code></td><td>Use-PodeScript helper + dot-source route</td></tr>
+          <tr><td><code>API_ENDPOINTS.md</code></td><td>เพิ่มแถว endpoint</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Phase 2 (นอกขอบเขต implement รอบนี้)</h3>
+      <ul>
+        <li>Next.js: client ใน <code>express-api.service.ts</code> + proxy route เช่น <code>GET /api/express/variance</code></li>
+        <li>UI แผงเทียบบน review / หลัง push</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling &amp; test checklist</h2>
+
+      <h3>Errors</h3>
+      <table>
+        <thead>
+          <tr><th>กรณี</th><th>HTTP</th><th>body</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ไม่มี / token หมดอายุ</td><td>401</td><td><code>Unauthorized</code> / <code>Token Expired</code></td></tr>
+          <tr><td>date ไม่ใช่ <code>yyyy-MM-dd</code></td><td>400</td><td>Invalid countDate</td></tr>
+          <tr><td>locations ว่างหรือรหัสไม่ปลอดภัย</td><td>400</td><td>Invalid locations</td></tr>
+          <tr><td>ไม่มีแถวหลังกรอง</td><td>404</td><td>Variance data not found</td></tr>
+          <tr><td>OleDb / ไฟล์ DBF พัง</td><td>500</td><td>message สั้น + log ที่ errors logger</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Test checklist</h3>
+      <ul>
+        <li>□ Login ได้ token แล้วเรียก variance สำเร็จ</li>
+        <li>□ คลังที่มี <code>TAKFLG=3</code> คืน PHYBAL / LOCBAL / diff ถูกต้อง</li>
+        <li>□ กรองออกแถว <code>TAKFLG=1</code> (ยังไม่นับ)</li>
+        <li>□ หลายคลังใน path คืนเฉพาะคลังที่ขอ</li>
+        <li>□ วัน/คลังไม่มีข้อมูล → 404</li>
+        <li>□ date หรือ locations ผิดรูป → 400</li>
+        <li>□ ไม่มี Bearer → 401</li>
+        <li>□ สุ่ม 2–3 SKU เทียบตัวเลขกับรายงาน <code>STTAK3</code> ใน ExpressI (ผลต่างตรงกัน ณ เวลาใกล้เคียง)</li>
+        <li>□ ไม่ได้แก้ไฟล์ใน OneDrive ต้นทาง — เปลี่ยนเฉพาะ <code>external/ExpressAPI</code></li>
+      </ul>
+    </section>
+
+    <footer>StockCount Pro · Design spec · 2026-11-27 · Phase 1 API only</footer>
+  </div>
+</body>
+</html>

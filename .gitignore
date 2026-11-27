@@ -49,5 +49,14 @@ next-env.d.ts
 # git worktrees
 .worktrees/
 
+# graphify (keep graph.json / GRAPH_REPORT.md / graph.html / labels; ignore cache)
+/graphify-out/cache/
+/graphify-out/.graphify_analysis.json
+
 # NSSM service logs
 /logs/
+
+# ExpressAPI local runtime (never commit tokens from Pode auth DB)
+/external/ExpressAPI/tokens.db
+/external/ExpressAPI/tokens.db-journal
+/external/ExpressAPI/.pode/
